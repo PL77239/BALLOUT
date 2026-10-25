@@ -115,6 +115,18 @@ class Brush {
     return this;
   }
 
+  /** Recolour pixels of the current mask without touching outlines or part ids. */
+  ink(f: (x: number, y: number) => Col | -1) {
+    for (let y = this.y0; y <= this.y1; y++) {
+      for (let x = this.x0; x <= this.x1; x++) {
+        if (!this.has(x, y)) continue;
+        const c = f(x, y);
+        if (c !== -1 && this.p.alpha(x, y) > 0) this.p.set(x, y, c);
+      }
+    }
+    return this;
+  }
+
   commit(col: Col, o: { line?: Col | null; hi?: Col; sh?: Col; flat?: boolean } = {}) {
     const hi = o.hi ?? shade(col, 1.3), sh = o.sh ?? shade(col, 0.72);
     const line = o.line === undefined ? shade(col, 0.5) : o.line;
@@ -132,6 +144,12 @@ class Brush {
     }
   }
 }
+
+/** How much wider than bare skin the torso silhouette gets for each top. */
+export const topExtra = (t: Loadout['top']) =>
+  t === 'puffer' ? 1.9 : t === 'bigTee' ? 1.7 : t === 'hoodie' ? 1.1 : t === 'flannel' ? 1 : t === 'longsleeve' ? 0.6 : 0.5;
+
+const COVERED = new Set(['sweats', 'joggers', 'jeans', 'khakis']);
 
 interface Trail { x: number; y: number; vx: number; vy: number }
 const trail = (): Trail => ({ x: 0, y: 0, vx: 0, vy: 0 });
@@ -296,6 +314,7 @@ export class Puppet {
     b.part = 2; this.armPiece(b, armB, l, skin, u, true);
     b.part = 3; this.torsoPiece(b, [hx, hy], [nx, ny], l, skin, u, r.lean, sx, mir);
     b.part = 4; this.legPiece(b, legF, l, skin, u, sx);
+    if (l.top === 'bigTee') { b.part = 6; this.bigTeeHem(b, [hx, hy], [nx, ny], l, u); }
 
     /* ---- head ---- */
     b.part = 5; this.headPiece(b, head, r, l, skin, u, sx, mir, back, front);
@@ -316,43 +335,104 @@ export class Puppet {
     const [hx, hy] = L.hp, [kx, ky] = L.kn, [ax, ay] = L.an;
     b.begin().cap(hx, hy, kx, ky, 3.3 * u, 2.6 * u).commit(sk);
     b.begin().cap(kx, ky, ax, ay, 2.5 * u, 1.8 * u).commit(sk);
-    const covered = l.bottom === 'sweats' || l.bottom === 'joggers';
-    if (l.socks !== 'none' && !covered) {
-      const t0 = l.socks === 'long' ? 0.34 : 0.62;
+    const covered = COVERED.has(l.bottom);
+    if (l.socks !== 'none' && !covered && l.shoes !== 'boot') {
+      const t0 = l.socks === 'stripe' ? 0.12 : l.socks === 'long' ? 0.34 : 0.62;
       const sc = shade(l.sockColor, k);
       b.begin().cap(kx, ky, ax, ay, 2.6 * u, 1.9 * u, t0, 1, false, true).commit(sc);
-      b.begin().cap(kx, ky, ax, ay, 2.7 * u, 2 * u, t0, t0 + 0.09, false, false).commit(shade(l.bottomTrim === l.sockColor ? l.shoeSole : l.bottomTrim, k), { flat: true, line: null });
+      if (l.socks === 'stripe') {
+        const st = shade(l.sockTrim, k);
+        for (const o of [0.04, 0.15]) b.begin().cap(kx, ky, ax, ay, 2.7 * u, 2.5 * u, t0 + o, t0 + o + 0.07, false, false).commit(st, { flat: true, line: null });
+      } else {
+        b.begin().cap(kx, ky, ax, ay, 2.7 * u, 2 * u, t0, t0 + 0.09, false, false).commit(shade(l.bottomTrim === l.sockColor ? l.shoeSole : l.bottomTrim, k), { flat: true, line: null });
+      }
     }
-    if (l.bottom === 'shorts') {
+    const crease = (x0: number, y0: number, x1: number, y1: number, t1: number) =>
+      b.begin().cap(x0, y0, x1, y1, 0.42 * u, 0.42 * u, 0.04, t1, false, false).commit(shade(bc, 1.22), { flat: true, line: null });
+    const stitch = (x0: number, y0: number, x1: number, y1: number, off: number, c: Col) => {
+      const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy) || 1;
+      let px = dy / d, py = -dx / d;
+      if (px * -sx < 0) { px = -px; py = -py; }
+      for (let i = 1; i < d - 1; i += 2) {
+        const qx = Math.floor(x0 + (dx / d) * i + px * off), qy = Math.floor(y0 + (dy / d) * i + py * off);
+        if (this.pix.alpha(qx, qy) > 0) this.pix.set(qx, qy, c);
+      }
+    };
+    const bot = l.bottom;
+    if (bot === 'shorts') {
       b.begin().cap(hx, hy, kx, ky, 4.2 * u, 4.9 * u, 0, 0.58, true, false).commit(bc);
       b.begin().cap(hx, hy, kx, ky, 4.3 * u, 5 * u, 0.5, 0.6, false, false).commit(bt, { flat: true, line: null });
-    } else if (l.bottom === 'longShorts') {
+    } else if (bot === 'longShorts') {
       const ex = kx + (kx - hx) * 0.12, ey = ky + (ky - hy) * 0.12;
       b.begin().cap(hx, hy, ex, ey, 4.3 * u, 5.4 * u, 0, 1, true, false).commit(bc);
       b.begin().cap(hx, hy, ex, ey, 4.4 * u, 5.5 * u, 0.88, 1, false, false).commit(bt, { flat: true, line: null });
+    } else if (bot === 'jorts') {
+      const ex = kx + (ax - kx) * 0.16, ey = ky + (ay - ky) * 0.16;
+      b.begin().cap(hx, hy, kx, ky, 4.4 * u, 5.5 * u, 0, 1, true, false).commit(bc);
+      b.begin().cap(kx, ky, ex, ey, 5.5 * u, 5.7 * u, 0, 1, false, false).commit(bc);
+      b.begin().cap(kx, ky, ex, ey, 5.6 * u, 5.8 * u, 0.74, 1, false, false).commit(bt, { flat: true, line: null });
+      stitch(hx, hy, kx, ky, 4.4 * u, bt);
+    } else if (bot === 'chinoShorts') {
+      const w = [4.3, 5.2, 5.4, 5.0];
+      b.begin().cap(hx, hy, kx, ky, w[0] * u, w[1] * u, 0, 1, true, false).commit(bc);
+      b.begin().cap(kx, ky, ax, ay, w[2] * u, w[3] * u, 0, 0.34, false, false).commit(bc);
+      b.begin().cap(kx, ky, ax, ay, (w[3] + 0.2) * u, (w[3] + 0.2) * u, 0.27, 0.34, false, false).commit(bt, { flat: true, line: null });
+      crease(hx, hy, kx, ky, 0.96);
+      crease(kx, ky, ax, ay, 0.26);
     } else if (covered) {
-      const w0 = l.bottom === 'joggers' ? 3.9 : 4.2, w1 = l.bottom === 'joggers' ? 3.1 : 3.9, w2 = l.bottom === 'joggers' ? 2.9 : 3.5, w3 = l.bottom === 'joggers' ? 2.4 : 3.1;
+      const W: Record<string, number[]> = { joggers: [3.9, 3.1, 2.9, 2.4], sweats: [4.2, 3.9, 3.5, 3.1], jeans: [4.5, 4.3, 4.1, 3.9], khakis: [4.6, 4.3, 4.0, 3.8] };
+      const [w0, w1, w2, w3] = W[bot];
       b.begin().cap(hx, hy, kx, ky, w0 * u, w1 * u, 0, 1, true, false).commit(bc);
       b.begin().cap(kx, ky, ax, ay, w2 * u, w3 * u, 0, 0.94, false, false).commit(bc);
-      b.begin().cap(kx, ky, ax, ay, (w3 + 0.1) * u, (w3 + 0.2) * u, 0.78, 0.96, false, false).commit(bt, { flat: true, line: l.bottom === 'joggers' ? shade(bt, 0.6) : null });
+      if (bot === 'jeans') {
+        b.begin().cap(kx, ky, ax, ay, (w3 + 0.1) * u, (w3 + 0.2) * u, 0.86, 0.95, false, false).commit(shade(l.bottomColor, k * 1.25), { flat: true, line: null });
+        stitch(hx, hy, kx, ky, (w0 - 1.2) * u, bt);
+        stitch(kx, ky, ax, ay, (w2 - 1.0) * u, bt);
+      } else if (bot === 'khakis') {
+        b.begin().cap(kx, ky, ax, ay, (w3 + 0.1) * u, (w3 + 0.2) * u, 0.84, 0.94, false, false).commit(bt, { flat: true, line: null });
+        crease(hx, hy, kx, ky, 0.96);
+        crease(kx, ky, ax, ay, 0.8);
+      } else {
+        b.begin().cap(kx, ky, ax, ay, (w3 + 0.1) * u, (w3 + 0.2) * u, 0.78, 0.96, false, false).commit(bt, { flat: true, line: bot === 'joggers' ? shade(bt, 0.6) : null });
+      }
     }
-    this.shoe(b, L, l, k, u, sx);
+    this.shoe(b, L, l, skin, k, u, sx);
   }
 
-  private shoe(b: Brush, L: { kn: number[]; an: number[]; ank: number; far: boolean }, l: Loadout, k: number, u: number, sx: number) {
+  private shoe(b: Brush, L: { kn: number[]; an: number[]; ank: number; far: boolean }, l: Loadout, skin: Col, k: number, u: number, sx: number) {
     const [ax, ay] = L.an;
-    const sc = shade(l.shoeColor, k), so = shade(l.shoeSole, k);
+    const sc = shade(l.shoeColor, k), so = shade(l.shoeSole, k), kind = l.shoes;
     const th = L.ank;
-    if (l.shoes === 'high') b.begin().cap(L.kn[0], L.kn[1], ax, ay, 2.7 * u, 2.5 * u, 0.74, 1, false, false).commit(sc);
-    b.begin().frame(ax, ay + 0.2 * u, th, sx, u, 12, (x, y) => {
+    const fr = (ext: number, pred: (x: number, y: number) => boolean) => b.begin().frame(ax, ay + 0.2 * u, th, sx, u, ext, pred);
+    if (kind === 'slides') {
+      const foot = shade(l.socks !== 'none' ? l.sockColor : skin, k);
+      fr(12, (x, y) => y >= -1.1 && y <= 1.5 && x >= -3 && x <= 6.2 && !(x > 4.4 && y < -1.1 + (x - 4.4) * 0.5)).commit(foot);
+      fr(12, (x, y) => y >= -1.5 && y <= 0.4 && x >= 1.2 && x <= 4.6).commit(sc);
+      fr(12, (x, y) => y >= -0.9 && y <= -0.5 && x >= 1.8 && x <= 3.8).commit(shade(l.shoeTrim, k), { flat: true, line: null });
+      fr(12, (x, y) => y > 1.5 && y <= 2.6 && x >= -3.6 && x <= 6.8).commit(so, { flat: false });
+      return;
+    }
+    if (kind === 'high') b.begin().cap(L.kn[0], L.kn[1], ax, ay, 2.7 * u, 2.5 * u, 0.74, 1, false, false).commit(sc);
+    if (kind === 'boot') {
+      b.begin().cap(L.kn[0], L.kn[1], ax, ay, 3.0 * u, 2.9 * u, 0.62, 1, false, false).commit(sc);
+      b.begin().cap(L.kn[0], L.kn[1], ax, ay, 3.2 * u, 3.1 * u, 0.62, 0.7, false, false).commit(shade(l.shoeTrim, k), { flat: true, line: null });
+    }
+    fr(12, (x, y) => {
+      if (kind === 'boot') { if (y < -1.4 || y > 1.5 || x < -3.4 || x > 7.4) return false; return !(x > 5.2 && y < -1.4 + (x - 5.2) * 0.55); }
+      if (kind === 'cortez') { if (y < -1.0 || y > 1.5 || x < -3.3 || x > 7.4) return false; return !(x > 4.2 && y < -1.0 + (x - 4.2) * 0.62); }
       if (y < -1.1 || y > 1.5) return false;
       if (x < -3.4 || x > 7) return false;
       if (x > 4.4 && y < -1.1 + (x - 4.4) * 0.5) return false;
-      if (l.shoes === 'runner' && x > 5.4 && y < 0.2) return false;
+      if (kind === 'runner' && x > 5.4 && y < 0.2) return false;
       return true;
     }).commit(sc);
-    b.begin().frame(ax, ay + 0.2 * u, th, sx, u, 12, (x, y) => y >= -1.1 && y <= 0.1 && x >= 0.6 && x <= 3.2).commit(shade(l.shoeColor, k * 1.35), { flat: true, line: null });
-    b.begin().frame(ax, ay + 0.2 * u, th, sx, u, 12, (x, y) => y > 1.5 && y <= 2.5 && x >= -3.6 && x <= 7.4).commit(so, { flat: false });
+    if (kind === 'cortez') {
+      fr(12, (x, y) => x >= 0 && x <= 4.6 && y >= -0.5 + (x - 0.2) * 0.06 && y <= 0.4 + (x - 0.2) * 0.04 && !(x < 0.8 && y < -0.2)).commit(shade(l.shoeTrim, k), { flat: true, line: null });
+      fr(12, (x, y) => x >= -3.3 && x <= -1.8 && y >= -0.4 && y <= 1.5).commit(shade(l.shoeTrim, k), { flat: true, line: null });
+    } else {
+      fr(12, (x, y) => y >= -1.1 && y <= 0.1 && x >= 0.6 && x <= 3.2).commit(shade(l.shoeColor, k * 1.35), { flat: true, line: null });
+    }
+    fr(12, (x, y) => y > 1.5 && y <= (kind === 'boot' ? 2.8 : 2.5) && x >= -3.6 && x <= 7.4).commit(so, { flat: false });
   }
 
   private armPiece(b: Brush, A: { sh: number[]; el: number[]; wr: number[]; far: boolean }, l: Loadout, skin: Col, u: number, far: boolean) {
@@ -363,14 +443,24 @@ export class Puppet {
     b.begin().cap(ex, ey, wx, wy, 1.65 * u, 1.4 * u).commit(sk);
     const sleeveUp = (c: Col, a: number, bb: number, rr: number) => b.begin().cap(sx0, sy0, ex, ey, (2.2 + rr) * u, (2 + rr) * u, a, bb, true, false).commit(c);
     const t = l.top;
-    if (t === 'tee' || t === 'jersey') {
+    const wv = (kind: 'plaid' | 'baffle', a: number[], z: number[]) => this.weave(b, a, z, u, kind, tc, tt);
+    if (t === 'tee' || t === 'jersey' || t === 'bigTee') {
       if (t === 'tee') { sleeveUp(tc, 0, 0.55, 0.5); b.begin().cap(sx0, sy0, ex, ey, 2.7 * u, 2.5 * u, 0.5, 0.58, false, false).commit(tt, { flat: true, line: null }); }
-    } else if (t === 'hoodie' || t === 'longsleeve') {
-      sleeveUp(tc, 0, 1, t === 'hoodie' ? 0.8 : 0.3);
-      b.begin().cap(ex, ey, wx, wy, (1.9 + (t === 'hoodie' ? 0.8 : 0.3)) * u, (1.7 + (t === 'hoodie' ? 0.7 : 0.3)) * u, 0, 0.9, false, false).commit(tc);
-      b.begin().cap(ex, ey, wx, wy, 2.2 * u, 2 * u, 0.8, 0.95, false, false).commit(tt, { flat: true, line: null });
+      if (t === 'bigTee') { sleeveUp(tc, 0, 0.8, 1.1); b.begin().cap(sx0, sy0, ex, ey, 3.3 * u, 3.1 * u, 0.74, 0.82, false, false).commit(shade(tc, 0.86), { flat: true, line: null }); }
+    } else if (t === 'hoodie' || t === 'longsleeve' || t === 'flannel' || t === 'puffer') {
+      const rr = t === 'hoodie' ? 0.8 : t === 'puffer' ? 1.3 : t === 'flannel' ? 0.5 : 0.3;
+      sleeveUp(tc, 0, 1, rr);
+      if (t === 'flannel') wv('plaid', [sx0, sy0], [ex, ey]); else if (t === 'puffer') wv('baffle', [sx0, sy0], [ex, ey]);
+      b.begin().cap(ex, ey, wx, wy, (1.9 + rr) * u, (1.7 + rr * 0.9) * u, 0, 0.9, false, false).commit(tc);
+      if (t === 'flannel') wv('plaid', [ex, ey], [wx, wy]); else if (t === 'puffer') wv('baffle', [ex, ey], [wx, wy]);
+      b.begin().cap(ex, ey, wx, wy, (2.2 + (t === 'puffer' ? 0.3 : 0)) * u, (2 + (t === 'puffer' ? 0.3 : 0)) * u, 0.8, 0.95, false, false).commit(tt, { flat: true, line: null });
     }
     if (l.wrist === 'bands') b.begin().cap(ex, ey, wx, wy, 1.95 * u, 1.75 * u, 0.62, 0.84, false, false).commit(shade(l.wristColor, k), { flat: true, line: null });
+    if (l.wrist === 'watch') {
+      const wc = shade(l.wristColor, k);
+      b.begin().cap(ex, ey, wx, wy, 2.0 * u, 1.8 * u, 0.7, 0.8, false, false).commit(wc, { flat: true, line: shade(wc, 0.55) });
+      this.pix.set(Math.floor(ex + (wx - ex) * 0.75), Math.floor(ey + (wy - ey) * 0.75), 0xfff3c8);
+    }
     if (l.wrist === 'sleeve' && !far) {
       b.begin().cap(sx0, sy0, ex, ey, 2.4 * u, 2.1 * u, 0.55, 1, false, true).commit(l.wristColor);
       b.begin().cap(ex, ey, wx, wy, 2.1 * u, 1.9 * u, 0, 0.85, true, false).commit(l.wristColor);
@@ -379,27 +469,66 @@ export class Puppet {
     b.begin().disc(wx + (dx / d) * 1.2 * u, wy + (dy / d) * 1.2 * u, 2.05 * u).commit(sk);
   }
 
+  /** Woven cloth pattern over the current brush mask, laid out along the a-to-z axis so it rides with the limb. */
+  private weave(b: Brush, a: number[], z: number[], u: number, kind: 'plaid' | 'baffle', base: Col, trim: Col) {
+    const dx = z[0] - a[0], dy = z[1] - a[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+    const dk = shade(base, 0.68), dd = shade(base, 0.5), lt = shade(base, 1.14);
+    const cell = (kind === 'plaid' ? 3.4 : 3.3) * u;
+    b.ink((x, y) => {
+      if (!(b.has(x - 1, y) && b.has(x + 1, y) && b.has(x, y - 1) && b.has(x, y + 1))) return -1;
+      const px = x + 0.5 - a[0], py = y + 0.5 - a[1];
+      const al = px * ux + py * uy + 400 * u, sd = -px * uy + py * ux + 400 * u;
+      const i = Math.floor(al / cell), fi = al - i * cell;
+      if (kind === 'baffle') return fi < 0.95 ? dk : fi < 1.9 ? lt : -1;
+      const j = Math.floor(sd / cell), fj = sd - j * cell;
+      const hb = i % 3 === 0, vb = j % 3 === 0;
+      if (hb && vb) return dd;
+      if (hb || vb) return dk;
+      if ((i % 3 === 1 && fi < 1) || (j % 3 === 1 && fj < 1)) return trim;
+      return -1;
+    });
+  }
+
+  private bigTeeHem(b: Brush, h: number[], n: number[], l: Loadout, u: number) {
+    const [hx, hy] = h, [nx, ny] = n, e = topExtra('bigTee');
+    b.begin().cap(hx, hy, nx, ny, (4.8 + e) * u, (6.2 + e) * u, -0.34, 0.2, false, false).commit(l.topColor);
+    b.begin().cap(hx, hy, nx, ny, (4.7 + e) * u, (6.2 + e) * u, -0.34, -0.27, false, false).commit(shade(l.topColor, 0.84), { flat: true, line: null });
+  }
+
   private torsoPiece(b: Brush, h: number[], n: number[], l: Loadout, skin: Col, u: number, lean: number, sx: number, mir: number) {
     const [hx, hy] = h, [nx, ny] = n;
     b.begin().cap(hx, hy, nx, ny, 4.7 * u, 6.2 * u).commit(skin);
-    const bw = l.bottom === 'sweats' || l.bottom === 'joggers' ? 0.5 : 0.7;
+    const bw = COVERED.has(l.bottom) ? 0.5 : 0.7;
     b.begin().cap(hx, hy, nx, ny, (4.7 + bw) * u, (5.5 + bw) * u, 0, 0.3, true, false).commit(l.bottomColor);
     b.begin().cap(hx, hy, nx, ny, (4.9 + bw) * u, (5.7 + bw) * u, 0.26, 0.33, false, false).commit(l.bottomTrim, { flat: true, line: null });
-    const hood = l.top === 'hoodie';
-    const extra = hood ? 1.1 : l.top === 'longsleeve' ? 0.6 : 0.5;
-    const sleeveless = l.top === 'tank' || l.top === 'jersey';
-    b.begin().cap(hx, hy, nx, ny, (4.8 + extra) * u, (6.2 + extra) * u, 0.27, 1, false, true).commit(l.topColor);
-    if (hood || l.top === 'tee' || l.top === 'longsleeve') b.begin().cap(hx, hy, nx, ny, (5 + extra) * u, (6.4 + extra * 0.5) * u, 0.27, 0.37, false, false).commit(l.topTrim, { flat: true, line: null });
-    if (l.top === 'tank') b.begin().cap(hx, hy, nx, ny, (4.8 + extra) * u, (6.6 + extra) * u, 0.2, 0.26, false, false).commit(l.topTrim, { flat: true, line: null });
-    if (l.top === 'jersey') {
+    const tp = l.top;
+    const hood = tp === 'hoodie';
+    const extra = topExtra(tp);
+    const t0 = tp === 'puffer' ? 0.14 : tp === 'bigTee' ? 0.05 : tp === 'flannel' ? 0.18 : 0.27;
+    const sleeveless = tp === 'tank' || tp === 'jersey';
+    b.begin().cap(hx, hy, nx, ny, (4.8 + extra) * u, (6.2 + extra) * u, t0, 1, false, true).commit(l.topColor);
+    if (tp === 'flannel') this.weave(b, [hx, hy], [nx, ny], u, 'plaid', l.topColor, l.topTrim);
+    if (tp === 'puffer') this.weave(b, [hx, hy], [nx, ny], u, 'baffle', l.topColor, l.topTrim);
+    if (hood || tp === 'tee' || tp === 'longsleeve') b.begin().cap(hx, hy, nx, ny, (5 + extra) * u, (6.4 + extra * 0.5) * u, 0.27, 0.37, false, false).commit(l.topTrim, { flat: true, line: null });
+    if (tp === 'puffer') b.begin().cap(hx, hy, nx, ny, (4.9 + extra) * u, (6.3 + extra) * u, t0, t0 + 0.08, false, false).commit(l.topTrim, { flat: true, line: null });
+    if (tp === 'tank') b.begin().cap(hx, hy, nx, ny, (4.8 + extra) * u, (6.6 + extra) * u, 0.2, 0.26, false, false).commit(l.topTrim, { flat: true, line: null });
+    if (tp === 'jersey') {
       b.begin().cap(hx, hy, nx, ny, 5.3 * u, 6.7 * u, 0.5, 0.58, false, false).commit(l.topTrim, { flat: true, line: null });
     }
     const ang = lean;
+    if (tp === 'flannel') {
+      b.begin().frame(hx, hy, ang, sx, u, 24, (x, y) => x >= 2.2 && x <= 4.4 && y <= -(t0 * 20 + 0.6) && y >= -19.2).commit(0xe9e7de, { flat: true, line: null });
+      b.begin().frame(hx, hy, ang, sx, u, 24, (x, y) => x >= 2.0 && x <= 2.5 && y <= -(t0 * 20 + 0.6) && y >= -19.2).commit(shade(l.topColor, 0.55), { flat: true, line: null });
+    }
     if (sleeveless) {
       b.begin().frame(nx, ny, ang, sx, u, 8, (x, y) => ((x - 1.4) ** 2) / 8 + ((y + 0.4) ** 2) / 12 <= 1 && y >= -0.4).commit(skin, { line: null, flat: true });
       b.begin().frame(nx, ny, ang, sx, u, 8, (x, y) => { const d = ((x - 1.4) ** 2) / 8 + ((y + 0.4) ** 2) / 12; return d <= 1.9 && d > 1 && y >= -0.4; }).commit(l.topTrim, { flat: true, line: null });
     } else if (!hood) {
       b.begin().frame(nx, ny, ang, sx, u, 8, (x, y) => { const d = ((x - 0.6) ** 2) / 14 + ((y + 0.2) ** 2) / 9; return d <= 1 && d > 0.45 && y >= -0.2; }).commit(l.topTrim, { flat: true, line: null });
+    }
+    if (tp === 'puffer') {
+      b.begin().frame(nx, ny, ang, sx, u, 9, (x, y) => x >= -3.4 && x <= 3.6 && y >= -1.4 && y <= 2.4).commit(shade(l.topColor, 0.9));
+      b.begin().frame(nx, ny, ang, sx, u, 9, (x, y) => x >= -3.4 && x <= 3.6 && y >= 0.6 && y <= 1.3).commit(l.topTrim, { flat: true, line: null });
     }
     if (hood) {
       b.begin().frame((hx + nx) / 2 + 0, (hy + ny) / 2 + 1 * u, ang, sx, u, 9, (x, y) => x >= 1.6 && x <= 7 && y >= -3.2 && y <= 2.4).commit(shade(l.topColor, 0.86));
@@ -409,19 +538,60 @@ export class Puppet {
   }
 
   private chainPiece(b: Brush, h: number[], n: number[], l: Loadout, u: number, lean: number, sx: number) {
-    if (l.chain === 'none') return;
-    const col = l.chain === 'gold' ? 0xf0c040 : 0xdfe6ee, dk = l.chain === 'gold' ? 0xb88820 : 0x8d99a8;
+    const kind = l.chain;
+    if (kind === 'none') return;
+    const gold = kind === 'gold' || kind === 'cuban' || kind === 'rope' || kind === 'cross';
+    const col = gold ? 0xf0c040 : kind === 'rosary' ? 0x8a1c24 : 0xdfe6ee, dk = gold ? 0xb88820 : kind === 'rosary' ? 0x4a0e14 : 0x8d99a8;
     const ang = lean;
+    const e = topExtra(l.top) - 0.5;
     const fwd = [Math.cos(ang) * sx, Math.sin(ang)];
-    const at = (t: number, off: number) => [h[0] + (n[0] - h[0]) * t + fwd[0] * off, h[1] + (n[1] - h[1]) * t + fwd[1] * off];
-    const pts = [at(0.98, 4.6 * u), at(0.9, 6.9 * u), at(0.78, 7.2 * u), at(0.7, 6.6 * u)];
-    for (let i = 1; i < pts.length; i++) this.pix.line(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], col);
-    const pd = at(0.66, 6.6 * u);
-    const px = pd[0] + this.chain.x * sx, py = pd[1] + this.chain.y;
-    this.pix.line(pts[3][0], pts[3][1], px, py, dk);
-    this.pix.rect(Math.round(px) - 1, Math.round(py), 3, 3, col);
-    this.pix.set(Math.round(px), Math.round(py) + 1, dk);
-    this.pix.set(Math.round(px) - 1, Math.round(py), 0xffffff);
+    const at = (t: number, off: number) => [h[0] + (n[0] - h[0]) * t + fwd[0] * (off + e) * u, h[1] + (n[1] - h[1]) * t + fwd[1] * (off + e) * u];
+    const path = kind === 'rope' ? [at(0.98, 4.6), at(0.9, 6.9), at(0.74, 7.4), at(0.6, 7.0), at(0.5, 6.4)]
+      : kind === 'rosary' ? [at(0.98, 4.8), at(0.9, 7.1), at(0.72, 7.7), at(0.54, 7.3), at(0.4, 6.5)]
+      : [at(0.98, 4.6), at(0.9, 6.9), at(0.78, 7.2), at(0.7, 6.6)];
+    const p = this.pix;
+    const end = path[path.length - 1];
+    for (let i = 1; i < path.length; i++) {
+      const [x0, y0] = path[i - 1], [x1, y1] = path[i];
+      if (kind === 'rosary') {
+        const d = Math.hypot(x1 - x0, y1 - y0), steps = Math.max(1, Math.round(d / 2.2));
+        for (let s = 0; s <= steps; s++) {
+          const bx = Math.round(x0 + ((x1 - x0) * s) / steps), by = Math.round(y0 + ((y1 - y0) * s) / steps);
+          p.rect(bx, by, 2, 2, (s + i) % 4 === 0 ? 0xe9c24a : col);
+          p.set(bx, by, (s + i) % 4 === 0 ? 0xfff2b0 : 0xe05a5a);
+        }
+      } else if (kind === 'cuban') {
+        p.line(x0, y0, x1, y1, col); p.line(x0, y0 + 1, x1, y1 + 1, dk);
+        p.line(x0 + 1, y0, x1 + 1, y1, col);
+      } else if (kind === 'rope') {
+        p.line(x0, y0, x1, y1, col);
+        const d = Math.hypot(x1 - x0, y1 - y0), steps = Math.max(1, Math.round(d));
+        for (let s = 0; s <= steps; s += 2) p.set(Math.round(x0 + ((x1 - x0) * s) / steps), Math.round(y0 + ((y1 - y0) * s) / steps), dk);
+      } else p.line(x0, y0, x1, y1, col);
+    }
+    const sw = this.chain;
+    const ex = end[0] + sw.x * sx, ey = end[1] + sw.y;
+    if (kind === 'rope' || kind === 'cuban') return;
+    const px = Math.round(ex), py = Math.round(ey);
+    p.line(end[0], end[1], ex, ey, dk);
+    if (kind === 'cross' || kind === 'rosary') {
+      const cc = kind === 'rosary' ? 0xdfe6ee : 0xf0c040, cd = kind === 'rosary' ? 0x8d99a8 : 0xb88820;
+      const tall = kind === 'rosary' ? 6 : 5;
+      for (let i = 0; i < tall; i++) p.set(px, py + i, i === 0 ? 0xffffff : cc);
+      p.set(px - 1, py + 1, cc); p.set(px + 1, py + 1, cc); p.set(px - 1, py + 2, cd); p.set(px + 1, py + 2, cd);
+      p.set(px, py + tall, cd);
+    } else if (kind === 'ice') {
+      p.rect(px - 2, py, 5, 5, 0xbfe4f4);
+      p.rect(px - 1, py + 1, 3, 3, 0xe9f8ff);
+      p.set(px - 2, py + 4, 0x7fb8d8); p.set(px + 2, py + 4, 0x7fb8d8); p.set(px + 2, py, 0x9fcfe8);
+      const f = Math.floor(this.t * 6) % 3;
+      p.set(px - 1 + f, py + f, 0xffffff);
+      p.set(px + 1 - f, py + 3 - f, 0xffffff);
+    } else {
+      p.rect(px - 1, py, 3, 3, col);
+      p.set(px, py + 1, dk);
+      p.set(px - 1, py, 0xffffff);
+    }
     void b;
   }
 
@@ -500,6 +670,14 @@ export class Puppet {
         { const [qx, qy] = this.loc(hd, sx, u, dir > 0 ? 3.4 : -3.4, -4.8); this.pix.set(qx, qy, ht); this.pix.set(qx + sx, qy, ht); }
         break;
       }
+      case 'fitted': {
+        F(14, (x, y) => crown(x, y, 6.4) && y <= -1.4).commit(hd0);
+        F(14, (x, y) => x >= 2.4 && x <= 11.6 && y >= -1.8 && y <= -0.6).commit(shade(hd0, 0.82), { hi: shade(hd0, 1.2) });
+        F(10, (x, y) => crown(x, y, 6.4) && y <= -1.4 && y >= -2.4 && x < 3.2).commit(shade(hd0, 0.88), { flat: true, line: null });
+        F(10, (x, y) => crown(x, y, 6.4) && x >= 0.8 && x <= 4 && y >= -5.4 && y <= -2.9).commit(ht, { flat: true, line: null });
+        { const [qx, qy] = this.loc(hd, sx, u, 2.4, -4.1); this.pix.set(qx, qy, shade(hd0, 0.7)); }
+        break;
+      }
       case 'beanie':
         F(12, (x, y) => ((x + 0.4) ** 2) / 40 + ((y + 1.6) ** 2) / 42 <= 1 && y <= -0.4).commit(hd0);
         F(12, (x, y) => ((x + 0.4) ** 2) / 43 + ((y + 1.6) ** 2) / 46 <= 1 && y <= 0.4 && y >= -2.1).commit(ht);
@@ -529,6 +707,7 @@ export class Puppet {
     }
 
     if (l.face === 'beard') F(10, (x, y) => jaw(x, y) && y >= 1.4 && x > -2.4 && !(x > 3 && y < 3.6)).commit(l.faceColor, { line: null });
+    if (l.face === 'stache') F(8, (x, y) => x >= -2.4 && x <= 5.8 && y >= 2.2 && y <= 3.1 && (front || x >= 1.6)).commit(l.faceColor, { line: null });
     if (l.face === 'goatee') F(8, (x, y) => x >= 2.0 && x <= 5.2 && y >= 3.0 && y <= 6).commit(l.faceColor, { line: null });
     if (l.face === 'shades' && !back) {
       F(10, (x, y) => (x >= 0.6 && x <= 6.4 && y >= -2.0 && y <= 0.5) || (x >= -3.6 && x <= 0.8 && y >= -1.4 && y <= -0.6)).commit(l.faceColor, { line: null, flat: true });
@@ -544,10 +723,11 @@ export class Puppet {
     const px = (lx: number, ly: number, c: Col) => { const [qx, qy] = this.loc(hd, sx, u, lx, ly); this.pix.set(qx, qy, c); };
     const blinking = this.blink > 0 || r.emo < -0.5;
     const shadesOn = l.face === 'shades';
+    const grill = l.face === 'grillz';
     if (front) {
       for (const ex of [-2, 2]) { if (!shadesOn) { px(ex, -0.5, 0xffffff); px(ex + 1, -0.5, OUT); } px(ex, -1.9, shade(l.hairColor, 0.8)); }
       px(0, 1.5, shade(skin, 0.75));
-      for (const mx of [-1, 0, 1]) px(mx, 4, r.mouth > 0.4 ? 0x5a1a22 : shade(skin, 0.6));
+      for (const mx of [-1, 0, 1]) px(mx, 4, r.mouth > 0.4 ? 0x5a1a22 : grill ? 0xf2c648 : shade(skin, 0.6));
       return;
     }
     if (!shadesOn && l.face !== 'glasses') {
@@ -556,8 +736,8 @@ export class Puppet {
       px(2.2, -2.3 - bro * 0.4, shade(hc, 0.9)); px(3.3, -2.3 + bro, shade(hc, 0.9)); px(4.4, -2.3 + bro * 1.4, shade(hc, 0.9));
     } else if (l.face === 'glasses') { px(2.6, -0.6, 0xffffff); px(3.6, -0.6, OUT); }
     px(-1.2, 0.8, shade(skin, 0.72)); px(-1.2, 1.8, shade(skin, 0.72));
-    const mc = l.face === 'beard' || l.face === 'goatee' ? shade(skin, 0.6) : shade(skin, 0.55);
-    if (r.mouth > 0.4) { px(3.4, 3.4, 0x5a1a22); px(4.4, 3.4, 0x5a1a22); px(3.4, 4.4, 0x7a2a32); px(4.4, 4.4, 0x5a1a22); }
+    const mc = grill ? 0xf2c648 : l.face === 'beard' || l.face === 'goatee' ? shade(skin, 0.6) : shade(skin, 0.55);
+    if (r.mouth > 0.4) { px(3.4, 3.4, grill ? 0xf2c648 : 0x5a1a22); px(4.4, 3.4, grill ? 0xf2c648 : 0x5a1a22); px(3.4, 4.4, 0x7a2a32); px(4.4, 4.4, 0x5a1a22); }
     else if (r.emo > 0.4) { px(3.0, 3.6, mc); px(4.0, 3.9, mc); px(5.0, 3.6, mc); px(5.6, 3.1, mc); }
     else if (r.emo < -0.4) { px(3.4, 4.1, mc); px(4.4, 3.6, mc); px(5.2, 4.1, mc); }
     else { px(3.6, 3.6, mc); px(4.6, 3.6, mc); }

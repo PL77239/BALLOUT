@@ -2,14 +2,14 @@ import type { Col } from './pixel';
 
 export type RegionId = 'bk' | 'chi' | 'harlem' | 'queens' | 'philly' | 'detroit' | 'atl' | 'la';
 export type HairKind = 'bald' | 'fade' | 'hightop' | 'waves' | 'afro' | 'braids' | 'locs' | 'twists';
-export type HeadKind = 'none' | 'fullcap' | 'backcap' | 'beanie' | 'headband' | 'durag' | 'bucket' | 'bandana';
-export type FaceKind = 'none' | 'shades' | 'beard' | 'goatee' | 'glasses';
-export type TopKind = 'tank' | 'tee' | 'hoodie' | 'jersey' | 'longsleeve';
-export type BottomKind = 'shorts' | 'longShorts' | 'sweats' | 'joggers';
-export type ShoeKind = 'high' | 'low' | 'runner';
-export type SockKind = 'none' | 'crew' | 'long';
-export type ChainKind = 'none' | 'gold' | 'silver';
-export type WristKind = 'none' | 'bands' | 'sleeve';
+export type HeadKind = 'none' | 'fullcap' | 'backcap' | 'fitted' | 'beanie' | 'headband' | 'durag' | 'bucket' | 'bandana';
+export type FaceKind = 'none' | 'shades' | 'beard' | 'goatee' | 'glasses' | 'stache' | 'grillz';
+export type TopKind = 'tank' | 'tee' | 'hoodie' | 'jersey' | 'longsleeve' | 'bigTee' | 'flannel' | 'puffer';
+export type BottomKind = 'shorts' | 'longShorts' | 'sweats' | 'joggers' | 'jeans' | 'jorts' | 'khakis' | 'chinoShorts';
+export type ShoeKind = 'high' | 'low' | 'runner' | 'boot' | 'cortez' | 'slides';
+export type SockKind = 'none' | 'crew' | 'long' | 'stripe';
+export type ChainKind = 'none' | 'gold' | 'silver' | 'cuban' | 'rope' | 'cross' | 'rosary' | 'ice';
+export type WristKind = 'none' | 'bands' | 'sleeve' | 'watch';
 export type Slot = 'hair' | 'head' | 'face' | 'top' | 'bottom' | 'shoes' | 'socks' | 'chain' | 'wrist';
 
 export interface Loadout {
@@ -20,8 +20,8 @@ export interface Loadout {
   face: FaceKind; faceColor: Col;
   top: TopKind; topColor: Col; topTrim: Col;
   bottom: BottomKind; bottomColor: Col; bottomTrim: Col;
-  shoes: ShoeKind; shoeColor: Col; shoeSole: Col;
-  socks: SockKind; sockColor: Col;
+  shoes: ShoeKind; shoeColor: Col; shoeSole: Col; shoeTrim: Col;
+  socks: SockKind; sockColor: Col; sockTrim: Col;
   chain: ChainKind;
   wrist: WristKind; wristColor: Col;
 }
@@ -36,8 +36,8 @@ export const BASE_LOADOUT: Loadout = {
   face: 'none', faceColor: 0x111111,
   top: 'tee', topColor: 0xf0f0ea, topTrim: 0x222222,
   bottom: 'shorts', bottomColor: 0x1d1d22, bottomTrim: 0xf0f0ea,
-  shoes: 'low', shoeColor: 0xf0f0ea, shoeSole: 0x888a94,
-  socks: 'crew', sockColor: 0xf0f0ea,
+  shoes: 'low', shoeColor: 0xf0f0ea, shoeSole: 0x888a94, shoeTrim: 0xc0201e,
+  socks: 'crew', sockColor: 0xf0f0ea, sockTrim: 0xc0201e,
   chain: 'none', wrist: 'none', wristColor: 0xf0f0ea,
 };
 
@@ -104,12 +104,12 @@ export const SLOT_NAMES: Record<Slot, string> = { hair: 'HAIR', head: 'HEADWEAR'
 
 const KIND_NAMES: Record<string, string> = {
   bald: 'SHAVED', fade: 'FADE', hightop: 'HI-TOP', waves: 'WAVES', afro: 'AFRO', braids: 'BRAIDS', locs: 'LOCS', twists: 'TWISTS',
-  none: 'NONE', fullcap: 'SNAPBACK', backcap: 'BACKWARDS CAP', beanie: 'BEANIE', headband: 'HEADBAND', durag: 'DURAG', bucket: 'BUCKET HAT', bandana: 'BANDANA',
-  shades: 'SHADES', beard: 'BEARD', goatee: 'GOATEE', glasses: 'ROUND SPECS',
-  tank: 'TANK', tee: 'TEE', hoodie: 'HOODIE', jersey: 'JERSEY', longsleeve: 'LONGSLEEVE',
-  shorts: 'SHORTS', longShorts: 'LONG SHORTS', sweats: 'SWEATS', joggers: 'JOGGERS',
-  high: 'HI-TOPS', low: 'LOWS', runner: 'RUNNERS',
-  crew: 'CREW SOCKS', long: 'TUBE SOCKS', gold: 'GOLD CHAIN', silver: 'SILVER CHAIN', bands: 'WRISTBANDS', sleeve: 'ARM SLEEVE',
+  none: 'NONE', fullcap: 'FULL CAP', backcap: 'BACKWARDS CAP', beanie: 'BEANIE', headband: 'HEADBAND', durag: 'DURAG', bucket: 'BUCKET HAT', bandana: 'BANDANA', fitted: 'FITTED CAP',
+  shades: 'SHADES', beard: 'BEARD', goatee: 'GOATEE', glasses: 'ROUND SPECS', stache: 'MUSTACHE', grillz: 'GRILLZ',
+  tank: 'TANK', tee: 'TEE', hoodie: 'HOODIE', jersey: 'JERSEY', longsleeve: 'LONGSLEEVE', bigTee: 'BIG TEE', flannel: 'FLANNEL', puffer: 'PUFFER',
+  shorts: 'SHORTS', longShorts: 'LONG SHORTS', sweats: 'SWEATS', joggers: 'JOGGERS', jeans: 'JEANS', jorts: 'JORTS', khakis: 'KHAKIS', chinoShorts: 'KHAKI LONGS',
+  high: 'HI-TOPS', low: 'LOWS', runner: 'RUNNERS', boot: 'BOOTS', cortez: 'CLASSIC TRAINER', slides: 'SLIDES',
+  crew: 'CREW SOCKS', long: 'TUBE SOCKS', stripe: 'STRIPE TUBES', gold: 'GOLD CHAIN', silver: 'SILVER CHAIN', cuban: 'CUBAN LINK', rope: 'ROPE CHAIN', cross: 'CROSS PIECE', rosary: 'ROSARY', ice: 'ICED PENDANT', bands: 'WRISTBANDS', sleeve: 'ARM SLEEVE', watch: 'WATCH',
 };
 export const kindName = (k: string) => KIND_NAMES[k] ?? k.toUpperCase();
 
@@ -135,7 +135,7 @@ function buildCatalog() {
   }
 
   add('head', 'head.none', 'BARE', 0, 'any', { head: 'none' });
-  add('head', 'head.fullcap.black', 'BLACK SNAPBACK', 0, 'any', { head: 'fullcap', headColor: 0x111111, headTrim: 0xffffff });
+  add('head', 'head.fullcap.black', 'BLACK FULL CAP', 0, 'any', { head: 'fullcap', headColor: 0x111111, headTrim: 0xffffff });
   add('head', 'head.beanie.black', 'BLACK BEANIE', 45, 'any', { head: 'beanie', headColor: 0x22262c, headTrim: 0x3c424c });
   add('head', 'head.beanie.grey', 'GREY BEANIE', 45, 'any', { head: 'beanie', headColor: 0x8d949e, headTrim: 0x6a707a });
   add('head', 'head.headband.white', 'WHITE HEADBAND', 30, 'any', { head: 'headband', headColor: 0xf0f0ea, headTrim: 0x222222 });
@@ -202,6 +202,96 @@ function buildCatalog() {
     };
     mk(1); mk(2);
   }
+
+  const KHAKI = 0xb9a67e, KHAKI_D = 0x8a7a58, WHITE = 0xf0f0ea, BLACK = 0x1d1d22, RED = 0xc0201e;
+  add('head', 'head.fitted.black', 'BLACK FITTED', 70, 'any', { head: 'fitted', headColor: 0x16161a, headTrim: 0xe8e8e0 });
+  add('head', 'head.fitted.white', 'WHITE FITTED', 80, 'any', { head: 'fitted', headColor: 0xeeeeea, headTrim: 0x2a2a30 });
+  add('head', 'head.fitted.red', 'RED FITTED', 80, 'any', { head: 'fitted', headColor: 0xb42228, headTrim: 0xf4f4f0 });
+  add('head', 'head.fullcap.navy', 'NAVY FULL CAP', 60, 'any', { head: 'fullcap', headColor: 0x1c2748, headTrim: 0xe8e8e0 });
+  add('head', 'head.bandana.black', 'BLACK BANDANA', 55, 'la', { head: 'bandana', headColor: 0x18181c, headTrim: 0xe8e8e0 });
+  add('head', 'head.bandana.blue', 'BLUE BANDANA', 55, 'la', { head: 'bandana', headColor: 0x2a4aa0, headTrim: 0xf4f4f0 });
+  add('head', 'head.fullcap.detroit', 'D-TOWN FULL CAP', 95, 'detroit', { head: 'fullcap', headColor: 0x1e63c4, headTrim: 0xe8ecf2 });
+  add('head', 'head.fitted.detroit', 'MOTOR FITTED', 105, 'detroit', { head: 'fitted', headColor: 0x14161c, headTrim: 0xd22b3a });
+  add('head', 'head.fitted.ny', 'BIG APPLE FITTED', 105, 'bk', { head: 'fitted', headColor: 0x14161c, headTrim: 0xf4f4f0 });
+  add('head', 'head.fitted.harlem', 'UPTOWN FITTED', 105, 'harlem', { head: 'fitted', headColor: 0x4a2480, headTrim: 0xf2c230 });
+  add('head', 'head.fitted.queens', 'QUEENS FITTED', 105, 'queens', { head: 'fitted', headColor: 0x1c2f66, headTrim: 0xf4f4f0 });
+
+  add('face', 'face.stache', 'MUSTACHE', 70, 'la', { face: 'stache', faceColor: 0x15110e });
+  add('face', 'face.grillz', 'GOLD GRILLZ', 260, 'atl', { face: 'grillz', faceColor: 0xf0c040 });
+
+  add('top', 'top.bigtee.white', 'WHITE BIG TEE', 60, 'any', { top: 'bigTee', topColor: WHITE, topTrim: 0x2a2a30 });
+  add('top', 'top.bigtee.black', 'BLACK BIG TEE', 65, 'any', { top: 'bigTee', topColor: BLACK, topTrim: 0x4a4a54 });
+  add('top', 'top.bigtee.grey', 'GREY BIG TEE', 65, 'any', { top: 'bigTee', topColor: 0x9aa0aa, topTrim: 0x5c616b });
+  add('top', 'top.bigtee.la', 'EASTSIDE BIG TEE', 75, 'la', { top: 'bigTee', topColor: WHITE, topTrim: 0x14141a });
+  add('top', 'top.bigtee.atl', 'ATL BIG TEE', 75, 'atl', { top: 'bigTee', topColor: 0xf6e8c8, topTrim: 0x14141a });
+  add('top', 'top.flannel.red', 'RED PLAID FLANNEL', 110, 'any', { top: 'flannel', topColor: 0xa82226, topTrim: 0x16161a });
+  add('top', 'top.flannel.black', 'BLACK PLAID FLANNEL', 110, 'la', { top: 'flannel', topColor: 0x24242a, topTrim: 0xb02a2a });
+  add('top', 'top.flannel.blue', 'BLUE PLAID FLANNEL', 110, 'any', { top: 'flannel', topColor: 0x2a4a8a, topTrim: 0xe8e0c8 });
+  add('top', 'top.flannel.green', 'FOREST PLAID FLANNEL', 110, 'any', { top: 'flannel', topColor: 0x2f6a42, topTrim: 0x16161a });
+  add('top', 'top.puffer.black', 'BLACK PUFFER', 160, 'any', { top: 'puffer', topColor: 0x1a1a20, topTrim: 0x4a4a54 });
+  add('top', 'top.puffer.detroit', 'D-TOWN PUFFER', 175, 'detroit', { top: 'puffer', topColor: 0x1e4fa4, topTrim: 0xd22b3a });
+  add('top', 'top.puffer.tan', 'WHEAT PUFFER', 165, 'any', { top: 'puffer', topColor: 0xb89458, topTrim: 0x6b4a22 });
+  add('top', 'top.puffer.philly', 'BROAD ST PUFFER', 175, 'philly', { top: 'puffer', topColor: 0x0e8a4a, topTrim: 0xc0c4cc });
+
+  add('bottom', 'bottom.jeans.dark', 'DARK STITCH JEANS', 130, 'any', { bottom: 'jeans', bottomColor: 0x232f52, bottomTrim: 0xe08a2a });
+  add('bottom', 'bottom.jeans.wash', 'WASHED STITCH JEANS', 130, 'any', { bottom: 'jeans', bottomColor: 0x6d8cb8, bottomTrim: 0xf0f0ea });
+  add('bottom', 'bottom.jeans.black', 'BLACK STITCH JEANS', 140, 'any', { bottom: 'jeans', bottomColor: 0x1a1a1f, bottomTrim: 0xd8b040 });
+  add('bottom', 'bottom.khakis.tan', 'CREASED KHAKIS', 120, 'any', { bottom: 'khakis', bottomColor: KHAKI, bottomTrim: KHAKI_D });
+  add('bottom', 'bottom.khakis.black', 'BLACK WORK PANTS', 120, 'any', { bottom: 'khakis', bottomColor: 0x24242a, bottomTrim: 0x4a4a54 });
+  add('bottom', 'bottom.khakis.navy', 'NAVY WORK PANTS', 120, 'any', { bottom: 'khakis', bottomColor: 0x25304f, bottomTrim: 0x4a5778 });
+  add('bottom', 'bottom.chino.khaki', 'KHAKI LONGS', 95, 'la', { bottom: 'chinoShorts', bottomColor: KHAKI, bottomTrim: KHAKI_D });
+  add('bottom', 'bottom.chino.black', 'BLACK KHAKI LONGS', 95, 'la', { bottom: 'chinoShorts', bottomColor: 0x24242a, bottomTrim: 0x4a4a54 });
+  add('bottom', 'bottom.chino.grey', 'GREY KHAKI LONGS', 95, 'any', { bottom: 'chinoShorts', bottomColor: 0x7a7e86, bottomTrim: 0x565a62 });
+  add('bottom', 'bottom.jorts.wash', 'WASHED JORTS', 85, 'atl', { bottom: 'jorts', bottomColor: 0x7e9cc6, bottomTrim: 0xe8eef6 });
+  add('bottom', 'bottom.jorts.dark', 'DARK JORTS', 85, 'atl', { bottom: 'jorts', bottomColor: 0x2c3a62, bottomTrim: 0xe08a2a });
+  add('bottom', 'bottom.jorts.black', 'BLACK JORTS', 85, 'any', { bottom: 'jorts', bottomColor: 0x1c1c22, bottomTrim: 0x6a6a74 });
+
+  add('shoes', 'shoes.boot.wheat', 'WHEAT WORK BOOTS', 180, 'any', { shoes: 'boot', shoeColor: 0xc79a52, shoeSole: 0x6b4a22, shoeTrim: 0x3a2a14 });
+  add('shoes', 'shoes.boot.black', 'BLACK WORK BOOTS', 180, 'any', { shoes: 'boot', shoeColor: 0x1e1e24, shoeSole: 0x8a8a92, shoeTrim: 0x4a4a54 });
+  add('shoes', 'shoes.classic.white', 'WHITE CLASSICS', 110, 'la', { shoes: 'cortez', shoeColor: WHITE, shoeSole: 0xe8dcc0, shoeTrim: RED });
+  add('shoes', 'shoes.classic.blue', 'BLUE-STRIPE CLASSICS', 110, 'la', { shoes: 'cortez', shoeColor: WHITE, shoeSole: 0xe8dcc0, shoeTrim: 0x2a4aa0 });
+  add('shoes', 'shoes.classic.black', 'BLACK CLASSICS', 110, 'any', { shoes: 'cortez', shoeColor: BLACK, shoeSole: 0xe8dcc0, shoeTrim: WHITE });
+  add('shoes', 'shoes.slides.black', 'BLACK SLIDES', 50, 'any', { shoes: 'slides', shoeColor: BLACK, shoeSole: 0x34343c, shoeTrim: WHITE });
+  add('shoes', 'shoes.slides.white', 'WHITE SLIDES', 50, 'any', { shoes: 'slides', shoeColor: WHITE, shoeSole: 0x9aa0aa, shoeTrim: BLACK });
+
+  add('socks', 'socks.stripe.red', 'RED-STRIPE TUBES', 40, 'any', { socks: 'stripe', sockColor: WHITE, sockTrim: RED });
+  add('socks', 'socks.stripe.blue', 'BLUE-STRIPE TUBES', 40, 'any', { socks: 'stripe', sockColor: WHITE, sockTrim: 0x2a4aa0 });
+  add('socks', 'socks.stripe.black', 'BLACK-STRIPE TUBES', 40, 'any', { socks: 'stripe', sockColor: WHITE, sockTrim: BLACK });
+  add('socks', 'socks.stripe.gold', 'GOLD-STRIPE TUBES', 40, 'atl', { socks: 'stripe', sockColor: WHITE, sockTrim: 0xe0a820 });
+
+  add('chain', 'chain.cuban', 'CUBAN LINK', 520, 'any', { chain: 'cuban' });
+  add('chain', 'chain.rope', 'ROPE CHAIN', 460, 'any', { chain: 'rope' });
+  add('chain', 'chain.cross', 'CROSS PIECE', 340, 'any', { chain: 'cross' });
+  add('chain', 'chain.rosary', 'ROSARY', 240, 'la', { chain: 'rosary' });
+  add('chain', 'chain.ice', 'ICED PENDANT', 900, 'any', { chain: 'ice' });
+
+  add('wrist', 'wrist.watch.gold', 'GOLD WATCH', 300, 'any', { wrist: 'watch', wristColor: 0xf0c040 });
+  add('wrist', 'wrist.watch.silver', 'STEEL WATCH', 260, 'any', { wrist: 'watch', wristColor: 0xdfe6ee });
+  add('wrist', 'wrist.watch.black', 'BLACK WATCH', 200, 'any', { wrist: 'watch', wristColor: 0x24242a });
+
+  const curated: [RegionId, string, string[]][] = [
+    ['la', 'EASTSIDE SUNDAY', ['top.bigtee.la', 'bottom.chino.khaki', 'socks.stripe.red', 'shoes.classic.white', 'chain.rosary', 'face.stache', 'head.bandana.black', 'wrist.none']],
+    ['la', 'LOWRIDER FLANNEL', ['top.flannel.black', 'bottom.khakis.tan', 'shoes.classic.black', 'head.bandana.blue', 'chain.cross', 'face.stache']],
+    ['la', 'PARK DAY LONGS', ['top.bigtee.white', 'bottom.chino.black', 'socks.stripe.blue', 'shoes.classic.blue', 'head.fitted.black', 'chain.rosary']],
+    ['detroit', 'EAST SIDE FULL CAP', ['head.fullcap.detroit', 'top.bigtee.white', 'bottom.jeans.dark', 'shoes.boot.wheat', 'chain.cuban']],
+    ['detroit', 'D-TOWN WINTER', ['head.fitted.detroit', 'top.puffer.detroit', 'bottom.khakis.black', 'shoes.boot.black', 'chain.rope']],
+    ['detroit', 'MOTOR FLANNEL', ['head.beanie.black', 'top.flannel.red', 'bottom.khakis.tan', 'shoes.boot.wheat', 'wrist.watch.silver']],
+    ['bk', 'BEDFORD STITCH', ['head.fitted.ny', 'top.bigtee.white', 'bottom.jeans.dark', 'shoes.boot.wheat', 'chain.cuban', 'wrist.watch.gold']],
+    ['bk', 'BROOKLYN PUFFER', ['head.beanie.black', 'top.puffer.black', 'bottom.jeans.black', 'shoes.boot.wheat', 'chain.rope']],
+    ['harlem', 'UPTOWN SUNDAY', ['head.fitted.harlem', 'top.bigtee.grey', 'bottom.jeans.wash', 'shoes.boot.black', 'chain.cuban', 'wrist.watch.gold']],
+    ['queens', 'QUEENS WORKWEAR', ['head.fitted.queens', 'top.puffer.tan', 'bottom.khakis.navy', 'shoes.boot.wheat', 'chain.cross']],
+    ['philly', 'BROAD STREET', ['head.fitted.red', 'top.puffer.philly', 'bottom.jeans.dark', 'shoes.boot.black', 'chain.ice']],
+    ['chi', 'SOUTH SIDE CREASE', ['head.fullcap.navy', 'top.bigtee.black', 'bottom.khakis.tan', 'shoes.classic.black', 'chain.cross']],
+    ['atl', 'UNDER THE PASS', ['head.backcap.white', 'top.bigtee.atl', 'bottom.jorts.wash', 'socks.stripe.gold', 'shoes.slides.white', 'chain.rope', 'face.grillz']],
+    ['atl', 'TRAP SUMMER', ['head.bandana.red', 'top.bigtee.black', 'bottom.jorts.dark', 'socks.stripe.black', 'shoes.classic.black', 'chain.ice', 'face.grillz']],
+  ];
+  const wardrobe = new Map<RegionId, number>();
+  for (const [reg, name, ids] of curated) {
+    const n = (wardrobe.get(reg) ?? 2) + 1;
+    wardrobe.set(reg, n);
+    const price = Math.round(ids.reduce((sum, id) => sum + (items.find((i) => i.id === id)?.price ?? 0), 0) * 0.8);
+    fits.push({ id: `fit.${reg}${n}`, name, region: reg, items: ids, price });
+  }
   return { items, fits };
 }
 
@@ -247,8 +337,8 @@ export function rivalFor(region: RegionId, rand: () => number = Math.random): Lo
     for (const s of ['top', 'bottom', 'shoes', 'head'] as Slot[]) eq[s] = pick(pool(s)).id;
   }
   eq.hair = pick(pool('hair', (i) => (r.hairs as string[]).includes(i.patch.hair!) || rand() < 0.2)).id;
-  if (rand() < 0.28) eq.face = pick(itemsFor('face')).id;
-  if (rand() < 0.3) eq.chain = pick(itemsFor('chain')).id;
+  if (rand() < 0.3) eq.face = pick(pool('face')).id;
+  if (rand() < 0.4) eq.chain = pick(pool('chain')).id;
   if (rand() < 0.5) eq.socks = pick(pool('socks')).id;
   if (rand() < 0.35) eq.wrist = pick(pool('wrist')).id;
   return buildLoadout(eq, pick(r.nicks));

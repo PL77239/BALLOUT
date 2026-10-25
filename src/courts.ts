@@ -5,7 +5,7 @@ import type { RegionId } from './loadout';
 import { ART } from './court_art';
 import { Crowd } from './crowd';
 
-export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la';
+export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la' | 'fairmount';
 
 export interface CourtInfo { id: CourtId; name: string; sub: string; region: RegionId; night: boolean }
 export const COURTS: CourtInfo[] = [
@@ -15,6 +15,7 @@ export const COURTS: CourtInfo[] = [
   { id: 'detroit', name: 'THE PLANT', sub: 'DETROIT  //  SNOW, NIGHT', region: 'detroit', night: true },
   { id: 'atl', name: 'UNDER THE PASS', sub: 'ATLANTA  //  NIGHT', region: 'atl', night: true },
   { id: 'la', name: 'SOUTH CENTRAL', sub: 'LOS ANGELES  //  NIGHT', region: 'la', night: true },
+  { id: 'fairmount', name: 'THE WOODS', sub: 'FAIRMOUNT PARK, PHILLY  //  NIGHT', region: 'philly', night: true },
   { id: 'chicago', name: 'SOUTH SIDE', sub: 'CHICAGO  //  GOLDEN HOUR', region: 'chi', night: false },
   { id: 'harlem', name: 'THE PARK', sub: 'HARLEM, NEW YORK  //  DUSK', region: 'harlem', night: false },
 ];
