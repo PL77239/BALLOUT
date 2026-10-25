@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
 import { T } from './tuning';
+import { PX, Pix, pixTexture } from './pixel';
 import type { Hooper } from './hooper';
+
+const BALL_PX = 9;
 
 export type BallMode = 'held' | 'shot' | 'loose';
 
@@ -38,24 +41,42 @@ export class Ball {
   trailG: Phaser.GameObjects.Graphics;
   fire = false;
   private prevH = 0;
+  private rot = 0;
+  private roll = 0;
+  private pix = new Pix(BALL_PX, BALL_PX);
+  private tex: Phaser.Textures.CanvasTexture;
 
   constructor(private scene: Phaser.Scene, private ev: BallEvents) {
-    if (!scene.textures.exists('ball')) {
-      const c = scene.textures.createCanvas('ball', 64, 64)!;
-      const x = c.getContext();
-      const gr = x.createRadialGradient(24, 22, 4, 32, 32, 32);
-      gr.addColorStop(0, '#ff9a3c'); gr.addColorStop(1, '#c4531a');
-      x.fillStyle = gr; x.beginPath(); x.arc(32, 32, 30, 0, Math.PI * 2); x.fill();
-      x.strokeStyle = '#1a0f08'; x.lineWidth = 3.5;
-      x.beginPath(); x.moveTo(32, 2); x.lineTo(32, 62); x.moveTo(2, 32); x.lineTo(62, 32);
-      x.moveTo(10, 10); x.quadraticCurveTo(32, 32, 10, 54); x.moveTo(54, 10); x.quadraticCurveTo(32, 32, 54, 54);
-      x.stroke();
-      x.lineWidth = 4; x.beginPath(); x.arc(32, 32, 30, 0, Math.PI * 2); x.stroke();
-      c.refresh();
-    }
-    this.img = scene.add.image(0, 0, 'ball').setDisplaySize(T.ball.r * 2.1, T.ball.r * 2.1);
+    this.tex = pixTexture(scene, 'ball', this.pix);
+    this.paintBall();
+    this.img = scene.add.image(0, 0, 'ball').setScale(PX);
     this.shadow = scene.add.graphics().setDepth(-500);
     this.trailG = scene.add.graphics().setDepth(1900).setBlendMode(Phaser.BlendModes.ADD);
+  }
+
+  /** Tiny rotating sphere: cel-shaded leather with seams that follow the spin and roll. */
+  private paintBall() {
+    const p = this.pix, R = BALL_PX / 2 - 0.5, c = (BALL_PX - 1) / 2;
+    p.clear();
+    const cr = Math.cos(this.rot), sr = Math.sin(this.rot), cl = Math.cos(this.roll), sl = Math.sin(this.roll);
+    const L = [-0.5, -0.6, 0.62];
+    const body = this.fire ? [0xffe070, 0xff9a2a, 0xe0541a] : [0xf09a48, 0xd8661e, 0xa8420f];
+    for (let y = 0; y < BALL_PX; y++) {
+      for (let x = 0; x < BALL_PX; x++) {
+        const dx = (x - c) / R, dy = (y - c) / R, d2 = dx * dx + dy * dy;
+        if (d2 > 1.12) continue;
+        const dz = Math.sqrt(Math.max(0, 1 - d2));
+        const px = dx * cr + dy * sr, py = -dx * sr + dy * cr;
+        const bx = px * cl + dz * sl, bz = -px * sl + dz * cl;
+        const dot = dx * L[0] + dy * L[1] + dz * L[2];
+        let col = dot > 0.55 ? body[0] : dot > 0.0 ? body[1] : body[2];
+        const seam = Math.abs(bx) < 0.12 || Math.abs(py) < 0.13 || Math.abs(Math.abs(bx) - 0.64 * Math.max(0.4, bz)) < 0.1;
+        if (seam && bz > -0.1) col = 0x2a1208;
+        const edge = d2 > 0.66;
+        p.set(x, y, edge ? 0x1a0e0a : col);
+      }
+    }
+    p.upload(this.tex.getContext()); this.tex.refresh();
   }
 
   get sx() { return this.x; }
@@ -90,7 +111,8 @@ export class Ball {
       this.spin += (0 - this.spin) * Math.min(1, dt * 6);
     }
     if (this.netKick > 0) this.netKick = Math.max(0, this.netKick - dt * 2.4);
-    this.img.rotation += this.spin * dt;
+    this.rot += this.spin * dt * 0.7;
+    this.roll += (this.mode === 'held' ? this.vx : this.vx) * dt * 0.05 + this.spin * dt * 0.15;
   }
 
   private step(s: number) {
@@ -153,23 +175,26 @@ export class Ball {
 
   draw(depth: number, ownerDepth?: number) {
     const sy = this.sy;
-    this.img.setPosition(this.x, sy).setDepth(ownerDepth ?? depth);
+    this.paintBall();
+    this.img.setPosition(Math.round(this.x / PX) * PX, Math.round(sy / PX) * PX).setDepth(ownerDepth ?? depth);
     const sh = this.shadow;
     sh.clear();
     const k = Math.max(0.35, 1 - this.h / 420);
-    sh.fillStyle(0x000000, 0.34 * k);
-    sh.fillEllipse(this.x, T.court.floorY + this.z + 2, 26 * k, 8 * k);
+    sh.fillStyle(0x000000, 0.4 * k);
+    const cx = Math.round(this.x / PX), cy = Math.round((T.court.floorY + this.z + 2) / PX), rx = Math.round(5 * k + 1);
+    for (let j = -1; j <= 1; j++) { const w = j === 0 ? rx : Math.max(1, rx - 2); sh.fillRect((cx - w) * PX, (cy + j) * PX, w * 2 * PX, PX); }
     const tg = this.trailG;
     tg.clear();
     const fast = this.mode === 'shot' || Math.hypot(this.vx, this.vh) > 380;
     if (fast || this.fire) this.trail.push({ x: this.x, y: sy });
     else if (this.trail.length) this.trail.shift();
-    while (this.trail.length > (this.fire ? 16 : 10)) this.trail.shift();
-    for (let i = 1; i < this.trail.length; i++) {
+    while (this.trail.length > (this.fire ? 14 : 8)) this.trail.shift();
+    for (let i = 0; i < this.trail.length - 1; i++) {
       const a = i / this.trail.length;
       const col = this.fire ? (a > 0.6 ? 0xffc24a : 0xff6a1a) : 0xcfe8ff;
-      tg.lineStyle(2 + a * (this.fire ? 14 : 7), col, a * 0.55);
-      tg.lineBetween(this.trail[i - 1].x, this.trail[i - 1].y, this.trail[i].x, this.trail[i].y);
+      const s = a > 0.5 ? 2 : 1;
+      tg.fillStyle(col, a * 0.7);
+      tg.fillRect(Math.round(this.trail[i].x / PX) * PX - (s * PX) / 2, Math.round(this.trail[i].y / PX) * PX - (s * PX) / 2, s * PX, s * PX);
     }
   }
 }

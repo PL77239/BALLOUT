@@ -109,12 +109,12 @@ export function ensureFont(scene: Phaser.Scene) {
   sheet.outline(0x000000, true);
   for (let i = 0; i < fills.length; i++) if (fills[i] >>> 24) sheet.px[i] = fills[i];
   pixTexture(scene, 'font5', sheet);
-  const data = Phaser.GameObjects.RetroFont.Parse(scene, {
+  const entry = Phaser.GameObjects.RetroFont.Parse(scene, {
     image: 'font5', width: CELL_W, height: CELL_H, chars: CHARS, charsPerRow: PER_ROW,
     'spacing.x': 0, 'spacing.y': 0, lineSpacing: 0, 'offset.x': 0, 'offset.y': 0,
-  } as Phaser.Types.GameObjects.BitmapText.RetroFontConfig);
-  [...CHARS].forEach((ch) => { (data.chars[ch.charCodeAt(0)] as unknown as { xAdvance: number }).xAdvance = adv(ch); });
-  scene.cache.bitmapFont.add('font5', { data, texture: 'font5', frame: null });
+  } as Phaser.Types.GameObjects.BitmapText.RetroFontConfig) as unknown as { data: { chars: Record<number, unknown> } };
+  [...CHARS].forEach((ch) => { (entry.data.chars[ch.charCodeAt(0)] as unknown as { xAdvance: number }).xAdvance = adv(ch); });
+  scene.cache.bitmapFont.add('font5', entry);
 }
 
 export interface LabelOpts { k?: number; ox?: number; oy?: number; depth?: number; align?: 'left' | 'center' | 'right' }
