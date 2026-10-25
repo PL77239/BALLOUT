@@ -211,18 +211,19 @@ export function buildCourt(scene: Phaser.Scene, id: CourtId): CourtScene {
   drawNet(0, 0);
 
   const crowd = new Crowd(scene, c.spots, art.crowdLook ?? 'bk', id);
-  objs.push(...crowd.objs);
 
   const lightFor = (px: number, py: number) => lightValue(c, px, py);
   const nightTint = mulCol(0xffffff, Math.min(1, c.amb.tint[0] * 1.9), Math.min(1, c.amb.tint[1] * 1.9), Math.min(1, c.amb.tint[2] * 1.7));
+  const tintAt = (wx: number, wy: number) => {
+    const v = clamp(lightFor(wx / PX, wy / PX), 0, 1);
+    return mix(nightTint, 0xffffff, smooth(v * 1.15));
+  };
+  crowd.tint = tintAt;
   return {
     spots: c.spots,
     update: (t, dt) => { live.ticks.forEach((f) => f(t, dt)); crowd.update(t, dt); },
     destroy: () => { live.objs.forEach((o) => o.destroy()); objs.forEach((o) => o.destroy()); crowd.destroy(); },
-    tintAt: (wx, wy) => {
-      const v = clamp(lightFor(wx / PX, wy / PX), 0, 1);
-      return mix(nightTint, 0xffffff, smooth(v * 1.15));
-    },
+    tintAt,
     drawNet,
     cheer: (p) => crowd.cheer(p),
   };

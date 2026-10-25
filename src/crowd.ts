@@ -1,0 +1,99 @@
+import Phaser from 'phaser';
+import { PX, clamp } from './pixel';
+import { Puppet, Rig, restRig } from './puppet';
+import { REGIONS, RegionId, rivalFor } from './loadout';
+import type { Spot } from './courtkit';
+
+interface Fan {
+  p: Puppet;
+  spot: Spot;
+  phase: number;
+  rate: number;
+  acc: number;
+  idle: number;
+  cheer: number;
+  look: number;
+  nextLook: number;
+}
+
+/** Background spectators: small puppets that bob, look around and jump when somebody scores. */
+export class Crowd {
+  objs: Phaser.GameObjects.GameObject[] = [];
+  fans: Fan[] = [];
+  tint: ((wx: number, wy: number) => number) | null = null;
+  private t = 0;
+  private frame = 0;
+
+  constructor(scene: Phaser.Scene, spots: Spot[], look: RegionId, id: string) {
+    void REGIONS;
+    spots.forEach((s, i) => {
+      const l = rivalFor(look);
+      const sc = s.kind === 'kid' ? 0.46 : 0.62;
+      const p = new Puppet(scene, l, { scale: sc, w: 64, h: 58, key: `fan_${id}_${i}` });
+      p.root.setPosition(s.x * PX, s.y * PX).setDepth(s.y * PX);
+      p.setFacing(s.face);
+      this.objs.push(p.root);
+      const f: Fan = { p, spot: s, phase: Math.random() * 6, rate: 0.7 + Math.random() * 0.6, acc: 0, idle: 0, cheer: 0, look: 0, nextLook: 1 + Math.random() * 4 };
+      this.fans.push(f);
+      p.snap(this.poseFor(f, 0));
+    });
+  }
+
+  private poseFor(f: Fan, t: number): Rig {
+    const r = restRig(), s = f.spot;
+    const bob = Math.sin(t * 2.2 * f.rate + f.phase);
+    const j = f.cheer > 0 ? Math.abs(Math.sin(t * 9 + f.phase)) : 0;
+    const up = f.cheer > 0 ? clamp(f.cheer * 2, 0, 1) : 0;
+    const sh = (hx: number, hy: number, lean: number, hipY: number) => ({ x: hx + Math.sin(lean) * 52, y: hipY + Math.cos(lean) * 52 + hy });
+    if (s.kind === 'sit') {
+      r.hipY = 52 + bob * 0.8; r.lean = 0.05 + bob * 0.02;
+      r.fFx = 38; r.bFx = 33; r.fFy = 0; r.bFy = 0;
+      const a = sh(0, 0, r.lean, r.hipY);
+      r.fHx = a.x + 22; r.fHy = a.y - 30; r.bHx = a.x + 14; r.bHy = a.y - 34;
+      if (up > 0) { r.fHx = a.x + 14; r.fHy = a.y + 40 * up; r.bHx = a.x - 2; r.bHy = a.y + 34 * up; r.hipY += j * 8; }
+    } else if (s.kind === 'elder') {
+      r.hipY = 80 + bob * 0.8; r.lean = 0.14;
+      r.fFx = 8; r.bFx = -8;
+      const a = sh(0, 0, r.lean, r.hipY);
+      r.fHx = a.x + 2; r.fHy = a.y - 38; r.bHx = a.x - 4; r.bHy = a.y - 40;
+    } else {
+      r.hipY = 85 + bob * 1.1 + j * 14; r.lean = 0.03 + bob * 0.015;
+      r.fFx = 11; r.bFx = -11; r.fFy = j * 10; r.bFy = j * 10;
+      const a = sh(0, 0, r.lean, r.hipY);
+      const cross = s.kind === 'cheer' ? 0 : 1;
+      r.fHx = a.x + 4; r.fHy = a.y - 40 + (cross ? 14 : 0); r.bHx = a.x + 8; r.bHy = a.y - 38 + (cross ? 14 : 0);
+      if (up > 0 || s.kind === 'cheer') {
+        const k = Math.max(up, s.kind === 'cheer' ? 0.5 : 0);
+        r.fHx = a.x + 12; r.fHy = a.y + 46 * k + Math.sin(t * 12 + f.phase) * 5 * k; r.bHx = a.x - 6; r.bHy = a.y + 42 * k - Math.sin(t * 12 + f.phase) * 5 * k;
+      }
+    }
+    r.turn = 1;
+    r.head = f.look * 0.12;
+    r.emo = f.cheer > 0 ? 1 : 0;
+    r.mouth = f.cheer > 0 ? 0.7 : 0;
+    return r;
+  }
+
+  cheer(power: number) {
+    for (const f of this.fans) f.cheer = Math.max(f.cheer, (0.8 + Math.random() * 0.8) * (0.5 + power * 0.5));
+  }
+
+  update(t: number, dt: number) {
+    this.t = t;
+    this.frame++;
+    for (let i = 0; i < this.fans.length; i++) {
+      const f = this.fans[i];
+      f.cheer = Math.max(0, f.cheer - dt);
+      f.nextLook -= dt;
+      if (f.nextLook < 0) { f.look = Math.floor(Math.random() * 3) - 1; f.nextLook = 1.5 + Math.random() * 4; }
+      f.acc += dt;
+      const gap = f.cheer > 0 ? 2 : 5;
+      if ((this.frame + i) % gap !== 0) continue;
+      f.p.update(this.poseFor(f, t), f.acc, { f: false, b: false }, { f: 0, h: 0 });
+      f.acc = 0;
+      if (this.tint) f.p.setTint(this.tint(f.spot.x * PX, f.spot.y * PX));
+    }
+  }
+
+  destroy() { for (const f of this.fans) f.p.destroy(); this.fans = []; }
+}

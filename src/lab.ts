@@ -1,19 +1,24 @@
 import Phaser from 'phaser';
 import { GH, GW, PX, Pix, pixTexture } from './pixel';
+import { CourtId, CourtScene, buildCourt } from './courts';
 import { Puppet, Rig, restRig } from './puppet';
 import { BASE_LOADOUT, FITS, Loadout, buildLoadout, itemById, rivalFor, STARTER_EQUIP, REGION_IDS } from './loadout';
 
 /** Dev-only sprite lab: `/?lab=1` shows a row of puppets in a few poses. */
 export class LabScene extends Phaser.Scene {
   pups: Puppet[] = [];
+  court?: CourtScene;
   constructor() { super('lab'); }
 
   create() {
+    const q0 = new URLSearchParams(location.search);
+    const cid = q0.get('court') as CourtId | null;
     const bg = new Pix(GW, GH);
     bg.rect(0, 0, GW, GH, 0x5a6a80);
     bg.rect(0, 190, GW, 50, 0x3a4250);
     pixTexture(this, 'labbg', bg);
-    this.add.image(0, 0, 'labbg').setOrigin(0).setScale(PX);
+    if (!cid) this.add.image(0, 0, 'labbg').setOrigin(0).setScale(PX);
+    else this.court = buildCourt(this, cid);
     const cam = this.cameras.main;
     cam.setZoom(1 / PX); cam.setScroll(GW, GH);
     const q = new URLSearchParams(location.search);
@@ -28,13 +33,17 @@ export class LabScene extends Phaser.Scene {
     void BASE_LOADOUT; void rivalFor; void REGION_IDS;
     const pose = q.get('pose') ?? 'idle';
     looks.forEach((l, i) => {
+      if (cid && i > 1) return;
       const p = new Puppet(this, l);
-      p.root.setPosition((40 + i * 68) * PX, 190 * PX).setDepth(10);
+      if (cid) p.root.setPosition((cid && i ? 300 : 200) * PX, (186 + i * 6) * PX).setDepth((186 + i * 6) * PX);
+      else p.root.setPosition((40 + i * 68) * PX, 190 * PX).setDepth(10);
       p.setFacing(i % 2 ? -1 : 1);
       p.snap(this.poseFor(pose, i));
       this.pups.push(p);
     });
   }
+
+  update(t: number, dt: number) { this.court?.update(t / 1000, dt / 1000); }
 
   poseFor(name: string, i: number): Rig {
     const r = restRig();
