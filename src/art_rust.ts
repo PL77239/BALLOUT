@@ -1,6 +1,6 @@
 import { GW, Pix, mix, shade } from './pixel';
 import { FY, Scene2D, antenna, awning, barrel, brick, chainFence, dumpster, fireEscape, graffiti, halo, hydrant, lamp, powerLine, sign, skyline, sky, slab, stars, stoop, tree, trashCan, tires, windows, car, cart, bench, boombox } from './courtkit';
-import { CourtArt, building, carSprite, finish, laundry, shopWindow, sneakersWire, spots, truss } from './court_common';
+import { BOOM_X, CourtArt, building, carSprite, finish, laundry, shopWindow, sneakersWire, spots, truss } from './court_common';
 
 /* ------------------------------------------------------------------ PHILLY */
 
@@ -44,7 +44,7 @@ export const philly: CourtArt = {
   },
   paintFloor(c) {
     finish(c, { base: 0x36424a, edge: 0x4a4e56, key: 0x7a2c3a, lines: 0xe0e4e8, seed: 4, crack: 20, wet: true }, { board: 0xdde2e8 }, () => {
-      hydrant(c, 160, 159, 0x2a8ad8); trashCan(c, 12, 160); cart(c, 118, 160);
+      hydrant(c, 160, 159, 0x2a8ad8); trashCan(c, 12, 160); cart(c, 118, 160); boombox(c, BOOM_X.philly, 160);
       car(c, 244, 160, 0x4a5a78);
     });
   },
@@ -100,7 +100,7 @@ export const detroit: CourtArt = {
   },
   paintFloor(c) {
     finish(c, { base: 0x3a3e4a, edge: 0x4a4e5a, key: 0x2a5a8a, lines: 0xe8ecf4, seed: 6, crack: 30, snow: 1.5, patch: 1.6, sidewalk: 0x6a6e7c }, { board: 0xe2e6ee }, () => {
-      barrel(c, 66, 160); tires(c, 130, 160, 3); dumpster(c, 232, 160, 0x30486a);
+      barrel(c, 66, 160); tires(c, 130, 160, 3); dumpster(c, 232, 160, 0x30486a); boombox(c, BOOM_X.detroit, 160);
       car(c, 150, 160, 0x4a3a3a, { kind: 'sedan' });
     });
   },
@@ -165,7 +165,7 @@ export const chicago: CourtArt = {
   paintFloor(c) {
     finish(c, { base: 0x5a5e68, edge: 0x6a6a74, key: 0xa83a2c, lines: 0xf4f0e0, seed: 8, crack: 16, sidewalk: 0x7a7a84, speckle: 1.1 }, { board: 0xf2f2f6 }, () => {
       bench(c, 136, 160, 22); trashCan(c, 14, 160); hydrant(c, 310, 159);
-      boombox(c, 190, 160);
+      boombox(c, BOOM_X.chicago, 160);
     });
   },
   live(L) {

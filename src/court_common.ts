@@ -14,6 +14,11 @@ export interface CourtArt {
   live?(L: Live, c: Scene2D): void;
 }
 
+/** Where each court's boombox stands on the fence line (art px, left edge of the sprite). The music is positioned here. */
+export const BOOM_X: Record<string, number> = {
+  brooklyn: 168, queens: 70, harlem: 200, philly: 90, fairmount: 190, detroit: 192, atl: 140, la: 220, chicago: 190,
+};
+
 export interface HoopStyle { board?: Col; pole?: Col; rim?: Col }
 
 /** Floor + hoop + any props that must sit on top of the floor edge. */

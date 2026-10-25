@@ -1,6 +1,6 @@
 import { GH, GW, mix, shade } from './pixel';
 import { FY, Scene2D, antenna, awning, bench, boombox, brick, chainFence, dumpster, fireEscape, graffiti, halo, hydrant, lamp, moon, pole, powerLine, sign, skyline, sky, slab, stars, suspension, tree, trashCan, waterTower, windows, car, cart, tires, stoop } from './courtkit';
-import { CourtArt, building, finish, laundry, sneakersWire, spots, truss, water } from './court_common';
+import { BOOM_X, CourtArt, building, finish, laundry, sneakersWire, spots, truss, water } from './court_common';
 import { carSprite, shopWindow } from './court_common';
 
 /* ------------------------------------------------------------------ BROOKLYN */
@@ -54,7 +54,7 @@ export const brooklyn: CourtArt = {
       hydrant(c, 128, 159);
       car(c, 238, 160, 0xe8b820, { kind: 'taxi' });
       trashCan(c, 20, 160);
-      boombox(c, 168, 160);
+      boombox(c, BOOM_X.brooklyn, 160);
     });
   },
   live(L, c) {
@@ -110,8 +110,8 @@ export const queens: CourtArt = {
   paintFloor(c) {
     finish(c, { base: 0x3a3a52, edge: 0x4a4a5a, key: 0xb85a2a, lines: 0xf0ece0, seed: 7, crack: 18 }, { board: 0xe8ecf2 }, () => {
       bench(c, 44, 160, 24); bench(c, 252, 160, 24);
-      trashCan(c, 112, 160); hydrant(c, 156, 159, 0xe0c030);
-      boombox(c, 70, 160);
+      trashCan(c, 112, 160); hydrant(c, 156, 159, 0xe0c030); boombox(c, BOOM_X.harlem, 160);
+      boombox(c, BOOM_X.queens, 160);
     });
   },
   live(L) {

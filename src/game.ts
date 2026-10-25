@@ -1,3 +1,4 @@
+import { music } from './music';
 import Phaser from 'phaser';
 import { T, AiLevel } from './tuning';
 import { buildCourt, courtInfo, CourtId, CourtScene } from './courts';
@@ -97,6 +98,7 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBackgroundColor('#000000'); cam.setZoom(1 / PX);
     this.court = buildCourt(this, cfg.court);
+    if (cfg.mode !== 'sim') music.play(cfg.court, this.court.boomX);
     this.fx = new FX(this);
     this.shadows = this.add.graphics().setDepth(-600);
     this.meterG = this.add.graphics().setDepth(3000);
@@ -475,6 +477,8 @@ export class GameScene extends Phaser.Scene {
   update(_t: number, dtMs: number) {
     const real = Math.min(dtMs / 1000, 0.05);
     this.realT += real;
+    music.duck(this.paused);
+    music.update(real, this.camX, (this.hoopers[0].x + this.hoopers[1].x) / 2);
     const startHit = this.ctrls.some((c) => c?.startPressed());
     if (this.paused || startHit) {
       const n = this.nav.poll(real);

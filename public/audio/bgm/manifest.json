@@ -1,0 +1,225 @@
+{
+ "target": -16,
+ "lists": {
+  "menu": [],
+  "stingers": [],
+  "atl": [
+   {
+    "f": "courts/atl/Ludacris - Stand Up (Official Music Video) ft. Shawnna.mp3",
+    "size": 5206717,
+    "lufs": -10.4,
+    "tp": 0.6,
+    "gain": -5.6,
+    "dur": 214
+   },
+   {
+    "f": "courts/atl/T.I. - Big Things Poppin (Do It) [Official Video].mp3",
+    "size": 6611113,
+    "lufs": -14.7,
+    "tp": -3.4,
+    "gain": -1.3,
+    "dur": 275
+   },
+   {
+    "f": "courts/atl/The Potion.mp3",
+    "size": 5640612,
+    "lufs": -8.3,
+    "tp": 1.3,
+    "gain": -7.7,
+    "dur": 235
+   }
+  ],
+  "brooklyn": [
+   {
+    "f": "courts/brooklyn/Can I Get A.mp3",
+    "size": 7436164,
+    "lufs": -12.2,
+    "tp": 0.7,
+    "gain": -3.8,
+    "dur": 310
+   },
+   {
+    "f": "courts/brooklyn/Mathematics.mp3",
+    "size": 5915838,
+    "lufs": -10.7,
+    "tp": 0.7,
+    "gain": -5.3,
+    "dur": 246
+   }
+  ],
+  "chicago": [
+   {
+    "f": "courts/chicago/Do Or Die - Po Pimp - Picture This.mp3",
+    "size": 5638731,
+    "lufs": -13.2,
+    "tp": 2.9,
+    "gain": -2.8,
+    "dur": 235
+   },
+   {
+    "f": "courts/chicago/Whip Game Proper (feat. Lil Wayne).mp3",
+    "size": 6223665,
+    "lufs": -9.2,
+    "tp": 1.6,
+    "gain": -6.8,
+    "dur": 259
+   }
+  ],
+  "detroit": [
+   {
+    "f": "courts/detroit/G-Side - When I See The Light (LP Version) Detroit, MI 1996.mp3",
+    "size": 6722708,
+    "lufs": -8.2,
+    "tp": 2.3,
+    "gain": -7.8,
+    "dur": 280
+   },
+   {
+    "f": "courts/detroit/Obie Trice - Got Some Teeth.mp3",
+    "size": 5750953,
+    "lufs": -15.1,
+    "tp": -1.6,
+    "gain": -0.9,
+    "dur": 240
+   },
+   {
+    "f": "courts/detroit/Players.mp3",
+    "size": 3512155,
+    "lufs": -11.1,
+    "tp": 1.4,
+    "gain": -4.9,
+    "dur": 146
+   }
+  ],
+  "fairmount": [
+   {
+    "f": "courts/fairmount/Boom! Shake The Room (The Street Remix) (Revised Version).mp3",
+    "size": 5446261,
+    "lufs": -22.4,
+    "tp": -7,
+    "gain": 6.4,
+    "dur": 227
+   },
+   {
+    "f": "courts/fairmount/Naughty By Nature - Hip Hop Hooray.mp3",
+    "size": 6469297,
+    "lufs": -16.8,
+    "tp": -1.2,
+    "gain": 0.8,
+    "dur": 267
+   }
+  ],
+  "harlem": [
+   {
+    "f": "courts/harlem/Big L - Put It On.mp3",
+    "size": 5218055,
+    "lufs": -11.8,
+    "tp": 0.1,
+    "gain": -4.2,
+    "dur": 217
+   },
+   {
+    "f": "courts/harlem/Camron ft Juelz Santana - Oh Boy.mp3",
+    "size": 5012333,
+    "lufs": -10.1,
+    "tp": 1.8,
+    "gain": -5.9,
+    "dur": 207
+   },
+   {
+    "f": "courts/harlem/Mase - What You Want (Feat. Total).mp3",
+    "size": 5873179,
+    "lufs": -12.1,
+    "tp": 1.9,
+    "gain": -3.9,
+    "dur": 243
+   },
+   {
+    "f": "courts/harlem/There It Go (The Whistle Song).mp3",
+    "size": 4332190,
+    "lufs": -8.3,
+    "tp": 2.1,
+    "gain": -7.7,
+    "dur": 181
+   }
+  ],
+  "la": [
+   {
+    "f": "courts/la/DJ Quik - Tonite [Official Audio].mp3",
+    "size": 7767188,
+    "lufs": -10.8,
+    "tp": 0.8,
+    "gain": -5.2,
+    "dur": 324
+   },
+   {
+    "f": "courts/la/Gin and Juice.mp3",
+    "size": 5146415,
+    "lufs": -7.5,
+    "tp": 2.6,
+    "gain": -8.5,
+    "dur": 212
+   },
+   {
+    "f": "courts/la/Kurupt, Big Tray Deee, Slip Capone - C Walk (Explicit).mp3",
+    "size": 8328947,
+    "lufs": -15.3,
+    "tp": 0.5,
+    "gain": -0.7,
+    "dur": 345
+   }
+  ],
+  "philly": [
+   {
+    "f": "courts/philly/Cant Stop, Wont Stop.mp3",
+    "size": 6308302,
+    "lufs": -8,
+    "tp": 5,
+    "gain": -8,
+    "dur": 263
+   },
+   {
+    "f": "courts/philly/Meek Mill - House Party.mp3",
+    "size": 6325856,
+    "lufs": -5.8,
+    "tp": 5,
+    "gain": -10.2,
+    "dur": 264
+   }
+  ],
+  "queens": [
+   {
+    "f": "courts/queens/Marley Marl Feat. Craig G - Droppin Science.mp3",
+    "size": 7305134,
+    "lufs": -17.9,
+    "tp": -0.6,
+    "gain": 1.9,
+    "dur": 304
+   },
+   {
+    "f": "courts/queens/Mobb Deep - Shook Ones, Pt. II (Official Audio).mp3",
+    "size": 7951127,
+    "lufs": -13,
+    "tp": -0.6,
+    "gain": -3,
+    "dur": 328
+   },
+   {
+    "f": "courts/queens/Onyx - Slam.mp3",
+    "size": 5223697,
+    "lufs": -20,
+    "tp": -6.4,
+    "gain": 4,
+    "dur": 218
+   },
+   {
+    "f": "courts/queens/Talib Kweli & DJ Hi Tek - Move Somethin.mp3",
+    "size": 4511495,
+    "lufs": -10.4,
+    "tp": 1,
+    "gain": -5.6,
+    "dur": 188
+   }
+  ]
+ }
+}

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GW, mix, shade } from './pixel';
 import { FY, awning, brick, car, chainFence, graffiti, halo, hydrant, lamp, palm, powerLine, sign, skyline, sky, slab, stars, tree, trashCan, windows, bench, boombox, dumpster, cart } from './courtkit';
-import { CourtArt, carSprite, finish, hangLamp, shopWindow, spots, sneakersWire } from './court_common';
+import { BOOM_X, CourtArt, carSprite, finish, hangLamp, shopWindow, spots, sneakersWire } from './court_common';
 
 /* ------------------------------------------------------------------ ATLANTA */
 
@@ -44,7 +44,7 @@ export const atl: CourtArt = {
     finish(c, { base: 0x404048, edge: 0x50505a, key: 0x8a2a2a, lines: 0xe8e4d4, seed: 12, crack: 24, speckle: 1.3, patch: 1.3 }, { board: 0xe4e8ee }, () => {
       dumpster(c, 100, 160, 0x4a5a6a); tireStack(c);
       car(c, 238, 160, 0x7a2030, { kind: 'low' });
-      trashCan(c, 196, 160); boombox(c, 140, 160);
+      trashCan(c, 196, 160); boombox(c, BOOM_X.atl, 160);
     });
   },
   live(L) {
@@ -109,7 +109,7 @@ export const la: CourtArt = {
   paintFloor(c) {
     finish(c, { base: 0x6a6a72, edge: 0x8a8a92, key: 0x2a6ac0, lines: 0xf8f4e8, seed: 14, crack: 12, sidewalk: 0x8a8a92, speckle: 0.9 }, { board: 0xf0f2f6 }, () => {
       car(c, 24, 160, 0x4a8ac0, { kind: 'low' });
-      hydrant(c, 150, 159); trashCan(c, 330, 160); cart(c, 300, 160);
+      hydrant(c, 150, 159); trashCan(c, 330, 160); cart(c, 300, 160); boombox(c, BOOM_X.la, 160);
       void bench; void dumpster; void brick; void tree; void slab; void mix; void halo;
     });
   },

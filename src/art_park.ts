@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Col, GW, mix, shade } from './pixel';
-import { FY, Scene2D, bench, chainFence, halo, moon, sign, sky, stars, trashCan } from './courtkit';
-import { CourtArt, finish, spots } from './court_common';
+import { FY, Scene2D, bench, boombox, chainFence, halo, moon, sign, sky, stars, trashCan } from './courtkit';
+import { BOOM_X, CourtArt, finish, spots } from './court_common';
 import { textWidth } from './font';
 import type { Live } from './courts';
 
@@ -203,7 +203,7 @@ export const fairmount: CourtArt = {
       picnicTable(c, 62, 161);
       fountain(c, 300, 160);
       trashCan(c, 14, 160);
-      bench(c, 112, 160, 22);
+      bench(c, 112, 160, 22); boombox(c, BOOM_X.fairmount, 160);
       bush(c, -4, 232, 38, 16); bush(c, 392, 234, 40, 16);
     });
   },

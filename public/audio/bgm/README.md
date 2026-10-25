@@ -20,7 +20,8 @@ bgm/
 
 The folder names match the court ids in `src/courts.ts`.
 
-- Prefer `.ogg` (with an `.mp3` fallback for Safari). Keep loops seamless and trimmed to the bar.
-- Name files in play order inside each folder: `01_name.ogg`, `02_name.ogg`.
-- Normalise to about -16 LUFS so music sits under the SFX.
-- Music is not played by the game yet; these folders are where the files go.
+- Any `.mp3` / `.ogg` / `.m4a` / `.wav` works. File names are free-form.
+- Each court plays its own folder in a random order, no repeats until every track has played. `menu/` plays on the menu screens (silent if empty).
+- After adding, removing or replacing tracks run `npm run audio`. It measures every track's loudness (needs `ffmpeg` on the PATH) and writes `manifest.json`, which the game reads for the track list and a per-track gain that brings every track to -16 LUFS. The audio files themselves are never modified. Commit the manifest with the tracks.
+- The game plays the music as if it came from a boombox on the fence: quiet, band-limited, a little saturated, behind the players, and it pans and dulls as the camera moves away from the boombox.
+- In game: `M` mute, `[` and `]` (or `-` and `=`) volume. The setting is remembered.

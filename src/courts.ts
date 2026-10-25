@@ -3,6 +3,8 @@ import { Col, GH, GW, PX, Pix, clamp, mix, mulCol, pixTexture, smooth } from './
 import { FY, HXP, RIMY, Scene2D, Spot, applyLighting, lightValue } from './courtkit';
 import type { RegionId } from './loadout';
 import { ART } from './court_art';
+import { BOOM_X } from './court_common';
+import { music } from './music';
 import { Crowd } from './crowd';
 
 export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la' | 'fairmount';
@@ -28,6 +30,8 @@ export interface CourtScene {
   drawNet(kick: number, t: number): void;
   cheer(power: number): void;
   spots: Spot[];
+  /** World x of the boombox the music comes from. */
+  boomX: number;
 }
 
 /** Helpers for animated scenery. Everything is positioned in art px and snapped to the pixel grid. */
@@ -178,6 +182,20 @@ export function buildCourt(scene: Phaser.Scene, id: CourtId): CourtScene {
   });
   art.live?.(L, c);
 
+  const bx = BOOM_X[id] ?? 190;
+  const bg = L.gfx(FY * PX - 2, Phaser.BlendModes.ADD);
+  L.tick(() => {
+    bg.clear();
+    const v = music.level;
+    if (v < 0.04) return;
+    bg.fillStyle(0xffd890, Math.min(0.9, v * 0.9));
+    for (const sx of [bx + 1, bx + 6]) bg.fillRect(sx * PX, 155 * PX, 3 * PX, 3 * PX);
+    bg.fillStyle(0xff6a3a, Math.min(0.8, v));
+    bg.fillRect((bx + 4) * PX, 156 * PX, 2 * PX, PX);
+    bg.fillStyle(0xffd890, v * 0.12);
+    bg.fillRect((bx - 3) * PX, 148 * PX, 16 * PX, 12 * PX);
+  });
+
   const hoopKey = 'hoopfront_' + id;
   const hoopPix = new Pix(36, 40);
   const hoopTex = pixTexture(scene, hoopKey, hoopPix);
@@ -222,6 +240,7 @@ export function buildCourt(scene: Phaser.Scene, id: CourtId): CourtScene {
   crowd.tint = tintAt;
   return {
     spots: c.spots,
+    boomX: (bx + 5) * PX,
     update: (t, dt) => { live.ticks.forEach((f) => f(t, dt)); crowd.update(t, dt); },
     destroy: () => { live.objs.forEach((o) => o.destroy()); objs.forEach((o) => o.destroy()); crowd.destroy(); },
     tintAt,

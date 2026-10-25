@@ -1,3 +1,4 @@
+import { music } from './music';
 import Phaser from 'phaser';
 import { AiLevel } from './tuning';
 import { COURTS, CourtId, CourtScene, buildCourt, courtInfo } from './courts';
@@ -51,6 +52,7 @@ export class MenuScene extends Phaser.Scene {
     this.cfg.level = (LEVELS as string[]).includes(s.level) ? (s.level as AiLevel) : 'hooper';
     this.cfg.target = TARGETS.includes(s.target) ? s.target : 11;
     this.g = this.add.graphics().setDepth(5000);
+    music.play('menu');
     this.rollRival();
     this.setCourt(this.cfg.court);
     this.makePups();
