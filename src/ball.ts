@@ -3,7 +3,7 @@ import { T } from './tuning';
 import { PX, Pix, pixTexture } from './pixel';
 import type { Hooper } from './hooper';
 
-const BALL_PX = 9;
+const BALL_PX = 10;
 
 export type BallMode = 'held' | 'shot' | 'loose';
 
@@ -181,7 +181,7 @@ export class Ball {
     sh.clear();
     const k = Math.max(0.35, 1 - this.h / 420);
     sh.fillStyle(0x000000, 0.4 * k);
-    const cx = Math.round(this.x / PX), cy = Math.round((T.court.floorY + this.z + 2) / PX), rx = Math.round(5 * k + 1);
+    const cx = Math.round(this.x / PX), cy = Math.round((T.court.floorY + this.z + 2) / PX), rx = Math.round(6 * k + 1);
     for (let j = -1; j <= 1; j++) { const w = j === 0 ? rx : Math.max(1, rx - 2); sh.fillRect((cx - w) * PX, (cy + j) * PX, w * 2 * PX, PX); }
     const tg = this.trailG;
     tg.clear();

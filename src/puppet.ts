@@ -147,7 +147,7 @@ class Brush {
 
 /** How much wider than bare skin the torso silhouette gets for each top. */
 export const topExtra = (t: Loadout['top']) =>
-  t === 'puffer' ? 1.9 : t === 'bigTee' ? 1.7 : t === 'hoodie' ? 1.1 : t === 'flannel' ? 1 : t === 'longsleeve' ? 0.6 : 0.5;
+  t === 'puffer' ? 1.65 : t === 'bigTee' ? 1.45 : t === 'hoodie' ? 1.05 : t === 'flannel' ? 0.95 : t === 'longsleeve' ? 0.55 : 0.48;
 
 const COVERED = new Set(['sweats', 'joggers', 'jeans', 'khakis']);
 
@@ -446,7 +446,8 @@ export class Puppet {
     const wv = (kind: 'plaid' | 'baffle', a: number[], z: number[]) => this.weave(b, a, z, u, kind, tc, tt);
     if (t === 'tee' || t === 'jersey' || t === 'bigTee') {
       if (t === 'tee') { sleeveUp(tc, 0, 0.55, 0.5); b.begin().cap(sx0, sy0, ex, ey, 2.7 * u, 2.5 * u, 0.5, 0.58, false, false).commit(tt, { flat: true, line: null }); }
-      if (t === 'bigTee') { sleeveUp(tc, 0, 0.8, 1.1); b.begin().cap(sx0, sy0, ex, ey, 3.3 * u, 3.1 * u, 0.74, 0.82, false, false).commit(shade(tc, 0.86), { flat: true, line: null }); }
+      if (t === 'jersey') { sleeveUp(tc, 0, 0.52, 0.48); b.begin().cap(sx0, sy0, ex, ey, 2.75 * u, 2.55 * u, 0.48, 0.56, false, false).commit(tt, { flat: true, line: null }); }
+      if (t === 'bigTee') { sleeveUp(tc, 0, 0.72, 0.95); b.begin().cap(sx0, sy0, ex, ey, 3.05 * u, 2.85 * u, 0.68, 0.76, false, false).commit(shade(tc, 0.88), { flat: true, line: null }); }
     } else if (t === 'hoodie' || t === 'longsleeve' || t === 'flannel' || t === 'puffer') {
       const rr = t === 'hoodie' ? 0.8 : t === 'puffer' ? 1.3 : t === 'flannel' ? 0.5 : 0.3;
       sleeveUp(tc, 0, 1, rr);
@@ -491,17 +492,23 @@ export class Puppet {
 
   private bigTeeHem(b: Brush, h: number[], n: number[], l: Loadout, u: number) {
     const [hx, hy] = h, [nx, ny] = n, e = topExtra('bigTee');
-    b.begin().cap(hx, hy, nx, ny, (4.8 + e) * u, (6.2 + e) * u, -0.34, 0.2, false, false).commit(l.topColor);
-    b.begin().cap(hx, hy, nx, ny, (4.7 + e) * u, (6.2 + e) * u, -0.34, -0.27, false, false).commit(shade(l.topColor, 0.84), { flat: true, line: null });
+    b.begin().cap(hx, hy, nx, ny, (4.55 + e) * u, (5.95 + e) * u, -0.3, 0.1, false, false).commit(l.topColor);
+    b.begin().cap(hx, hy, nx, ny, (4.45 + e) * u, (5.85 + e) * u, -0.3, -0.22, false, false).commit(shade(l.topColor, 0.84), { flat: true, line: null });
   }
 
   private torsoPiece(b: Brush, h: number[], n: number[], l: Loadout, skin: Col, u: number, lean: number, sx: number, mir: number) {
     const [hx, hy] = h, [nx, ny] = n;
     b.begin().cap(hx, hy, nx, ny, 4.7 * u, 6.2 * u).commit(skin);
-    const bw = COVERED.has(l.bottom) ? 0.5 : 0.7;
-    b.begin().cap(hx, hy, nx, ny, (4.7 + bw) * u, (5.5 + bw) * u, 0, 0.3, true, false).commit(l.bottomColor);
-    b.begin().cap(hx, hy, nx, ny, (4.9 + bw) * u, (5.7 + bw) * u, 0.26, 0.33, false, false).commit(l.bottomTrim, { flat: true, line: null });
     const tp = l.top;
+    const longTop = tp === 'bigTee' || tp === 'hoodie' || tp === 'longsleeve' || tp === 'flannel' || tp === 'puffer' || tp === 'jersey';
+    const bw = COVERED.has(l.bottom) ? 0.45 : 0.62;
+    if (longTop) {
+      b.begin().cap(hx, hy, nx, ny, (4.55 + bw * 0.55) * u, (5.35 + bw * 0.55) * u, 0.2, 0.29, true, false).commit(l.bottomColor);
+      b.begin().cap(hx, hy, nx, ny, (4.65 + bw * 0.55) * u, (5.45 + bw * 0.55) * u, 0.24, 0.29, false, false).commit(l.bottomTrim, { flat: true, line: null });
+    } else {
+      b.begin().cap(hx, hy, nx, ny, (4.7 + bw) * u, (5.5 + bw) * u, 0, 0.28, true, false).commit(l.bottomColor);
+      b.begin().cap(hx, hy, nx, ny, (4.85 + bw) * u, (5.65 + bw) * u, 0.24, 0.31, false, false).commit(l.bottomTrim, { flat: true, line: null });
+    }
     const hood = tp === 'hoodie';
     const extra = topExtra(tp);
     const t0 = tp === 'puffer' ? 0.14 : tp === 'bigTee' ? 0.05 : tp === 'flannel' ? 0.18 : 0.27;
@@ -543,7 +550,7 @@ export class Puppet {
     const gold = kind === 'gold' || kind === 'cuban' || kind === 'rope' || kind === 'cross';
     const col = gold ? 0xf0c040 : kind === 'rosary' ? 0x8a1c24 : 0xdfe6ee, dk = gold ? 0xb88820 : kind === 'rosary' ? 0x4a0e14 : 0x8d99a8;
     const ang = lean;
-    const e = topExtra(l.top) - 0.5;
+    const e = Math.max(0, topExtra(l.top) - 0.85);
     const fwd = [Math.cos(ang) * sx, Math.sin(ang)];
     const at = (t: number, off: number) => [h[0] + (n[0] - h[0]) * t + fwd[0] * (off + e) * u, h[1] + (n[1] - h[1]) * t + fwd[1] * (off + e) * u];
     const path = kind === 'rope' ? [at(0.98, 4.6), at(0.9, 6.9), at(0.74, 7.4), at(0.6, 7.0), at(0.5, 6.4)]

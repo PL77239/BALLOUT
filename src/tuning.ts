@@ -6,7 +6,7 @@ export const T = {
   hoop: { x: 1108, rimH: 292, rimR: 27, boardH0: 274, boardH1: 402, boardX: 1148 },
   arcR: 430,
   zScale: 3,
-  ball: { r: 13, g: 1800, bounce: 0.68, dribblePeriod: 0.46 },
+  ball: { r: 15, g: 1800, bounce: 0.68, dribblePeriod: 0.46 },
   sim: { hz: 240, maxSteps: 24 },
   input: { buffer: 0.12 },
   move: {
@@ -37,9 +37,9 @@ export const T = {
   dunk: { range: 310, airtime: 0.74, hitAt: 0.4, height: 150 },
   rules: { target: 11, makeItTakeIt: true, insidePts: 1, arcPts: 2, dunkPts: 2 },
   ai: {
-    rookie: { shootJitter: 0.095, react: 0.34, aggr: 0.35, shoot: 0.5 },
-    hooper: { shootJitter: 0.06, react: 0.2, aggr: 0.6, shoot: 0.7 },
-    legend: { shootJitter: 0.035, react: 0.1, aggr: 0.85, shoot: 0.9 },
+    rookie: { shootJitter: 0.145, react: 0.58, aggr: 0.12, shoot: 0.22 },
+    hooper: { shootJitter: 0.1, react: 0.4, aggr: 0.38, shoot: 0.45 },
+    legend: { shootJitter: 0.065, react: 0.24, aggr: 0.58, shoot: 0.62 },
   },
 };
 
