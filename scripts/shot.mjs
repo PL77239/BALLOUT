@@ -21,6 +21,7 @@ for (const k of keys) {
   await page.waitForTimeout(60);
 }
 if (process.env.EVAL) console.log(JSON.stringify(await page.evaluate(process.env.EVAL)));
+if (process.env.POST) await page.waitForTimeout(+process.env.POST);
 const opt = { path: out };
 if (process.env.CLIP) { const [x, y, width, height] = process.env.CLIP.split(',').map(Number); opt.clip = { x, y, width, height }; }
 await page.screenshot(opt);

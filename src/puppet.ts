@@ -98,10 +98,11 @@ class Brush {
   /** Predicate evaluated in a local frame (x forward, y down, in art px / u). */
   frame(ox: number, oy: number, th: number, sx: number, u: number, ext: number, pred: (lx: number, ly: number) => boolean) {
     const c = Math.cos(th), s = Math.sin(th), e = ext * u + 1;
+    const ws = (sx < 0 ? -1 : 1) * Math.max(Math.abs(sx), 0.62);
     const [x0, y0, x1, y1] = this.box(ox - e, oy - e, ox + e, oy + e);
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
-        const dx = (x + 0.5 - ox) * sx, dy = y + 0.5 - oy;
+        const dx = (x + 0.5 - ox) / ws, dy = y + 0.5 - oy;
         if (pred((dx * c + dy * s) / u, (-dx * s + dy * c) / u)) this.put(x, y);
       }
     }

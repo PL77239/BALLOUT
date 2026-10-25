@@ -54,6 +54,8 @@ export class LabScene extends Phaser.Scene {
     else if (name === 'stance') { r.hipY = 74; r.lean = 0.14; r.fFx = 18; r.bFx = -16; hands(36, 6, 24, -4); }
     else hands(8, -58, -2, -58);
     r.emo = i % 3 === 0 ? 1 : 0;
+    const tq = new URLSearchParams(location.search).get('turn');
+    if (tq !== null) r.turn = +tq;
     return r;
   }
 }

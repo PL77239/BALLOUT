@@ -193,10 +193,10 @@ function buildCatalog() {
         add('top', `top.${key}`, `${r.id.toUpperCase()} ${kindName(t)}`, 110 + n * 20, r.id, { top: t, topColor: p[0], topTrim: p[1] }),
         add('bottom', `bottom.${key}`, `${r.id.toUpperCase()} ${kindName(bt)}`, 90 + n * 15, r.id, { bottom: bt, bottomColor: lightBase ? p[1] : p[0], bottomTrim: p[1] === p[0] ? p[2] : p[1] }),
         add('shoes', `shoes.${key}`, `${r.id.toUpperCase()} ${kindName(sh)}`, 130 + n * 20, r.id, { shoes: sh, shoeColor: n === 1 ? 0xf4f4f0 : p[0], shoeSole: p[1] }),
-        add('head', `head.${key}`, `${r.id.toUpperCase()} ${kindName(hd)}`, hd === 'none' ? 0 : 70 + n * 15, r.id, { head: hd, headColor: p[0], headTrim: p[1] }),
+        add('head', `head.${key}`, `${r.id.toUpperCase()} ${hd === 'none' ? 'BARE HEAD' : kindName(hd)}`, hd === 'none' ? 0 : 70 + n * 15, r.id, { head: hd, headColor: p[0], headTrim: p[1] }),
         add('socks', `socks.${key}`, `${r.id.toUpperCase()} TUBES`, 40, r.id, { socks: 'long', sockColor: p[2] }),
         add('wrist', `wrist.${key}`, `${r.id.toUpperCase()} BANDS`, 35, r.id, { wrist: 'bands', wristColor: p[1] }),
-      ].filter((id) => !id.endsWith('.none') || true);
+      ];
       const price = Math.round(ids.reduce((s, id) => s + items.find((i) => i.id === id)!.price, 0) * 0.75);
       fits.push({ id: `fit.${key}`, name: `${r.name} FIT ${n}`, region: r.id, items: ids, price });
     };
