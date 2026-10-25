@@ -53,7 +53,7 @@ function readKeyboard(): Raw {
     c: k('KeyL', 'KeyV'),
     shove: k('KeyE', 'KeyQ'),
     check: k('KeyR'),
-    start: k('Escape', 'KeyP', 'Enter'),
+    start: k('Escape', 'KeyP'),
     back: k('Backspace'),
   };
 }

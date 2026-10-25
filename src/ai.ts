@@ -51,16 +51,19 @@ export class Brain {
       return;
     }
     if (this.planT <= 0) {
-      this.planT = 0.9 + Math.random() * 1.2;
-      this.wantThree = Math.random() < this.lvl.shoot * 0.45 + (me.fireOn ? 0.3 : 0);
+      this.planT = 1 + Math.random() * 1.4;
+      this.wantThree = Math.random() < 0.38 + this.lvl.shoot * 0.3 + (me.fireOn ? 0.2 : 0);
     }
     I.mx = 1;
     const away = Math.abs(dz) < 34 ? (me.z >= opp.z ? 1 : -1) * (Math.abs(me.z) > 50 ? -1 : 1) : 0;
     I.mz = away !== 0 ? away : clamp(-me.z / 30, -1, 1) * 0.6;
     I.sprint = dist > 260 && me.stamina > 28;
+    const inThree = dist < T.arcR + 55 && dist >= T.arcR - 4;
+    if (this.wantThree && dist < T.arcR + 55) { I.mx = 0; I.sprint = false; I.mz *= 0.3; }
+    this.shotRoll += dt;
 
     const closeDunk = (T.hoop.x - me.x) < T.dunk.range && (T.hoop.x - me.x) > 20;
-    if (closeDunk && (!near || stunned || me.comboN >= 1) && Math.abs(me.vx) > 60 && Math.random() < 0.06 + this.lvl.aggr * 0.1) { I.c = true; return; }
+    if (!this.wantThree && closeDunk && (!near || stunned) && Math.abs(me.vx) > 60 && Math.random() < dt * (0.5 + this.lvl.aggr * 0.8)) { I.c = true; return; }
     if (near && this.jukeCD <= 0 && me.act === 'free') {
       this.jukeCD = 0.35 + Math.random() * 0.5;
       const r = Math.random();
@@ -68,15 +71,16 @@ export class Brain {
       I.mz = dz > 0 ? -1 : 1;
       return;
     }
-    if (me.act === 'juke' && me.comboN >= 1 && open && me.actT > me.actDur * 0.55 && dist < T.arcR + 80) {
+    if (me.act === 'juke' && me.comboN >= 1 && open && me.actT > me.actDur * 0.55 && dist < T.arcR + 80 && Math.random() < 0.5) {
       this.beginShot(I, me);
       return;
     }
-    const inRange = dist > 130 && dist < T.arcR + 90;
-    const wants = this.wantThree ? dist >= T.arcR - 5 : dist < T.arcR - 40 && dist > 150;
-    this.shotRoll += dt;
-    if (open && inRange && wants && this.shotRoll > 0.35 && Math.random() < dt * 1.6 * (0.5 + this.lvl.shoot)) this.beginShot(I, me);
-    else if (open && dist < 170 && me.act === 'free' && Math.random() < dt * 2) this.beginShot(I, me);
+    if (this.wantThree) {
+      const rate = open ? 2.4 : 0.8;
+      if (inThree && this.shotRoll > 0.4 && Math.random() < dt * rate) this.beginShot(I, me);
+    } else if (dist > 150 && dist < T.arcR - 30) {
+      if (open && this.shotRoll > 0.4 && Math.random() < dt * 1.2 * (0.4 + this.lvl.shoot)) this.beginShot(I, me);
+    } else if (dist <= 170 && me.act === 'free' && Math.random() < dt * (open ? 2.5 : 0.8)) this.beginShot(I, me);
   }
 
   private beginShot(I: Intent, me: Hooper) {
@@ -110,8 +114,8 @@ export class Brain {
     } else this.seenShoot = false;
 
     if (me.act === 'free' && opp.act === 'free' || opp.act === 'juke') {
-      if (this.stealCD <= 0 && adx > 28 && adx < T.steal.range - 14 && adz < 28 && opp.protectT <= 0 && Math.random() < dt * (0.6 + this.lvl.aggr * 2.2)) {
-        I.a = true; this.stealCD = 0.8 + Math.random() * 0.8;
+      if (this.stealCD <= 0 && adx > 28 && adx < T.steal.range - 14 && adz < 28 && opp.protectT <= 0 && Math.random() < dt * (0.15 + this.lvl.aggr * 0.9)) {
+        I.a = true; this.stealCD = 1.1 + Math.random() * 1;
       }
       if (me.shoveCD <= 0 && adx < T.shove.range - 6 && adz < 28 && Math.random() < dt * this.lvl.aggr * 0.55) I.shove = true;
     }

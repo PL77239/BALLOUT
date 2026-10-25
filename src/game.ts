@@ -118,6 +118,9 @@ export class GameScene extends Phaser.Scene {
       this.fireTxt.push(txt(x, 66, 'ON FIRE', 18, '#ff8a2a', 4).setOrigin(ox, 0).setVisible(false));
     };
     nameSet(0, 28, 0); nameSet(1, W - 28, 1);
+    const hint = (y: number, s: string) => this.add.text(W / 2, y, s, { fontFamily: FONT, fontSize: '15px', color: '#d8d8e4', stroke: '#08080c', strokeThickness: 4 }).setOrigin(0.5).setDepth(6100).setAlpha(0.72);
+    hint(675, 'OFFENSE   X / SPACE shoot (hold, release in the green; tap = pump fake)   SQ / J crossover   O / K spin   TRI / L dunk or behind-the-back   R1 / SHIFT sprint');
+    hint(697, 'DEFENSE   SQ / J steal   X / SPACE jump + block   L2 / R hand-check   BOTH   L1 / E dirty shove   ESC pause');
     this.banner = txt(W / 2, 250, '', 80, '#ffffff', 10).setOrigin(0.5).setAlpha(0).setDepth(6200);
     this.bannerSub = txt(W / 2, 312, '', 22, '#ffe45e', 6).setOrigin(0.5).setAlpha(0).setDepth(6200);
   }
@@ -263,6 +266,7 @@ export class GameScene extends Phaser.Scene {
     o.hasBall = false; o.pickupLock = 0.5;
     h.hasBall = true; this.ball.owner = h; this.ball.mode = 'held'; this.ball.info = null;
     this.needsClear = true; this.cleared = false;
+    h.protectT = 0.7; o.pickupLock = 0.8;
     h.gainHeat(18);
     this.popupAt(h, 'STOLEN!', '#7fd4ff', 34);
     this.fx.ring(this.ball.x, this.ball.sy, 0x9fe8ff, 12, 240, 0.3);
@@ -294,13 +298,13 @@ export class GameScene extends Phaser.Scene {
     const d = this.opp(h);
     const dx = d.x - h.x, dz = d.z - h.z;
     if (Math.abs(dx) > T.moves.ankleRange || Math.abs(dz) > T.moves.ankleZ) return;
-    if (d.act === 'fall' || d.act === 'dunk' || d.h > 30) return;
-    const wrongWay = d.vz * h.dash.z < -25 || (h.moveKind !== 'cross' && d.vx * Math.sign(h.dash.x || 1) < -120);
+    if (d.act === 'fall' || d.act === 'dunk' || d.h > 30 || d.immuneT > 0) return;
+    const wrongWay = d.vz * h.dash.z < -40 || (h.moveKind !== 'cross' && d.vx * Math.sign(h.dash.x || 1) < -120);
     const committed = d.act === 'swipe' || d.act === 'shove' || d.act === 'recover' || d.act === 'stagger';
-    if (wrongWay || committed || h.comboN >= 3 || d.stamina < 12) {
-      d.knock('fall', -d.facing, 170);
+    if (wrongWay || committed || h.comboN >= 4 || d.stamina < 12) {
+      d.knock('fall', -d.facing, 170); d.immuneT = 2.4;
       d.vz = h.dash.z * 0.3;
-      this.popupAt(h, h.comboN >= 3 ? 'ANKLES GONE!' : 'ANKLE BREAKER!', '#ff4fa0', 40);
+      this.popupAt(h, h.comboN >= 4 ? 'ANKLES GONE!' : 'ANKLE BREAKER!', '#ff4fa0', 40);
       this.fx.dust(d.x, d.sy, 12, -d.facing, 1.2);
       this.fx.ring(d.x, d.sy - 40, 0xff4fa0, 14, 340, 0.4);
       h.gainHeat(28 + 8 * h.comboN);
@@ -339,7 +343,7 @@ export class GameScene extends Phaser.Scene {
     const d = this.opp(b.info.shooter);
     if (d.act !== 'block') return;
     const hx = d.x + d.facing * 24, hh = d.h + 228;
-    if (Math.hypot(b.x - hx, b.h - hh) < 56 && Math.abs(b.z - d.z) < 42) {
+    if (Math.hypot(b.x - hx, b.h - hh) < 48 && Math.abs(b.z - d.z) < 42) {
       const s = b.info.shooter;
       b.info = null; b.mode = 'loose';
       b.vx = d.facing * (240 + Math.random() * 140); b.vh = 120 + Math.random() * 120; b.vz = (Math.random() - 0.5) * 200;
@@ -534,10 +538,11 @@ export class GameScene extends Phaser.Scene {
       const gx0 = bx + ((S - green) / range) * w, gw = Math.max(3, (green * 2 / range) * w);
       const inZone = Math.abs(h.meter - S) <= green;
       g.fillStyle(0x24363a, 1); g.fillRect(bx, by, w, hh);
-      g.fillStyle(inZone ? 0x7dffb0 : 0x35c86a, 1); g.fillRect(gx0, by, gw, hh);
-      g.fillStyle(0xffffff, 0.7); g.fillRect(bx + (S / range) * w - 1, by, 2, hh);
       const mx = bx + clamp(h.meter / range, 0, 1) * w;
-      g.fillStyle(0x6ac8ff, 0.55); g.fillRect(bx, by, mx - bx, hh);
+      g.fillStyle(0x6ac8ff, 0.8); g.fillRect(bx, by, mx - bx, hh);
+      g.fillStyle(inZone ? 0x7dffb0 : 0x2fd060, 1); g.fillRect(gx0, by, gw, hh);
+      g.lineStyle(2, 0x08080c, 1); g.strokeRect(gx0, by, gw, hh);
+      g.fillStyle(0xffffff, 0.8); g.fillRect(bx + (S / range) * w - 1, by, 2, hh);
       g.fillStyle(0xffffff, 1); g.fillRect(mx - 2, by - 4, 4, hh + 8);
       if (contest > 0.25) { g.fillStyle(0xff3a3a, 0.9); g.fillRect(bx, by + hh + 5, w * contest, 3); }
     }

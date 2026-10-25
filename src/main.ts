@@ -12,7 +12,7 @@ class BootScene extends Phaser.Scene {
   create() {
     if (q.get('auto')) {
       const cfg: GameCfg = {
-        mode: q.get('auto') === '2' ? '1p' : 'sim', court: (q.get('court') as CourtId) || 'brooklyn',
+        mode: q.get('auto') === '2' ? '1p' : q.get('auto') === '3' ? '2p' : 'sim', court: (q.get('court') as CourtId) || 'brooklyn',
         look1: +(q.get('l1') ?? 0), look2: +(q.get('l2') ?? 1), level: 'hooper', target: +(q.get('to') ?? 11),
       };
       this.scene.start('game', cfg);

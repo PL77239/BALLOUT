@@ -25,14 +25,14 @@ export const T = {
     missK: 340,
   },
   moves: { comboWindow: 0.8, ankleCheckAt: 0.15, ankleRange: 128, ankleZ: 56, protect: 0.34 },
-  steal: { range: 112, zRange: 34, base: 0.42, sprintBonus: 0.22, lowStaminaBonus: 0.2, whiffRecover: 0.62 },
+  steal: { range: 112, zRange: 34, base: 0.3, sprintBonus: 0.15, lowStaminaBonus: 0.2, whiffRecover: 0.62 },
   shove: { cooldown: 1.15, cost: 13, knock: 560, fumble: 0.4, range: 66 },
   dunk: { range: 310, airtime: 0.74, hitAt: 0.4, height: 150 },
   rules: { target: 11, makeItTakeIt: true, insidePts: 1, arcPts: 2, dunkPts: 2 },
   ai: {
-    rookie: { shootJitter: 0.07, react: 0.34, aggr: 0.35, shoot: 0.5 },
-    hooper: { shootJitter: 0.04, react: 0.2, aggr: 0.6, shoot: 0.7 },
-    legend: { shootJitter: 0.02, react: 0.1, aggr: 0.85, shoot: 0.9 },
+    rookie: { shootJitter: 0.095, react: 0.34, aggr: 0.35, shoot: 0.5 },
+    hooper: { shootJitter: 0.06, react: 0.2, aggr: 0.6, shoot: 0.7 },
+    legend: { shootJitter: 0.035, react: 0.1, aggr: 0.85, shoot: 0.9 },
   },
 };
 

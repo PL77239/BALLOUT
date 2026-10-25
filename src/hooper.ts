@@ -62,6 +62,7 @@ export class Hooper {
   carried = { x: 0, z: 0, h: 0, depthBias: 0.3 };
   meterInfo = { green: 0, contest: 0 };
   warnCD = 0;
+  immuneT = 0;
 
   constructor(scene: Phaser.Scene, public id: number, public loadout: Loadout) {
     this.puppet = new Puppet(scene, loadout);
@@ -222,6 +223,7 @@ export class Hooper {
     this.protectT = Math.max(0, this.protectT - dt);
     this.pumpedT = Math.max(0, this.pumpedT - dt);
     this.warnCD = Math.max(0, this.warnCD - dt);
+    this.immuneT = Math.max(0, this.immuneT - dt);
     if (this.fireT > 0) { this.fireT -= dt; if (this.fireT <= 0) this.heat = 0; }
     else this.heat = Math.max(0, this.heat - T.heat.decay * dt);
     this.actT += dt;

@@ -184,7 +184,7 @@ function drawFloor(g: G, id: CourtId) {
   g.fillStyle(s.key, 1); g.fillRect(808, fy - 54, 1244 - 808, 108);
   g.fillStyle(s.key, 1); g.fillEllipse(808, fy, 40, 108);
   for (let i = 0; i < 90; i++) {
-    g.fillStyle(r() < 0.5 ? s.wear : shade(s.floor, 1.15), 0.12 + r() * 0.12);
+    g.fillStyle(r() < 0.6 ? s.wear : shade(s.floor, 1.08), 0.07 + r() * 0.09);
     g.fillRect(40 + r() * (W - 100), top + r() * (bot - top), 12 + r() * 60, 4 + r() * 14);
   }
   g.lineStyle(3, s.lines, 0.92);
