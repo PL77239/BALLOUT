@@ -1,16 +1,14 @@
 import Phaser from 'phaser';
-import { Puppet, Rig, restRig } from './puppet';
+import { Puppet, restRig } from './puppet';
+import { poseOf } from './anim';
 import { Loadout } from './loadout';
 import { Intent, emptyIntent } from './input';
 import { T } from './tuning';
+import { clamp, lerp, smooth } from './pixel';
 import type { GameScene } from './game';
 
 export type Act = 'free' | 'shoot' | 'release' | 'juke' | 'dunk' | 'swipe' | 'block' | 'shove' | 'stagger' | 'fall' | 'recover';
 export type MoveKind = 'cross' | 'spin' | 'btb';
-
-const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const smooth = (t: number) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
 
 const MOVE_DUR: Record<MoveKind, number> = { cross: 0.34, spin: 0.46, btb: 0.38 };
 
@@ -57,7 +55,11 @@ export class Hooper {
   lastDirZ = 1;
   ph = 0;
   I: Intent = emptyIntent();
-  spinFlat = 1;
+  anim = { prevV: 0, acc: 0, guard: 0, air: false };
+  mood: '' | 'hype' | 'down' = '';
+  moodT = 0;
+  celeb = 0;
+  wasAir = false;
   tAlive = 0;
   carried = { x: 0, z: 0, h: 0, depthBias: 0.3 };
   meterInfo = { green: 0, contest: 0 };
@@ -74,7 +76,7 @@ export class Hooper {
   reset(x: number, z: number, hasBall: boolean) {
     this.x = x; this.z = z; this.vx = this.vz = 0; this.h = this.vh = 0;
     this.act = 'free'; this.actT = 0; this.hasBall = hasBall;
-    this.meter = 0; this.comboN = 0; this.protectT = 0; this.pickupLock = 0; this.spinFlat = 1;
+    this.meter = 0; this.comboN = 0; this.protectT = 0; this.pickupLock = 0; this.mood = ''; this.moodT = 0;
     this.shoved = false;
   }
 
@@ -224,6 +226,7 @@ export class Hooper {
     this.pumpedT = Math.max(0, this.pumpedT - dt);
     this.warnCD = Math.max(0, this.warnCD - dt);
     this.immuneT = Math.max(0, this.immuneT - dt);
+    if (this.moodT > 0) { this.moodT -= dt; if (this.moodT <= 0) this.mood = ''; }
     if (this.fireT > 0) { this.fireT -= dt; if (this.fireT <= 0) this.heat = 0; }
     else this.heat = Math.max(0, this.heat - T.heat.decay * dt);
     this.actT += dt;
@@ -289,7 +292,6 @@ export class Hooper {
     }
     this.x = clamp(this.x, T.court.leftWall + 24, T.court.rightWall - 22);
     this.z = clamp(this.z, -T.court.laneHalf, T.court.laneHalf);
-    if (this.act !== 'dunk') this.spinFlat += (1 - this.spinFlat) * Math.min(1, dt * 20);
   }
 
   private airPhysics(dt: number) {
@@ -344,7 +346,6 @@ export class Hooper {
     const tx = I.mx * T.move.walk * 0.5, tz = I.mz * T.move.walk * 0.4;
     this.vx = this.dash.x * k + tx * (1 - k); this.vz = this.dash.z * k + tz * (1 - k);
     this.x += this.vx * dt; this.z += this.vz * dt;
-    if (this.moveKind === 'spin') this.spinFlat = Math.max(0.12, Math.abs(Math.cos(p * Math.PI * 2)));
     if (!this.ankleChecked && this.actT >= T.moves.ankleCheckAt) { this.ankleChecked = true; g.ankleCheck(this); }
     if (this.actT >= this.actDur) this.setAct('free');
   }
@@ -387,142 +388,15 @@ export class Hooper {
   }
 
   render(dt: number, g: GameScene) {
-    const r = this.targetRig(dt, g);
-    this.puppet.ease(r, dt, this.act === 'fall' ? 18 : 26);
+    const { rig, pinF, pinB } = poseOf(this, g, dt);
     const p = this.puppet;
-    p.setFacing(this.facing * this.spinFlat);
-    p.root.setPosition(this.x, this.sy - this.h);
-    p.root.setDepth(this.sy);
-  }
-
-  private targetRig(dt: number, g: GameScene): Rig {
-    const r = restRig();
-    const f = this.facing;
-    const speed = Math.hypot(this.vx, this.vz);
-    const S = clamp(speed / 360, 0, 1);
-    const along = this.vx * f;
-    const vel = Math.abs(along) > 30 ? along : Math.abs(this.vz) * 0.9;
-    this.ph += vel * dt * 0.052;
-    const A = S > 0.04 ? 12 + 22 * S : 0;
-    const ph = this.ph;
-    const o = g.opp(this);
-    const defending = !this.hasBall && o.hasBall;
     const air = this.h > 4;
-    let ballHand: 'f' | 'b' | null = null;
-    const hands = (fx: number, fy: number, bx: number, by: number) => {
-      const sh = this.puppet.shoulder(r);
-      r.fHx = sh.x + fx; r.fHy = sh.y + fy; r.bHx = sh.x + bx; r.bHy = sh.y + by;
-    };
-
-    r.hipY = 86 - Math.abs(Math.sin(ph)) * 4 * S;
-    r.lean = along < -30 ? -0.05 : 0.05 + 0.22 * S;
-    r.fFx = 8 + Math.sin(ph) * A; r.fFy = Math.max(0, Math.cos(ph)) * A * 0.7;
-    r.bFx = -8 - Math.sin(ph) * A; r.bFy = Math.max(0, -Math.cos(ph)) * A * 0.7;
-    r.fAnk = r.fFy * 0.02; r.bAnk = r.bFy * 0.02;
-    hands(6 - Math.sin(ph) * 22 * S, -60 + Math.abs(Math.cos(ph)) * 8 * S, -4 + Math.sin(ph) * 22 * S, -60);
-
-    if (this.hasBall && (this.act === 'free' || this.act === 'juke' || this.act === 'recover' || this.act === 'stagger')) {
-      r.hipY = 81 - Math.abs(Math.sin(ph)) * 3 * S;
-      r.lean = (along < -30 ? 0.04 : 0.14) + 0.14 * S;
-      ballHand = this.handSide > 0 ? 'f' : 'b';
-      const c = this.carried;
-      const bx = (c.x - this.x) * f, by = c.h - this.h + 2;
-      if (ballHand === 'f') { r.fHx = bx; r.fHy = by; hands(0, 0, 18, -22); r.fHx = bx; r.fHy = by; }
-      else { r.bHx = bx; r.bHy = by; const sx = r.bHx, sy = r.bHy; hands(26, -18, 0, 0); r.bHx = sx; r.bHy = sy; }
-      if (this.act === 'juke') {
-        const p = clamp(this.actT / this.actDur, 0, 1);
-        r.lean = 0.28; r.hipY = 72 + 8 * Math.sin(p * Math.PI * 0.5);
-        r.fFx = 20; r.bFx = -18;
-      }
-    } else if (defending && this.act === 'free') {
-      r.hipY = 77 - Math.abs(Math.sin(ph)) * 3 * S; r.lean = 0.1;
-      r.fFx = 16 + Math.sin(ph) * A * 0.6; r.bFx = -16 - Math.sin(ph) * A * 0.6;
-      const sw = Math.sin(this.tAlive * 7) * 4;
-      hands(38, 6 + sw, 26, -4 - sw);
-    }
-
-    switch (this.act) {
-      case 'shoot': {
-        const S0 = T.shot.sweet, m = this.meter;
-        const u = smooth((m - 0.28) / (S0 - 0.28));
-        r.hipY = m < 0.28 ? 86 - 14 * smooth(m / 0.28) : 72 + 21 * u;
-        r.lean = this.fade ? -0.22 : 0.1 + 0.08 * (1 - u);
-        const fx = lerp(24, 12, u), fy = lerp(-34, 66, u);
-        hands(fx, fy, lerp(30, 24, u), lerp(-28, 50, u));
-        r.fFx = air ? 14 : 12; r.bFx = air ? -8 : -12; r.fFy = r.bFy = air ? 12 : 0;
-        r.fAnk = r.bAnk = air ? 0.55 : 0;
-        break;
-      }
-      case 'release': {
-        const t = clamp(this.actT / 0.3, 0, 1);
-        r.hipY = 90; r.lean = 0.04;
-        hands(lerp(12, 28, t), lerp(66, 42, t), lerp(24, 30, t), lerp(50, 24, t));
-        r.fFx = 14; r.bFx = -8; r.fFy = r.bFy = air ? 12 : 0; r.fAnk = r.bAnk = air ? 0.55 : 0;
-        break;
-      }
-      case 'block': {
-        r.hipY = 90; r.lean = 0.02;
-        hands(16, 68, 8, 66);
-        r.fFx = 12; r.bFx = -10; r.fFy = r.bFy = air ? 14 : 0; r.fAnk = r.bAnk = air ? 0.5 : 0;
-        break;
-      }
-      case 'swipe': {
-        const u = Math.sin(clamp(this.actT / this.actDur, 0, 1) * Math.PI);
-        r.hipY = 76 - 6 * u; r.lean = 0.1 + 0.25 * u;
-        hands(30 + 44 * u, -48 + 26 * u, 18, -10);
-        r.fFx = 22; r.bFx = -18;
-        break;
-      }
-      case 'shove': {
-        const u = Math.sin(clamp(this.actT / this.actDur, 0, 1) * Math.PI);
-        r.hipY = 78; r.lean = 0.12 + 0.2 * u;
-        hands(10 + 44 * u, -2, 6 + 30 * u, 4);
-        r.fFx = 22; r.bFx = -16;
-        break;
-      }
-      case 'stagger': {
-        const w = Math.sin(this.actT * 38) * 18;
-        r.hipY = 80; r.lean = -0.3;
-        hands(20 + w, 10, -10 - w, 24);
-        r.fFx = 20 + w * 0.5; r.bFx = -20; r.bFy = 8;
-        break;
-      }
-      case 'fall': {
-        const f1 = clamp(this.actT / 0.22, 0, 1), f2 = clamp((this.actT - 0.8) / 0.35, 0, 1);
-        r.fall = smooth(f1) * (1 - smooth(f2));
-        r.hipY = 80; r.lean = -0.1;
-        hands(24, 4, -14, 14);
-        r.fFx = 24; r.bFx = -4; r.fFy = 10;
-        break;
-      }
-      case 'dunk': {
-        const u = clamp(this.actT / T.dunk.airtime, 0, 1);
-        r.fFx = 20; r.bFx = -16; r.fFy = r.bFy = air ? 16 : 0; r.fAnk = r.bAnk = 0.5;
-        if (u < 0.16) { r.hipY = 70; r.lean = 0.25; hands(24, -34, 22, -30); }
-        else if (u < 0.55) {
-          const k = smooth((u - 0.16) / 0.39);
-          r.hipY = 92; r.lean = 0.12;
-          if (this.trickDunk) {
-            const a = -Math.PI / 2 + k * Math.PI * 2.2;
-            hands(Math.cos(a) * 56, Math.sin(a) * 56, 14, 40);
-          } else hands(lerp(24, 36, k), lerp(-34, 70, k), lerp(22, 20, k), lerp(-30, 58, k));
-        } else {
-          const k = smooth((u - 0.55) / 0.15);
-          r.hipY = 92; r.lean = 0.2;
-          hands(lerp(36, 38, k), lerp(70, 8, k), 22, lerp(58, 40, k));
-        }
-        break;
-      }
-      case 'recover': r.hipY = 78; r.lean = 0.18; break;
-      default: break;
-    }
-    if (this.act === 'juke') {
-      const p = clamp(this.actT / this.actDur, 0, 1);
-      if (this.moveKind === 'spin') r.lean = 0.3;
-      if (this.moveKind === 'btb') { r.lean = 0.2; hands(8, -26, 4, -34); r.bHx = (this.carried.x - this.x) * f; r.bHy = this.carried.h - this.h; }
-      void p;
-    }
-    return r;
+    if (air && !this.wasAir) p.kick('hipY', 260);
+    if (!air && this.wasAir) p.kick('hipY', -460);
+    this.wasAir = air;
+    p.setFacing(this.facing);
+    p.update(rig, dt, { f: pinF, b: pinB }, { f: this.vx * this.facing, h: this.vh });
+    p.root.setPosition(this.x, this.sy - this.h).setDepth(this.sy);
   }
 
   destroy() { this.puppet.destroy(); }
