@@ -387,10 +387,21 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private looseT = 0;
+
+  /** A shot that drops below the rim without scoring is a miss: from then on it is a loose ball anybody can grab. */
+  private settleMiss() {
+    const b = this.ball, i = b.info;
+    if (b.mode !== 'shot' || !i || i.scored) return;
+    const below = b.vh < 0 && b.h < T.hoop.rimH - 30 && i.age > 0.2;
+    if (below || b.h <= T.ball.r + 1 || i.age > 4) { b.mode = 'loose'; b.info = null; }
+  }
+
   private pickups() {
+    this.settleMiss();
     const b = this.ball;
     const live = b.mode === 'loose' || (b.mode === 'shot' && b.info && !b.info.scored && b.info.touchedRim && b.info.age > 0.25);
-    if (!live || this.phase !== 'live') return;
+    if (!live || this.phase !== 'live') { this.looseT = 0; return; }
     let best: Hooper | null = null, bd = 1e9;
     for (const h of this.hoopers) {
       if (h.pickupLock > 0 || ['fall', 'stagger', 'shoot', 'dunk', 'swipe'].includes(h.act)) continue;
@@ -402,7 +413,13 @@ export class GameScene extends Phaser.Scene {
       const d = dx + dz;
       if (d < bd) { bd = d; best = h; }
     }
-    if (!best) return;
+    if (!best) {
+      // Safety net: a ball that has been lying around unclaimed goes to whoever is closest.
+      this.looseT = b.mode === 'loose' && b.h <= T.ball.r + 2 && Math.hypot(b.vx, b.vz) < 60 ? this.looseT + SIM_DT : 0;
+      if (this.looseT < 1.5) return;
+      best = this.hoopers.reduce((m, h) => (Math.abs(h.x - b.x) + Math.abs(h.z - b.z) < Math.abs(m.x - b.x) + Math.abs(m.z - b.z) ? h : m));
+    }
+    this.looseT = 0;
     const lastOff = b.lastOwner;
     best.hasBall = true; b.owner = best; b.mode = 'held'; b.info = null; b.fire = false;
     if (best !== lastOff) { this.needsClear = true; this.cleared = false; this.popupAt(best, 'TAKE IT BACK', '#ffe45e', 18); }
