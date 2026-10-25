@@ -23,7 +23,7 @@ After the workflow in `.github/workflows/pages.yml` runs on `main`, the game is 
 
 **https://pl77239.github.io/BALLOUT/**
 
-One-time repo setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**. Pushes to `main` then deploy automatically. Audio and save data load in the browser; you need a click/keypress once so music can start (browser autoplay rules).
+One-time repo setup: **Settings → Pages → Build and deployment → Source: Deploy from a branch**, branch **`gh-pages`**, folder **`/` (root)**. Pushes to `main` run the workflow in `.github/workflows/pages.yml`, which builds with `VITE_BASE=/BALLOUT/` and publishes the Vite `dist/` output to `gh-pages` (browsers cannot run the raw TypeScript in `src/`). Audio and save data load in the browser; you need a click/keypress once so music can start (browser autoplay rules).
 
 Local preview of the Pages build:
 

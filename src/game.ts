@@ -80,6 +80,8 @@ export class GameScene extends Phaser.Scene {
   private buckets = [0, 0];
   private nextOffense = 0;
   private overT = 0;
+  private pointCountdown = 0;
+  private pointCountShown = -1;
   result: MatchResult | null = null;
 
   constructor() { super('game'); }
@@ -91,6 +93,7 @@ export class GameScene extends Phaser.Scene {
     this.hoopers = []; this.hud = {}; this.legend = null; this.pauseUi = []; this.overUi = [];
     this.time_ = 0; this.realT = 0; this.paused = false; this.winner = null; this.timeScale = 1; this.slowT = 0; this.hitT = 0; this.overT = 0;
     this.style = [0, 0]; this.buckets = [0, 0]; this.result = null;
+    this.pointCountdown = 0; this.pointCountShown = -1;
     this.acc = 0; this.tick = 0; this.latch = [emptyIntent(), emptyIntent()]; this.lastLogged = [-1, -1]; this.inputLog = [];
     this.seed = (cfg.seed ?? (Math.random() * 0xffffffff)) >>> 0;
     this.rng = rng(this.seed);
@@ -236,7 +239,9 @@ export class GameScene extends Phaser.Scene {
       this.finishMatch();
       return;
     }
-    this.phase = 'point'; this.phaseT = 1.7;
+    this.phase = 'point';
+    this.pointCountdown = 1.35;
+    this.pointCountShown = -1;
     this.nextOffense = T.rules.makeItTakeIt ? scorer.id : 1 - scorer.id;
   }
 
@@ -545,8 +550,18 @@ export class GameScene extends Phaser.Scene {
 
     if (this.phase === 'intro') { this.phaseT -= SIM_DT; if (this.phaseT <= 0) this.phase = 'live'; }
     if (this.phase === 'point') {
-      this.phaseT -= SIM_DT;
-      if (this.phaseT <= 0) { this.resetPositions(this.nextOffense); this.phase = 'live'; this.showBanner('CHECK', '', 0.6); }
+      this.pointCountdown -= SIM_DT;
+      const n = Math.ceil(this.pointCountdown);
+      if (n > 0 && n !== this.pointCountShown) {
+        this.pointCountShown = n;
+        this.showBanner(String(n), 'INBOUND', 0.55);
+      }
+      if (this.pointCountdown > 0) return;
+      this.resetPositions(this.nextOffense);
+      this.phase = 'live';
+      this.pointCountShown = -1;
+      this.showBanner('CHECK', '', 0.6);
+      return;
     }
 
     this.updateFacing();
