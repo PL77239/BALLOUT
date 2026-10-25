@@ -382,15 +382,21 @@ export class Puppet {
     b.begin().cap(hx, hy, nx, ny, (4.9 + bw) * u, (5.7 + bw) * u, 0.26, 0.33, false, false).commit(l.bottomTrim, { flat: true, line: null });
     const hood = l.top === 'hoodie';
     const extra = hood ? 1.1 : l.top === 'longsleeve' ? 0.6 : 0.5;
-    const t1 = l.top === 'tank' || l.top === 'jersey' ? 0.94 : 0.99;
-    b.begin().cap(hx, hy, nx, ny, (4.8 + extra) * u, (6.2 + extra) * u, 0.27, t1, false, true).commit(l.topColor);
+    const sleeveless = l.top === 'tank' || l.top === 'jersey';
+    b.begin().cap(hx, hy, nx, ny, (4.8 + extra) * u, (6.2 + extra) * u, 0.27, 1, false, true).commit(l.topColor);
     if (hood || l.top === 'tee' || l.top === 'longsleeve') b.begin().cap(hx, hy, nx, ny, (5 + extra) * u, (6.4 + extra * 0.5) * u, 0.27, 0.37, false, false).commit(l.topTrim, { flat: true, line: null });
-    if (l.top === 'tee' || l.top === 'jersey' || l.top === 'tank') b.begin().cap(hx, hy, nx, ny, (4.8 + extra) * u, (6.6 + extra) * u, 0.92, 1, false, false).commit(l.topTrim, { flat: true, line: null });
+    if (l.top === 'tank') b.begin().cap(hx, hy, nx, ny, (4.8 + extra) * u, (6.6 + extra) * u, 0.2, 0.26, false, false).commit(l.topTrim, { flat: true, line: null });
     if (l.top === 'jersey') {
       b.begin().cap(hx, hy, nx, ny, 5.3 * u, 6.7 * u, 0.5, 0.58, false, false).commit(l.topTrim, { flat: true, line: null });
     }
+    const ang = lean;
+    if (sleeveless) {
+      b.begin().frame(nx, ny, ang, sx, u, 8, (x, y) => ((x - 1.4) ** 2) / 8 + ((y + 0.4) ** 2) / 12 <= 1 && y >= -0.4).commit(skin, { line: null, flat: true });
+      b.begin().frame(nx, ny, ang, sx, u, 8, (x, y) => { const d = ((x - 1.4) ** 2) / 8 + ((y + 0.4) ** 2) / 12; return d <= 1.9 && d > 1 && y >= -0.4; }).commit(l.topTrim, { flat: true, line: null });
+    } else if (!hood) {
+      b.begin().frame(nx, ny, ang, sx, u, 8, (x, y) => { const d = ((x - 0.6) ** 2) / 14 + ((y + 0.2) ** 2) / 9; return d <= 1 && d > 0.45 && y >= -0.2; }).commit(l.topTrim, { flat: true, line: null });
+    }
     if (hood) {
-      const ang = lean;
       b.begin().frame((hx + nx) / 2 + 0, (hy + ny) / 2 + 1 * u, ang, sx, u, 9, (x, y) => x >= 1.6 && x <= 7 && y >= -3.2 && y <= 2.4).commit(shade(l.topColor, 0.86));
       b.begin().frame(nx, ny + 1.2 * u, ang, sx, u, 9, (x, y) => (x >= 3.2 && x <= 3.9 && y >= 0.5 && y <= 6) || (x >= 5.2 && x <= 5.9 && y >= 0.5 && y <= 5.5)).commit(l.topTrim, { flat: true, line: null });
     }

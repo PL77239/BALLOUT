@@ -28,7 +28,10 @@ export class LabScene extends Phaser.Scene {
       const eq = { ...STARTER_EQUIP };
       const f = FITS[(fitIdx + i) % FITS.length];
       for (const id of f.items) { const it = itemById(id); eq[it.slot] = id; }
-      looks.push(buildLoadout(eq, f.name));
+      const l = buildLoadout(eq, f.name);
+      const tops = (q.get('top') ?? '').split(',').filter(Boolean);
+      if (tops.length) l.top = tops[i % tops.length] as Loadout['top'];
+      looks.push(l);
     }
     void BASE_LOADOUT; void rivalFor; void REGION_IDS;
     const pose = q.get('pose') ?? 'idle';
