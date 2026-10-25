@@ -15,12 +15,30 @@
 - **Fixed-step simulation**: gameplay runs at a fixed 240 Hz independent of the display refresh rate, with buffered button presses (120 ms), a seeded RNG and a compact input log (`GameScene.replay()`), so a match is reproducible from its seed and inputs. This is the groundwork for ranked play
 - Not implemented yet, on purpose: in-game pickups (items that appear during a match). The data model and scene hooks are kept simple so they can be added later
 
+## Play in the browser (GitHub Pages)
+
+No rebuild from scratch: this is a normal Vite app. `npm run build` emits static HTML, JS and assets in `dist/`, which GitHub Pages can host as-is.
+
+After the workflow in `.github/workflows/pages.yml` runs on `main`, the game is at:
+
+**https://pl77239.github.io/BALLOUT/**
+
+One-time repo setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**. Pushes to `main` then deploy automatically. Audio and save data load in the browser; you need a click/keypress once so music can start (browser autoplay rules).
+
+Local preview of the Pages build:
+
+```bash
+VITE_BASE=/BALLOUT/ npm run build && npm run preview
+```
+
+(`VITE_BASE` must match the repository name for project pages.)
+
 ## Run
 
 ```bash
 npm install
 npm run dev        # http://localhost:47731
-npm run build      # typecheck + production build
+npm run build      # typecheck + production build (local root at /)
 ```
 
 ## Controls
