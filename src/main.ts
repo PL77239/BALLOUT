@@ -1,34 +1,46 @@
 import Phaser from 'phaser';
-import { W, H } from './tuning';
+import { GH, GW } from './pixel';
+import { LabScene } from './lab';
+import { GameCfg, GameScene } from './game';
 import { MenuScene } from './menu';
-import { GameScene } from './game';
-import type { GameCfg } from './game';
-import type { CourtId } from './courts';
+import { buildLoadout, STARTER_EQUIP } from './loadout';
+import { save } from './save';
+import { AiLevel } from './tuning';
+import { CourtId } from './courts';
 
 const q = new URLSearchParams(location.search);
 
 class BootScene extends Phaser.Scene {
   constructor() { super('boot'); }
   create() {
-    if (q.get('auto')) {
+    if (q.has('lab')) { this.scene.start('lab'); return; }
+    const auto = q.get('auto');
+    if (auto) {
       const cfg: GameCfg = {
-        mode: q.get('auto') === '2' ? '1p' : q.get('auto') === '3' ? '2p' : 'sim', court: (q.get('court') as CourtId) || 'brooklyn',
-        look1: +(q.get('l1') ?? 0), look2: +(q.get('l2') ?? 1), level: 'hooper', target: +(q.get('to') ?? 11),
+        mode: (q.get('mode') as GameCfg['mode']) ?? 'sim',
+        court: auto as CourtId,
+        p1: buildLoadout({ ...STARTER_EQUIP }, 'YOU'),
+        level: (q.get('level') as AiLevel) ?? 'hooper',
+        target: +(q.get('target') ?? 11),
+        seed: q.has('seed') ? +q.get('seed')! : undefined,
       };
       this.scene.start('game', cfg);
-    } else this.scene.start('menu');
+      return;
+    }
+    save();
+    this.scene.start('menu');
   }
 }
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
-  width: W,
-  height: H,
+  width: GW,
+  height: GH,
   backgroundColor: '#000000',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [BootScene, MenuScene, GameScene],
-  render: { antialias: true, powerPreference: 'high-performance' },
+  scene: [BootScene, MenuScene, GameScene, LabScene],
+  render: { pixelArt: true, antialias: false, roundPixels: true, powerPreference: 'high-performance' },
   fps: { target: 60 },
 });
 (window as unknown as { __phaser: Phaser.Game }).__phaser = game;

@@ -3,7 +3,7 @@ const browser = await chromium.launch({ executablePath: '/usr/local/bin/google-c
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message + '\n' + e.stack));
-await page.goto('http://127.0.0.1:47731/?auto=1&court=' + (process.argv[2] || 'harlem') + '&to=' + (process.argv[3] || 7));
+await page.goto('http://127.0.0.1:47731/?mode=sim&auto=' + (process.argv[2] || 'harlem') + '&target=' + (process.argv[3] || 7) + '&level=' + (process.argv[4] || 'hooper'));
 await page.waitForFunction(() => window.__g, null, { timeout: 30000 });
 const res = await page.evaluate(async (maxSec) => {
   const g = window.__g;

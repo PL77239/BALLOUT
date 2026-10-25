@@ -1,18 +1,18 @@
 import Phaser from 'phaser';
-import { Puppet, Rig, restRig } from './puppet';
+import { Puppet, restRig } from './puppet';
+import { poseOf } from './anim';
 import { Loadout } from './loadout';
 import { Intent, emptyIntent } from './input';
 import { T } from './tuning';
+import { clamp, lerp, smooth } from './pixel';
 import type { GameScene } from './game';
 
 export type Act = 'free' | 'shoot' | 'release' | 'juke' | 'dunk' | 'swipe' | 'block' | 'shove' | 'stagger' | 'fall' | 'recover';
 export type MoveKind = 'cross' | 'spin' | 'btb';
 
-const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const smooth = (t: number) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
-
-const MOVE_DUR: Record<MoveKind, number> = { cross: 0.34, spin: 0.46, btb: 0.38 };
+const MOVE_DUR = T.moves.dur;
+type Buffered = 'shootDown' | 'a' | 'b' | 'c' | 'shove';
+const BUFFERED: Buffered[] = ['shootDown', 'a', 'b', 'c', 'shove'];
 
 const COMBO_NAMES: Record<string, string> = {
   'cross>cross': 'DOUBLE CROSS', 'cross>spin': 'SHAKE & BAKE', 'spin>cross': 'SPIN CYCLE',
@@ -57,12 +57,18 @@ export class Hooper {
   lastDirZ = 1;
   ph = 0;
   I: Intent = emptyIntent();
-  spinFlat = 1;
+  anim = { prevV: 0, acc: 0, guard: 0, air: false };
+  mood: '' | 'hype' | 'down' = '';
+  moodT = 0;
+  celeb = 0;
+  wasAir = false;
   tAlive = 0;
   carried = { x: 0, z: 0, h: 0, depthBias: 0.3 };
   meterInfo = { green: 0, contest: 0 };
   warnCD = 0;
   immuneT = 0;
+  sprintT = 0;
+  private buf: Record<Buffered, number> = { shootDown: 0, a: 0, b: 0, c: 0, shove: 0 };
 
   constructor(scene: Phaser.Scene, public id: number, public loadout: Loadout) {
     this.puppet = new Puppet(scene, loadout);
@@ -74,8 +80,9 @@ export class Hooper {
   reset(x: number, z: number, hasBall: boolean) {
     this.x = x; this.z = z; this.vx = this.vz = 0; this.h = this.vh = 0;
     this.act = 'free'; this.actT = 0; this.hasBall = hasBall;
-    this.meter = 0; this.comboN = 0; this.protectT = 0; this.pickupLock = 0; this.spinFlat = 1;
-    this.shoved = false;
+    this.meter = 0; this.comboN = 0; this.protectT = 0; this.pickupLock = 0; this.mood = ''; this.moodT = 0;
+    this.shoved = false; this.sprintT = 0;
+    for (const k of BUFFERED) this.buf[k] = 0;
   }
 
   get sy() { return T.court.floorY + this.z; }
@@ -131,12 +138,12 @@ export class Hooper {
     this.protectT = T.moves.protect + (kind === 'spin' ? 0.1 : 0);
     this.ankleChecked = false;
     this.stamina = Math.max(0, this.stamina - 5);
-    const sp = (kind === 'btb' ? 1.15 : kind === 'spin' ? 0.95 : 1) * (this.comboN > 1 && kind === prev ? 0.8 : 1);
+    const sp = (kind === 'btb' ? 1.15 : kind === 'spin' ? 0.95 : 1) * (this.comboN > 1 && kind === prev ? 0.8 : 1) * T.moves.dash;
     this.dash = kind === 'btb'
       ? { x: (dirX || 1) * 330 * sp, z: dirZ * 90 }
       : kind === 'spin'
         ? { x: (dirX || 1) * 250 * sp, z: dirZ * 250 * sp }
-        : { x: dirX * 150 + this.facing * 70, z: dirZ * 330 * sp };
+        : { x: dirX * 150 * T.moves.dash + this.facing * 70, z: dirZ * 330 * sp };
     this.handSide = kind === 'cross' || kind === 'btb' ? -this.handSide : this.handSide;
     let label = kind === 'cross' ? 'CROSSOVER' : kind === 'spin' ? 'SPIN' : 'BEHIND THE BACK';
     if (chained && prev) label = COMBO_NAMES[`${prev}>${kind}`] ?? 'COMBO';
@@ -168,7 +175,7 @@ export class Hooper {
     const green = this.greenHalf(g);
     const e = this.meter - S;
     const perfect = Math.abs(e) <= green;
-    const err = perfect ? 0 : Math.sign(e) * (9 + (Math.abs(e) - green) * T.shot.missK) + (Math.random() - 0.5) * 8;
+    const err = perfect ? 0 : Math.sign(e) * (9 + (Math.abs(e) - green) * T.shot.missK) + (g.rand() - 0.5) * 8;
     g.launchShot(this, { perfect, err, green, m: this.meter, e });
     this.setAct('release', 0.42);
     this.vh = 0;
@@ -189,7 +196,7 @@ export class Hooper {
   }
 
   startSwipe() {
-    this.setAct('swipe', 0.3); this.swipeHit = false;
+    this.setAct('swipe', T.steal.swipe); this.swipeHit = false;
     this.stamina = Math.max(0, this.stamina - 4);
   }
 
@@ -224,28 +231,32 @@ export class Hooper {
     this.pumpedT = Math.max(0, this.pumpedT - dt);
     this.warnCD = Math.max(0, this.warnCD - dt);
     this.immuneT = Math.max(0, this.immuneT - dt);
+    if (this.moodT > 0) { this.moodT -= dt; if (this.moodT <= 0) this.mood = ''; }
     if (this.fireT > 0) { this.fireT -= dt; if (this.fireT <= 0) this.heat = 0; }
     else this.heat = Math.max(0, this.heat - T.heat.decay * dt);
     this.actT += dt;
 
     const moving = Math.abs(I.mx) + Math.abs(I.mz) > 0.15;
     const sprinting = I.sprint && moving && this.stamina > 3 && (this.act === 'free');
+    this.sprintT = sprinting ? this.sprintT + dt : 0;
     if (sprinting) this.stamina = Math.max(0, this.stamina - T.stamina.sprintDrain * dt);
     else this.stamina = Math.min(T.stamina.max, this.stamina + (T.stamina.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
 
-    const canAct = this.act === 'free' || (this.act === 'juke' && this.actT > this.actDur * 0.5);
+    for (const k of BUFFERED) this.buf[k] = I[k] ? T.input.buffer : Math.max(0, this.buf[k] - dt);
+    if (!I.shootHeld) this.buf.shootDown = 0;
+    const canAct = this.act === 'free' || (this.act === 'juke' && this.actT > this.actDur * 0.4);
     if (canAct) {
       if (this.hasBall) {
-        if (I.shootDown) this.startShoot(g);
-        else if (I.a) this.startMove('cross', g);
-        else if (I.b) this.startMove('spin', g);
-        else if (I.c) { if (!this.startDunk(g)) this.startMove('btb', g); }
+        if (this.buf.shootDown > 0) { this.buf.shootDown = 0; this.startShoot(g); }
+        else if (this.buf.a > 0) { this.buf.a = 0; this.startMove('cross', g); }
+        else if (this.buf.b > 0) { this.buf.b = 0; this.startMove('spin', g); }
+        else if (this.buf.c > 0) { this.buf.c = 0; if (!this.startDunk(g)) this.startMove('btb', g); }
       } else if (this.act === 'free') {
-        if (I.shootDown) this.startBlock();
-        else if (I.a) this.startSwipe();
+        if (this.buf.shootDown > 0) { this.buf.shootDown = 0; this.startBlock(); }
+        else if (this.buf.a > 0) { this.buf.a = 0; this.startSwipe(); }
       }
     }
-    if (this.act === 'free' && I.shove) this.startShove(g);
+    if (this.act === 'free' && this.buf.shove > 0 && this.shoveCD <= 0) { this.buf.shove = 0; this.startShove(g); }
 
     switch (this.act) {
       case 'free': this.locomote(dt, I, sprinting, 1, g); break;
@@ -259,7 +270,7 @@ export class Hooper {
       case 'dunk': this.tickDunk(dt, g); break;
       case 'swipe':
         this.locomote(dt, I, false, 0.3, g);
-        if (!this.swipeHit && this.actT > 0.07 && this.actT < 0.2) { this.swipeHit = g.resolveSwipe(this); }
+        if (!this.swipeHit && this.actT > 0.06 && this.actT < 0.17) { this.swipeHit = g.resolveSwipe(this); }
         if (this.actT >= this.actDur) this.setAct(this.swipeHit ? 'free' : 'recover', this.swipeHit ? 0 : T.steal.whiffRecover);
         break;
       case 'block':
@@ -289,7 +300,6 @@ export class Hooper {
     }
     this.x = clamp(this.x, T.court.leftWall + 24, T.court.rightWall - 22);
     this.z = clamp(this.z, -T.court.laneHalf, T.court.laneHalf);
-    if (this.act !== 'dunk') this.spinFlat += (1 - this.spinFlat) * Math.min(1, dt * 20);
   }
 
   private airPhysics(dt: number) {
@@ -312,11 +322,19 @@ export class Hooper {
     }
     if (this.hasBall && this.act === 'free' && o.pumpedT > 0) spd *= 1;
     const tx = I.mx * spd * mul, tz = I.mz * spd * m.zFactor * mul;
-    const stop = Math.abs(tx) < 1 && Math.abs(tz) < 1;
-    const a = (stop ? m.stopAccel : m.accel) * dt;
-    this.vx = this.step(this.vx, tx, a); this.vz = this.step(this.vz, tz, a);
+    const burst = sprint && this.sprintT < m.burstTime ? 1 + (m.burst - 1) * (1 - this.sprintT / m.burstTime) : 1;
+    this.vx = this.step(this.vx, tx, this.rate(this.vx, tx, burst) * dt);
+    this.vz = this.step(this.vz, tz, this.rate(this.vz, tz, burst) * dt);
     this.x += this.vx * dt; this.z += this.vz * dt;
-    if (sprint && Math.abs(this.vx) > 250 && Math.random() < dt * 9) g.fx.dust(this.x - this.facing * 10, this.sy, 1, -Math.sign(this.vx), 0.5);
+    if (sprint && Math.abs(this.vx) > m.sprintFloor && Math.random() < dt * 9) g.fx.dust(this.x - this.facing * 10, this.sy, 1, -Math.sign(this.vx), 0.5);
+  }
+
+  /** Acceleration for one axis: hard brake when released, boosted turn-around when reversing, burst when a sprint starts. */
+  private rate(v: number, t: number, burst: number) {
+    const m = T.move;
+    if (Math.abs(t) < 1) return m.stopAccel;
+    if (v * t < 0) return m.accel * m.turnMult * burst;
+    return m.accel * burst;
   }
 
   private step(v: number, t: number, a: number) {
@@ -332,7 +350,7 @@ export class Hooper {
     if (this.fade) { this.x += -this.facing * 160 * dt * (1 - u * 0.4); } else { this.vx *= Math.exp(-5 * dt); this.x += this.vx * dt + I.mx * 40 * dt; }
     this.z = clamp(this.z + I.mz * 24 * dt, -T.court.laneHalf, T.court.laneHalf);
     this.greenHalf(g);
-    if (I.shootUp) {
+    if (I.shootUp || !I.shootHeld) {
       if (this.meter < T.shot.pumpTap) this.endShootPump(g);
       else this.releaseShot(g);
     } else if (this.meter >= 1.08) this.releaseShot(g);
@@ -344,7 +362,6 @@ export class Hooper {
     const tx = I.mx * T.move.walk * 0.5, tz = I.mz * T.move.walk * 0.4;
     this.vx = this.dash.x * k + tx * (1 - k); this.vz = this.dash.z * k + tz * (1 - k);
     this.x += this.vx * dt; this.z += this.vz * dt;
-    if (this.moveKind === 'spin') this.spinFlat = Math.max(0.12, Math.abs(Math.cos(p * Math.PI * 2)));
     if (!this.ankleChecked && this.actT >= T.moves.ankleCheckAt) { this.ankleChecked = true; g.ankleCheck(this); }
     if (this.actT >= this.actDur) this.setAct('free');
   }
@@ -386,143 +403,22 @@ export class Hooper {
     this.carried = { x: this.x + f * ox, z: this.z, h: this.h + h, depthBias: this.ballOx < 14 || (this.moveKind === 'btb' && this.act === 'juke') ? -0.4 : 0.4 };
   }
 
-  render(dt: number, g: GameScene) {
-    const r = this.targetRig(dt, g);
-    this.puppet.ease(r, dt, this.act === 'fall' ? 18 : 26);
+  simPose(dt: number, g: GameScene) {
+    const { rig, pinF, pinB } = poseOf(this, g, dt);
     const p = this.puppet;
-    p.setFacing(this.facing * this.spinFlat);
-    p.root.setPosition(this.x, this.sy - this.h);
-    p.root.setDepth(this.sy);
+    const air = this.h > 4;
+    if (air && !this.wasAir) p.kick('hipY', 260);
+    if (!air && this.wasAir) p.kick('hipY', -460);
+    this.wasAir = air;
+    p.setFacing(this.facing);
+    p.simulate(rig, dt, { f: pinF, b: pinB }, { f: this.vx * this.facing, h: this.vh });
   }
 
-  private targetRig(dt: number, g: GameScene): Rig {
-    const r = restRig();
-    const f = this.facing;
-    const speed = Math.hypot(this.vx, this.vz);
-    const S = clamp(speed / 360, 0, 1);
-    const along = this.vx * f;
-    const vel = Math.abs(along) > 30 ? along : Math.abs(this.vz) * 0.9;
-    this.ph += vel * dt * 0.052;
-    const A = S > 0.04 ? 12 + 22 * S : 0;
-    const ph = this.ph;
-    const o = g.opp(this);
-    const defending = !this.hasBall && o.hasBall;
-    const air = this.h > 4;
-    let ballHand: 'f' | 'b' | null = null;
-    const hands = (fx: number, fy: number, bx: number, by: number) => {
-      const sh = this.puppet.shoulder(r);
-      r.fHx = sh.x + fx; r.fHy = sh.y + fy; r.bHx = sh.x + bx; r.bHy = sh.y + by;
-    };
-
-    r.hipY = 86 - Math.abs(Math.sin(ph)) * 4 * S;
-    r.lean = along < -30 ? -0.05 : 0.05 + 0.22 * S;
-    r.fFx = 8 + Math.sin(ph) * A; r.fFy = Math.max(0, Math.cos(ph)) * A * 0.7;
-    r.bFx = -8 - Math.sin(ph) * A; r.bFy = Math.max(0, -Math.cos(ph)) * A * 0.7;
-    r.fAnk = r.fFy * 0.02; r.bAnk = r.bFy * 0.02;
-    hands(6 - Math.sin(ph) * 22 * S, -60 + Math.abs(Math.cos(ph)) * 8 * S, -4 + Math.sin(ph) * 22 * S, -60);
-
-    if (this.hasBall && (this.act === 'free' || this.act === 'juke' || this.act === 'recover' || this.act === 'stagger')) {
-      r.hipY = 81 - Math.abs(Math.sin(ph)) * 3 * S;
-      r.lean = (along < -30 ? 0.04 : 0.14) + 0.14 * S;
-      ballHand = this.handSide > 0 ? 'f' : 'b';
-      const c = this.carried;
-      const bx = (c.x - this.x) * f, by = c.h - this.h + 2;
-      if (ballHand === 'f') { r.fHx = bx; r.fHy = by; hands(0, 0, 18, -22); r.fHx = bx; r.fHy = by; }
-      else { r.bHx = bx; r.bHy = by; const sx = r.bHx, sy = r.bHy; hands(26, -18, 0, 0); r.bHx = sx; r.bHy = sy; }
-      if (this.act === 'juke') {
-        const p = clamp(this.actT / this.actDur, 0, 1);
-        r.lean = 0.28; r.hipY = 72 + 8 * Math.sin(p * Math.PI * 0.5);
-        r.fFx = 20; r.bFx = -18;
-      }
-    } else if (defending && this.act === 'free') {
-      r.hipY = 77 - Math.abs(Math.sin(ph)) * 3 * S; r.lean = 0.1;
-      r.fFx = 16 + Math.sin(ph) * A * 0.6; r.bFx = -16 - Math.sin(ph) * A * 0.6;
-      const sw = Math.sin(this.tAlive * 7) * 4;
-      hands(38, 6 + sw, 26, -4 - sw);
-    }
-
-    switch (this.act) {
-      case 'shoot': {
-        const S0 = T.shot.sweet, m = this.meter;
-        const u = smooth((m - 0.28) / (S0 - 0.28));
-        r.hipY = m < 0.28 ? 86 - 14 * smooth(m / 0.28) : 72 + 21 * u;
-        r.lean = this.fade ? -0.22 : 0.1 + 0.08 * (1 - u);
-        const fx = lerp(24, 12, u), fy = lerp(-34, 66, u);
-        hands(fx, fy, lerp(30, 24, u), lerp(-28, 50, u));
-        r.fFx = air ? 14 : 12; r.bFx = air ? -8 : -12; r.fFy = r.bFy = air ? 12 : 0;
-        r.fAnk = r.bAnk = air ? 0.55 : 0;
-        break;
-      }
-      case 'release': {
-        const t = clamp(this.actT / 0.3, 0, 1);
-        r.hipY = 90; r.lean = 0.04;
-        hands(lerp(12, 28, t), lerp(66, 42, t), lerp(24, 30, t), lerp(50, 24, t));
-        r.fFx = 14; r.bFx = -8; r.fFy = r.bFy = air ? 12 : 0; r.fAnk = r.bAnk = air ? 0.55 : 0;
-        break;
-      }
-      case 'block': {
-        r.hipY = 90; r.lean = 0.02;
-        hands(16, 68, 8, 66);
-        r.fFx = 12; r.bFx = -10; r.fFy = r.bFy = air ? 14 : 0; r.fAnk = r.bAnk = air ? 0.5 : 0;
-        break;
-      }
-      case 'swipe': {
-        const u = Math.sin(clamp(this.actT / this.actDur, 0, 1) * Math.PI);
-        r.hipY = 76 - 6 * u; r.lean = 0.1 + 0.25 * u;
-        hands(30 + 44 * u, -48 + 26 * u, 18, -10);
-        r.fFx = 22; r.bFx = -18;
-        break;
-      }
-      case 'shove': {
-        const u = Math.sin(clamp(this.actT / this.actDur, 0, 1) * Math.PI);
-        r.hipY = 78; r.lean = 0.12 + 0.2 * u;
-        hands(10 + 44 * u, -2, 6 + 30 * u, 4);
-        r.fFx = 22; r.bFx = -16;
-        break;
-      }
-      case 'stagger': {
-        const w = Math.sin(this.actT * 38) * 18;
-        r.hipY = 80; r.lean = -0.3;
-        hands(20 + w, 10, -10 - w, 24);
-        r.fFx = 20 + w * 0.5; r.bFx = -20; r.bFy = 8;
-        break;
-      }
-      case 'fall': {
-        const f1 = clamp(this.actT / 0.22, 0, 1), f2 = clamp((this.actT - 0.8) / 0.35, 0, 1);
-        r.fall = smooth(f1) * (1 - smooth(f2));
-        r.hipY = 80; r.lean = -0.1;
-        hands(24, 4, -14, 14);
-        r.fFx = 24; r.bFx = -4; r.fFy = 10;
-        break;
-      }
-      case 'dunk': {
-        const u = clamp(this.actT / T.dunk.airtime, 0, 1);
-        r.fFx = 20; r.bFx = -16; r.fFy = r.bFy = air ? 16 : 0; r.fAnk = r.bAnk = 0.5;
-        if (u < 0.16) { r.hipY = 70; r.lean = 0.25; hands(24, -34, 22, -30); }
-        else if (u < 0.55) {
-          const k = smooth((u - 0.16) / 0.39);
-          r.hipY = 92; r.lean = 0.12;
-          if (this.trickDunk) {
-            const a = -Math.PI / 2 + k * Math.PI * 2.2;
-            hands(Math.cos(a) * 56, Math.sin(a) * 56, 14, 40);
-          } else hands(lerp(24, 36, k), lerp(-34, 70, k), lerp(22, 20, k), lerp(-30, 58, k));
-        } else {
-          const k = smooth((u - 0.55) / 0.15);
-          r.hipY = 92; r.lean = 0.2;
-          hands(lerp(36, 38, k), lerp(70, 8, k), 22, lerp(58, 40, k));
-        }
-        break;
-      }
-      case 'recover': r.hipY = 78; r.lean = 0.18; break;
-      default: break;
-    }
-    if (this.act === 'juke') {
-      const p = clamp(this.actT / this.actDur, 0, 1);
-      if (this.moveKind === 'spin') r.lean = 0.3;
-      if (this.moveKind === 'btb') { r.lean = 0.2; hands(8, -26, 4, -34); r.bHx = (this.carried.x - this.x) * f; r.bHy = this.carried.h - this.h; }
-      void p;
-    }
-    return r;
+  render() {
+    const p = this.puppet;
+    p.setFacing(this.facing);
+    p.paint();
+    p.root.setPosition(this.x, this.sy - this.h).setDepth(this.sy);
   }
 
   destroy() { this.puppet.destroy(); }

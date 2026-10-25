@@ -4,16 +4,41 @@
 
 - 1v1 to 7/11/15/21 against a CPU (3 levels) or a second player (2P needs a second gamepad)
 - Half-court street rules: arc = 2, inside = 1, dunk = 2, check the ball (clear the arc) after a change of possession, make-it-take-it, no fouls
-- Three courts: Bed-Stuy cage (Brooklyn, night), South Side (Chicago, golden hour, L train), the Park (Harlem, dusk, crowd)
-- Procedural low-poly puppets with layered apparel (cap/beanie/headband/durag, tank/tee/hoodie, shorts/long shorts/sweats, shoes, socks, chain, wristbands). Four presets; add more in `src/loadout.ts`
+- **Pixel-art presentation**: a 427x240 canvas scaled by whole pixels. All art (courts, characters, ball, HUD font) is rasterised on the CPU with ordered dithering and hue-shifted palettes; there is no vector drawing or system font in the game view
+- **Nine courts, seven of them at night** with street-lamp lighting, flickering lamps and animated scenery: Bed-Stuy cage (Brooklyn), Queensbridge, North Philly (rain), Fairmount Park ("The Woods": a lamp-lit court in the forest, fireflies, moths, fog and falling leaves), Detroit plant (snow, fire barrel), Atlanta overpass, South Central LA (helicopter searchlight), South Side Chicago (golden hour, L train) and the Park in Harlem (dusk). Each has a background crowd that reacts to buckets
+- **Living characters**: a software skeleton renderer (IK limbs, cel shading, outlines) with spring-damper secondary motion, trailing hair, chain and shirt hem, stride-locked running, lean, breathing, fatigue, dribble and defensive stances, reactive guard, shot gather and release, falls, dunks, spins and celebrations
+- **Locker and shop**: earn cash in 1P matches (buckets, style plays, wins), buy cosmetic items per slot or whole regional fits, try them on before buying and swap what you wear in the locker. Progress is saved in `localStorage`
+- **Streetwear by region**: oversized white tees, plaid flannels, puffers, stitched jeans, creased khakis and long khaki shorts, jorts, work boots, classic trainers, slides, stripe tube socks, fitted and full caps, bandanas, mustaches and grillz, plus cuban, rope, cross, rosary and iced chains and watches. Items are tagged to the regions where they are part of the look (for example long khakis, rosary and tall stripe socks in LA; puffers, boots and full caps in Detroit; jorts and grillz in Atlanta) and show up in regional fits and in that region's rivals. Names are generic, no brand logos
+- **Rivals** get a random look drawn from the region of the court you play on
 - Keyboard and gamepad (DualShock 4 via the standard Gamepad API mapping)
+- **Match camera**: the match frames a slightly zoomed window of the court (384x216 art pixels) and glides left and right with the play, always in whole art pixels. A controls strip for keyboard and gamepad stays on the bottom edge and switches between offense and defense actions with possession
+- **Fixed-step simulation**: gameplay runs at a fixed 240 Hz independent of the display refresh rate, with buffered button presses (120 ms), a seeded RNG and a compact input log (`GameScene.replay()`), so a match is reproducible from its seed and inputs. This is the groundwork for ranked play
+- Not implemented yet, on purpose: in-game pickups (items that appear during a match). The data model and scene hooks are kept simple so they can be added later
+
+## Play in the browser (GitHub Pages)
+
+No rebuild from scratch: this is a normal Vite app. `npm run build` emits static HTML, JS and assets in `dist/`, which GitHub Pages can host as-is.
+
+After the workflow in `.github/workflows/pages.yml` runs on `main`, the game is at:
+
+**https://pl77239.github.io/BALLOUT/**
+
+One-time repo setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**. Pushes to `main` then deploy automatically. Audio and save data load in the browser; you need a click/keypress once so music can start (browser autoplay rules).
+
+Local preview of the Pages build:
+
+```bash
+VITE_BASE=/BALLOUT/ npm run build && npm run preview
+```
+
+(`VITE_BASE` must match the repository name for project pages.)
 
 ## Run
 
 ```bash
 npm install
 npm run dev        # http://localhost:47731
-npm run build      # typecheck + production build
+npm run build      # typecheck + production build (local root at /)
 ```
 
 ## Controls
@@ -40,9 +65,24 @@ npm run build      # typecheck + production build
 ## Tuning and extending
 
 - `src/tuning.ts` holds every gameplay number (speeds, meter, steal odds, AI levels, rules)
-- `src/loadout.ts` defines apparel presets; `src/puppet.ts` draws them
-- `src/courts.ts` bakes each court backdrop procedurally
+- `src/loadout.ts` is the item catalog: every item is a patch over a `Loadout`, grouped by slot (hair, headwear, face, top, bottom, shoes, socks, chain, wrist) plus skin tone. Regions define team colours, preferred garments and nicknames, which drive both the shop fits and the random rival generator
+- `src/puppet.ts` draws characters; `src/anim.ts` turns game state into a target pose each frame
+- `src/pixel.ts` and `src/font.ts` are the pixel toolkit (framebuffer, dithering, shading, bitmap font)
+- `src/courtkit.ts` has the scenery painters and the light model; `src/art_*.ts` compose each court and `src/courts.ts` bakes them into three layers plus live effects. To add a court, add an entry to `ART` in `src/court_art.ts` and to `COURTS` in `src/courts.ts`
+- `src/save.ts` persists cash, owned items and equipment
+- `src/viewport.ts` and `src/legend.ts` hold the match viewport size, screen-fixed HUD helpers and the controls strip
+- **Music**: each court plays the tracks in its `public/audio/bgm/courts/<court>` folder in a shuffled order, levelled to the same loudness by `npm run audio` and played as if from a boombox on the fence (band-limited, behind the players, panning with the camera). `M` mutes, `[` / `]` change the volume
+- `public/audio/bgm` (one playlist folder per court under `courts/`, plus `menu/` and `stingers/`) and `public/audio/sfx` are where music and sound effects go (served as `/audio/bgm/...` and `/audio/sfx/...`)
 
 ## Dev scripts
 
-`scripts/sim.mjs` runs a headless AI-vs-AI match and prints event counts, `scripts/gallery.mjs` renders pose stills, `scripts/shot.mjs` takes screenshots. They use the system Chrome through `playwright-core`. Start `npm run dev` first. Debug URL: `/?auto=1&court=chicago` (CPU vs CPU), `?auto=2` (1P).
+They use the system Chrome through `playwright-core`. Start `npm run dev` first.
+
+- `scripts/sim.mjs <court> <target> <level>` headless AI-vs-AI match with event counts
+- `scripts/flow.mjs` clicks through menu, match, pause and back
+- `scripts/shot.mjs '<query>' out.png waitMs [key:ms ...]` screenshots (`CLIP`, `DSF`, `EVAL`, `POST` env)
+- `scripts/sheet.mjs <court> <scene,...>` animation strips of player one
+- `scripts/determinism.mjs [court] [seed]` plays one seeded CPU match at 30, 60, 144 fps and with jittery frames, and checks that the results are identical
+- `scripts/perf.mjs <court>` per-frame CPU cost of the simulation and rendering
+
+Debug URLs: `/?auto=chicago&mode=sim&seed=1234` (CPU vs CPU, optional seed), `/?auto=harlem&mode=1p`, `/?lab=1&pose=run` (sprite lab; `top=tank,tee,...` previews garment kinds), `/?lab=1&court=fairmount` (court viewer), `/?lab=1&fit=16` (sprite lab showing six fits starting at that index of `FITS`).
