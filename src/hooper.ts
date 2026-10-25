@@ -10,7 +10,9 @@ import type { GameScene } from './game';
 export type Act = 'free' | 'shoot' | 'release' | 'juke' | 'dunk' | 'swipe' | 'block' | 'shove' | 'stagger' | 'fall' | 'recover';
 export type MoveKind = 'cross' | 'spin' | 'btb';
 
-const MOVE_DUR: Record<MoveKind, number> = { cross: 0.34, spin: 0.46, btb: 0.38 };
+const MOVE_DUR = T.moves.dur;
+type Buffered = 'shootDown' | 'a' | 'b' | 'c' | 'shove';
+const BUFFERED: Buffered[] = ['shootDown', 'a', 'b', 'c', 'shove'];
 
 const COMBO_NAMES: Record<string, string> = {
   'cross>cross': 'DOUBLE CROSS', 'cross>spin': 'SHAKE & BAKE', 'spin>cross': 'SPIN CYCLE',
@@ -65,6 +67,8 @@ export class Hooper {
   meterInfo = { green: 0, contest: 0 };
   warnCD = 0;
   immuneT = 0;
+  sprintT = 0;
+  private buf: Record<Buffered, number> = { shootDown: 0, a: 0, b: 0, c: 0, shove: 0 };
 
   constructor(scene: Phaser.Scene, public id: number, public loadout: Loadout) {
     this.puppet = new Puppet(scene, loadout);
@@ -77,7 +81,8 @@ export class Hooper {
     this.x = x; this.z = z; this.vx = this.vz = 0; this.h = this.vh = 0;
     this.act = 'free'; this.actT = 0; this.hasBall = hasBall;
     this.meter = 0; this.comboN = 0; this.protectT = 0; this.pickupLock = 0; this.mood = ''; this.moodT = 0;
-    this.shoved = false;
+    this.shoved = false; this.sprintT = 0;
+    for (const k of BUFFERED) this.buf[k] = 0;
   }
 
   get sy() { return T.court.floorY + this.z; }
@@ -133,12 +138,12 @@ export class Hooper {
     this.protectT = T.moves.protect + (kind === 'spin' ? 0.1 : 0);
     this.ankleChecked = false;
     this.stamina = Math.max(0, this.stamina - 5);
-    const sp = (kind === 'btb' ? 1.15 : kind === 'spin' ? 0.95 : 1) * (this.comboN > 1 && kind === prev ? 0.8 : 1);
+    const sp = (kind === 'btb' ? 1.15 : kind === 'spin' ? 0.95 : 1) * (this.comboN > 1 && kind === prev ? 0.8 : 1) * T.moves.dash;
     this.dash = kind === 'btb'
       ? { x: (dirX || 1) * 330 * sp, z: dirZ * 90 }
       : kind === 'spin'
         ? { x: (dirX || 1) * 250 * sp, z: dirZ * 250 * sp }
-        : { x: dirX * 150 + this.facing * 70, z: dirZ * 330 * sp };
+        : { x: dirX * 150 * T.moves.dash + this.facing * 70, z: dirZ * 330 * sp };
     this.handSide = kind === 'cross' || kind === 'btb' ? -this.handSide : this.handSide;
     let label = kind === 'cross' ? 'CROSSOVER' : kind === 'spin' ? 'SPIN' : 'BEHIND THE BACK';
     if (chained && prev) label = COMBO_NAMES[`${prev}>${kind}`] ?? 'COMBO';
@@ -170,7 +175,7 @@ export class Hooper {
     const green = this.greenHalf(g);
     const e = this.meter - S;
     const perfect = Math.abs(e) <= green;
-    const err = perfect ? 0 : Math.sign(e) * (9 + (Math.abs(e) - green) * T.shot.missK) + (Math.random() - 0.5) * 8;
+    const err = perfect ? 0 : Math.sign(e) * (9 + (Math.abs(e) - green) * T.shot.missK) + (g.rand() - 0.5) * 8;
     g.launchShot(this, { perfect, err, green, m: this.meter, e });
     this.setAct('release', 0.42);
     this.vh = 0;
@@ -191,7 +196,7 @@ export class Hooper {
   }
 
   startSwipe() {
-    this.setAct('swipe', 0.3); this.swipeHit = false;
+    this.setAct('swipe', T.steal.swipe); this.swipeHit = false;
     this.stamina = Math.max(0, this.stamina - 4);
   }
 
@@ -233,22 +238,25 @@ export class Hooper {
 
     const moving = Math.abs(I.mx) + Math.abs(I.mz) > 0.15;
     const sprinting = I.sprint && moving && this.stamina > 3 && (this.act === 'free');
+    this.sprintT = sprinting ? this.sprintT + dt : 0;
     if (sprinting) this.stamina = Math.max(0, this.stamina - T.stamina.sprintDrain * dt);
     else this.stamina = Math.min(T.stamina.max, this.stamina + (T.stamina.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
 
-    const canAct = this.act === 'free' || (this.act === 'juke' && this.actT > this.actDur * 0.5);
+    for (const k of BUFFERED) this.buf[k] = I[k] ? T.input.buffer : Math.max(0, this.buf[k] - dt);
+    if (!I.shootHeld) this.buf.shootDown = 0;
+    const canAct = this.act === 'free' || (this.act === 'juke' && this.actT > this.actDur * 0.4);
     if (canAct) {
       if (this.hasBall) {
-        if (I.shootDown) this.startShoot(g);
-        else if (I.a) this.startMove('cross', g);
-        else if (I.b) this.startMove('spin', g);
-        else if (I.c) { if (!this.startDunk(g)) this.startMove('btb', g); }
+        if (this.buf.shootDown > 0) { this.buf.shootDown = 0; this.startShoot(g); }
+        else if (this.buf.a > 0) { this.buf.a = 0; this.startMove('cross', g); }
+        else if (this.buf.b > 0) { this.buf.b = 0; this.startMove('spin', g); }
+        else if (this.buf.c > 0) { this.buf.c = 0; if (!this.startDunk(g)) this.startMove('btb', g); }
       } else if (this.act === 'free') {
-        if (I.shootDown) this.startBlock();
-        else if (I.a) this.startSwipe();
+        if (this.buf.shootDown > 0) { this.buf.shootDown = 0; this.startBlock(); }
+        else if (this.buf.a > 0) { this.buf.a = 0; this.startSwipe(); }
       }
     }
-    if (this.act === 'free' && I.shove) this.startShove(g);
+    if (this.act === 'free' && this.buf.shove > 0 && this.shoveCD <= 0) { this.buf.shove = 0; this.startShove(g); }
 
     switch (this.act) {
       case 'free': this.locomote(dt, I, sprinting, 1, g); break;
@@ -262,7 +270,7 @@ export class Hooper {
       case 'dunk': this.tickDunk(dt, g); break;
       case 'swipe':
         this.locomote(dt, I, false, 0.3, g);
-        if (!this.swipeHit && this.actT > 0.07 && this.actT < 0.2) { this.swipeHit = g.resolveSwipe(this); }
+        if (!this.swipeHit && this.actT > 0.06 && this.actT < 0.17) { this.swipeHit = g.resolveSwipe(this); }
         if (this.actT >= this.actDur) this.setAct(this.swipeHit ? 'free' : 'recover', this.swipeHit ? 0 : T.steal.whiffRecover);
         break;
       case 'block':
@@ -314,11 +322,19 @@ export class Hooper {
     }
     if (this.hasBall && this.act === 'free' && o.pumpedT > 0) spd *= 1;
     const tx = I.mx * spd * mul, tz = I.mz * spd * m.zFactor * mul;
-    const stop = Math.abs(tx) < 1 && Math.abs(tz) < 1;
-    const a = (stop ? m.stopAccel : m.accel) * dt;
-    this.vx = this.step(this.vx, tx, a); this.vz = this.step(this.vz, tz, a);
+    const burst = sprint && this.sprintT < m.burstTime ? 1 + (m.burst - 1) * (1 - this.sprintT / m.burstTime) : 1;
+    this.vx = this.step(this.vx, tx, this.rate(this.vx, tx, burst) * dt);
+    this.vz = this.step(this.vz, tz, this.rate(this.vz, tz, burst) * dt);
     this.x += this.vx * dt; this.z += this.vz * dt;
-    if (sprint && Math.abs(this.vx) > 250 && Math.random() < dt * 9) g.fx.dust(this.x - this.facing * 10, this.sy, 1, -Math.sign(this.vx), 0.5);
+    if (sprint && Math.abs(this.vx) > m.sprintFloor && Math.random() < dt * 9) g.fx.dust(this.x - this.facing * 10, this.sy, 1, -Math.sign(this.vx), 0.5);
+  }
+
+  /** Acceleration for one axis: hard brake when released, boosted turn-around when reversing, burst when a sprint starts. */
+  private rate(v: number, t: number, burst: number) {
+    const m = T.move;
+    if (Math.abs(t) < 1) return m.stopAccel;
+    if (v * t < 0) return m.accel * m.turnMult * burst;
+    return m.accel * burst;
   }
 
   private step(v: number, t: number, a: number) {
@@ -334,7 +350,7 @@ export class Hooper {
     if (this.fade) { this.x += -this.facing * 160 * dt * (1 - u * 0.4); } else { this.vx *= Math.exp(-5 * dt); this.x += this.vx * dt + I.mx * 40 * dt; }
     this.z = clamp(this.z + I.mz * 24 * dt, -T.court.laneHalf, T.court.laneHalf);
     this.greenHalf(g);
-    if (I.shootUp) {
+    if (I.shootUp || !I.shootHeld) {
       if (this.meter < T.shot.pumpTap) this.endShootPump(g);
       else this.releaseShot(g);
     } else if (this.meter >= 1.08) this.releaseShot(g);
@@ -387,7 +403,7 @@ export class Hooper {
     this.carried = { x: this.x + f * ox, z: this.z, h: this.h + h, depthBias: this.ballOx < 14 || (this.moveKind === 'btb' && this.act === 'juke') ? -0.4 : 0.4 };
   }
 
-  render(dt: number, g: GameScene) {
+  simPose(dt: number, g: GameScene) {
     const { rig, pinF, pinB } = poseOf(this, g, dt);
     const p = this.puppet;
     const air = this.h > 4;
@@ -395,7 +411,13 @@ export class Hooper {
     if (!air && this.wasAir) p.kick('hipY', -460);
     this.wasAir = air;
     p.setFacing(this.facing);
-    p.update(rig, dt, { f: pinF, b: pinB }, { f: this.vx * this.facing, h: this.vh });
+    p.simulate(rig, dt, { f: pinF, b: pinB }, { f: this.vx * this.facing, h: this.vh });
+  }
+
+  render() {
+    const p = this.puppet;
+    p.setFacing(this.facing);
+    p.paint();
     p.root.setPosition(this.x, this.sy - this.h).setDepth(this.sy);
   }
 

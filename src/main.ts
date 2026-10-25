@@ -22,6 +22,7 @@ class BootScene extends Phaser.Scene {
         p1: buildLoadout({ ...STARTER_EQUIP }, 'YOU'),
         level: (q.get('level') as AiLevel) ?? 'hooper',
         target: +(q.get('target') ?? 11),
+        seed: q.has('seed') ? +q.get('seed')! : undefined,
       };
       this.scene.start('game', cfg);
       return;

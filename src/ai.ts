@@ -4,7 +4,7 @@ import type { Hooper } from './hooper';
 import type { GameScene } from './game';
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
-const gauss = () => Math.random() + Math.random() + Math.random() - 1.5;
+
 
 export class Brain {
   private lvl: (typeof T.ai)[AiLevel];
@@ -51,8 +51,8 @@ export class Brain {
       return;
     }
     if (this.planT <= 0) {
-      this.planT = 1 + Math.random() * 1.4;
-      this.wantThree = Math.random() < 0.38 + this.lvl.shoot * 0.3 + (me.fireOn ? 0.2 : 0);
+      this.planT = 1 + g.rand() * 1.4;
+      this.wantThree = g.rand() < 0.38 + this.lvl.shoot * 0.3 + (me.fireOn ? 0.2 : 0);
     }
     I.mx = 1;
     const away = Math.abs(dz) < 34 ? (me.z >= opp.z ? 1 : -1) * (Math.abs(me.z) > 50 ? -1 : 1) : 0;
@@ -63,31 +63,31 @@ export class Brain {
     this.shotRoll += dt;
 
     const closeDunk = (T.hoop.x - me.x) < T.dunk.range && (T.hoop.x - me.x) > 20;
-    if (!this.wantThree && closeDunk && (!near || stunned) && Math.abs(me.vx) > 60 && Math.random() < dt * (0.5 + this.lvl.aggr * 0.8)) { I.c = true; return; }
+    if (!this.wantThree && closeDunk && (!near || stunned) && Math.abs(me.vx) > 60 && g.rand() < dt * (0.5 + this.lvl.aggr * 0.8)) { I.c = true; return; }
     if (near && this.jukeCD <= 0 && me.act === 'free') {
-      this.jukeCD = 0.35 + Math.random() * 0.5;
-      const r = Math.random();
+      this.jukeCD = 0.35 + g.rand() * 0.5;
+      const r = g.rand();
       if (r < 0.4) I.a = true; else if (r < 0.7) I.b = true; else I.c = true;
       I.mz = dz > 0 ? -1 : 1;
       return;
     }
-    if (me.act === 'juke' && me.comboN >= 1 && open && me.actT > me.actDur * 0.55 && dist < T.arcR + 80 && Math.random() < 0.5) {
-      this.beginShot(I, me);
+    if (me.act === 'juke' && me.comboN >= 1 && open && me.actT > me.actDur * 0.55 && dist < T.arcR + 80 && g.rand() < 0.5) {
+      this.beginShot(I, me, g);
       return;
     }
     if (this.wantThree) {
       const rate = open ? 2.4 : 0.8;
-      if (inThree && this.shotRoll > 0.4 && Math.random() < dt * rate) this.beginShot(I, me);
+      if (inThree && this.shotRoll > 0.4 && g.rand() < dt * rate) this.beginShot(I, me, g);
     } else if (dist > 150 && dist < T.arcR - 30) {
-      if (open && this.shotRoll > 0.4 && Math.random() < dt * 1.2 * (0.4 + this.lvl.shoot)) this.beginShot(I, me);
-    } else if (dist <= 170 && me.act === 'free' && Math.random() < dt * (open ? 2.5 : 0.8)) this.beginShot(I, me);
+      if (open && this.shotRoll > 0.4 && g.rand() < dt * 1.2 * (0.4 + this.lvl.shoot)) this.beginShot(I, me, g);
+    } else if (dist <= 170 && me.act === 'free' && g.rand() < dt * (open ? 2.5 : 0.8)) this.beginShot(I, me, g);
   }
 
-  private beginShot(I: Intent, me: Hooper) {
+  private beginShot(I: Intent, me: Hooper, g: GameScene) {
     I.shootDown = true; I.shootHeld = true;
     I.mx = 0;
     this.shotRoll = 0;
-    this.releaseAt = T.shot.sweet + gauss() * this.lvl.shootJitter * 1.6;
+    this.releaseAt = T.shot.sweet + (g.rand() + g.rand() + g.rand() - 1.5) * this.lvl.shootJitter * 1.6;
     void me;
   }
 
@@ -104,7 +104,7 @@ export class Brain {
     if (opp.act === 'shoot') {
       if (!this.seenShoot) {
         this.seenShoot = true;
-        this.reactT = Math.random() < (0.55 - this.lvl.aggr * 0.35) ? 0.04 : this.lvl.react * (0.6 + Math.random() * 0.8);
+        this.reactT = g.rand() < (0.55 - this.lvl.aggr * 0.35) ? 0.04 : this.lvl.react * (0.6 + g.rand() * 0.8);
       }
       this.reactT -= dt;
       if (this.reactT <= 0 && opp.meter > 0.03 && adx < 190 && adz < 60 && me.act === 'free' && this.lastJump <= 0) {
@@ -114,14 +114,14 @@ export class Brain {
     } else this.seenShoot = false;
 
     if (me.act === 'free' && opp.act === 'free' || opp.act === 'juke') {
-      if (this.stealCD <= 0 && adx > 28 && adx < T.steal.range - 14 && adz < 28 && opp.protectT <= 0 && Math.random() < dt * (0.15 + this.lvl.aggr * 0.9)) {
-        I.a = true; this.stealCD = 1.1 + Math.random() * 1;
+      if (this.stealCD <= 0 && adx > 28 && adx < T.steal.range - 14 && adz < 28 && opp.protectT <= 0 && g.rand() < dt * (0.15 + this.lvl.aggr * 0.9)) {
+        I.a = true; this.stealCD = 1.1 + g.rand() * 1;
       }
-      if (me.shoveCD <= 0 && adx < T.shove.range - 6 && adz < 28 && Math.random() < dt * this.lvl.aggr * 0.55) I.shove = true;
+      if (me.shoveCD <= 0 && adx < T.shove.range - 6 && adz < 28 && g.rand() < dt * this.lvl.aggr * 0.55) I.shove = true;
     }
     if (g.ball.mode === 'held' && opp.act === 'dunk') {
       const t = opp.actT;
-      if (t < 0.18 && adx < 220 && me.act === 'free' && this.lastJump <= 0 && Math.random() < 0.5 + this.lvl.aggr * 0.5) { I.shootDown = true; this.lastJump = 1.2; }
+      if (t < 0.18 && adx < 220 && me.act === 'free' && this.lastJump <= 0 && g.rand() < 0.5 + this.lvl.aggr * 0.5) { I.shootDown = true; this.lastJump = 1.2; }
     }
   }
 

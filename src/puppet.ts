@@ -181,6 +181,12 @@ export class Puppet {
 
   /** Spring the current pose toward target, advance secondary motion, repaint. */
   update(target: Rig, dt: number, pins: { f?: boolean; b?: boolean } = {}, motion = { f: 0, h: 0 }) {
+    this.simulate(target, dt, pins, motion);
+    this.paint();
+  }
+
+  /** Advance the springs and secondary motion only; `paint` rasterises the result. */
+  simulate(target: Rig, dt: number, pins: { f?: boolean; b?: boolean } = {}, motion = { f: 0, h: 0 }) {
     const n = Math.max(1, Math.ceil(dt / (1 / 120))), h = dt / n;
     const c = this.cur as unknown as Record<string, number>, t = target as unknown as Record<string, number>;
     for (const g of GROUPS) {
@@ -196,7 +202,6 @@ export class Puppet {
     if (pins.f) { this.cur.fHx = target.fHx; this.cur.fHy = target.fHy; this.vel.fHx = this.vel.fHy = 0; }
     if (pins.b) { this.cur.bHx = target.bHx; this.cur.bHy = target.bHy; this.vel.bHx = this.vel.bHy = 0; }
     this.physics(dt, motion);
-    this.paint();
   }
 
   snap(target: Rig) {
@@ -235,7 +240,7 @@ export class Puppet {
 
   /* ------------------------------------------------------------------ painting */
 
-  private paint() {
+  paint() {
     const p = this.pix, b = this.brush, l = this.loadout, r = this.cur, u = this.u;
     p.clear(); b.reset();
     const sx = this.facing * r.turn;

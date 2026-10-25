@@ -14,7 +14,7 @@ const seg = (t: number, a: number, b: number) => clamp((t - a) / (b - a), 0, 1);
 /** Walk / run cycle: constant stride length, so cadence rises with speed and planted feet do not slide. */
 function gait(r: Rig, ph: number, speed: number, wide: number, liftAdd = 0) {
   const A = 30 * smooth(speed / 70);
-  const S = clamp(speed / 360, 0, 1);
+  const S = clamp(speed / T.move.sprint, 0, 1);
   const L = (6 + 22 * S + liftAdd) * smooth(speed / 40);
   for (let side = 0; side < 2; side++) {
     const u = (((ph / TAU) + side * 0.5) % 1 + 1) % 1;
@@ -38,7 +38,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
   const f = h.facing;
   const o = g.opp(h);
   const speed = Math.hypot(h.vx, h.vz * 1.3);
-  const S = clamp(speed / 360, 0, 1);
+  const S = clamp(speed / T.move.sprint, 0, 1);
   const along = h.vx * f;
   const vel = Math.abs(along) > 30 ? along : Math.abs(h.vz) * 0.9;
   h.ph += vel * dt * 0.052;
@@ -47,7 +47,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
   const A = h.anim;
   const acc = dt > 0.0005 ? (h.vx * f - A.prevV) / dt : 0;
   A.prevV = h.vx * f;
-  A.acc += (clamp(acc, -4000, 4000) - A.acc) * Math.min(1, dt * 14);
+  A.acc += (clamp(acc, -6000, 6000) - A.acc) * Math.min(1, dt * 14);
   const defending = !h.hasBall && o.hasBall;
   let pinF = false, pinB = false;
 

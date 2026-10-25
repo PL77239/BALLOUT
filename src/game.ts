@@ -7,7 +7,7 @@ import { Brain } from './ai';
 import { FX, shadowEllipse } from './fx';
 import { Controller, MenuNav, emptyIntent, makeControllers, Intent } from './input';
 import { Loadout, rivalFor } from './loadout';
-import { GH, GW, PX, clamp, mix } from './pixel';
+import { GH, GW, PX, clamp, mix, rng } from './pixel';
 import { label, textWidth } from './font';
 import { addCash, persist, save } from './save';
 
@@ -18,10 +18,13 @@ export interface GameCfg {
   p2?: Loadout;
   level: AiLevel;
   target: number;
+  seed?: number;
 }
 
 type Phase = 'intro' | 'live' | 'point' | 'over';
 type Txt = Phaser.GameObjects.BitmapText;
+
+const SIM_DT = 1 / T.sim.hz;
 
 const LEVEL_PAY: Record<AiLevel, number> = { rookie: 0.8, hooper: 1, legend: 1.6 };
 const STYLE_PAY: [RegExp, number][] = [
@@ -59,6 +62,13 @@ export class GameScene extends Phaser.Scene {
   private slowT = 0;
   private hitT = 0;
   private realT = 0;
+  private acc = 0;
+  tick = 0;
+  seed = 0;
+  private rng: () => number = Math.random;
+  private latch: Intent[] = [emptyIntent(), emptyIntent()];
+  private lastLogged = [-1, -1];
+  private inputLog: number[] = [];
   private winner: Hooper | null = null;
   private style = [0, 0];
   private buckets = [0, 0];
@@ -75,6 +85,9 @@ export class GameScene extends Phaser.Scene {
     this.hoopers = []; this.hud = {}; this.hints = []; this.pauseUi = []; this.overUi = [];
     this.time_ = 0; this.realT = 0; this.paused = false; this.winner = null; this.timeScale = 1; this.slowT = 0; this.hitT = 0; this.overT = 0;
     this.style = [0, 0]; this.buckets = [0, 0]; this.result = null;
+    this.acc = 0; this.tick = 0; this.latch = [emptyIntent(), emptyIntent()]; this.lastLogged = [-1, -1]; this.inputLog = [];
+    this.seed = (cfg.seed ?? (Math.random() * 0xffffffff)) >>> 0;
+    this.rng = rng(this.seed);
     const cam = this.cameras.main;
     cam.setBackgroundColor('#000000'); cam.setZoom(1 / PX); cam.setScroll(GW, GH);
     this.court = buildCourt(this, cfg.court);
@@ -105,6 +118,8 @@ export class GameScene extends Phaser.Scene {
     this.showBanner('CHECK BALL', `FIRST TO ${cfg.target}  //  ARC = 2  INSIDE = 1  DUNK = 2  //  NO FOULS`, 1.7);
     (window as unknown as { __g: GameScene }).__g = this;
   }
+
+  rand() { return this.rng(); }
 
   opp(h: Hooper) { return this.hoopers[1 - h.id]; }
   distToHoop(x: number, z: number) { return Math.hypot(T.hoop.x - x, z * T.zScale); }
@@ -307,10 +322,10 @@ export class GameScene extends Phaser.Scene {
     if (dx < 6 || dx > T.steal.range || Math.abs(o.z - h.z) > T.steal.zRange) return false;
     if (o.protectT > 0 || o.act === 'shoot' || o.act === 'dunk') return false;
     let p = T.steal.base;
-    if (Math.abs(o.vx) > 260) p += T.steal.sprintBonus;
+    if (Math.abs(o.vx) > T.move.sprintFloor) p += T.steal.sprintBonus;
     if (o.stamina < T.stamina.lowAt) p += T.steal.lowStaminaBonus;
     if (o.act === 'recover' || o.act === 'stagger') p += 0.25;
-    if (Math.random() > clamp(p, 0.1, 0.9)) {
+    if (this.rand() > clamp(p, 0.1, 0.9)) {
       this.popupAt(h, 'MISSED', '#aab', 16);
       return false;
     }
@@ -337,10 +352,10 @@ export class GameScene extends Phaser.Scene {
     this.popupAt(o, o.act === 'shoot' || o.act === 'release' ? 'DIRTY SHOVE' : 'SHOVED', '#ff8a5a', 22);
     this.shake(110, 0.007); this.hitstop(0.06);
     h.gainHeat(6);
-    if (o.hasBall && this.ball.mode === 'held' && Math.random() < T.shove.fumble) {
+    if (o.hasBall && this.ball.mode === 'held' && this.rand() < T.shove.fumble) {
       o.hasBall = false; o.pickupLock = 0.5;
       const b = this.ball; b.release(o);
-      b.vx = h.facing * 160; b.vh = 220; b.vz = (Math.random() - 0.5) * 120;
+      b.vx = h.facing * 160; b.vh = 220; b.vz = (this.rand() - 0.5) * 120;
       this.popupAt(h, 'STRIPPED!', '#7fd4ff', 30);
     }
   }
@@ -397,7 +412,7 @@ export class GameScene extends Phaser.Scene {
     if (Math.hypot(b.x - hx, b.h - hh) < 48 && Math.abs(b.z - d.z) < 42) {
       const s = b.info.shooter;
       b.info = null; b.mode = 'loose';
-      b.vx = d.facing * (240 + Math.random() * 140); b.vh = 120 + Math.random() * 120; b.vz = (Math.random() - 0.5) * 200;
+      b.vx = d.facing * (240 + this.rand() * 140); b.vh = 120 + this.rand() * 120; b.vz = (this.rand() - 0.5) * 200;
       s.pickupLock = 0.35;
       this.popupAt(d, 'REJECTED!', '#ff5a3a', 40);
       this.fx.ring(b.x, b.sy, 0xffffff, 12, 400, 0.3);
@@ -451,25 +466,58 @@ export class GameScene extends Phaser.Scene {
       if (n.back) { this.scene.start('menu'); return; }
     }
 
-    if (this.slowT > 0) { this.slowT -= real; if (this.slowT <= 0) this.slowT = 0; }
-    else this.timeScale += (1 - this.timeScale) * Math.min(1, real * 6);
-    let dt = real * this.timeScale;
-    if (this.hitT > 0) { this.hitT -= real; dt = 0.0001; }
-    this.time_ += dt;
+    this.acc += real;
+    for (let i = 0; i < 2; i++) {
+      const c = this.ctrls[i];
+      if (c) this.latchIntent(i, c.poll());
+    }
+    let steps = 0;
+    while (this.acc >= SIM_DT && steps < T.sim.maxSteps) { this.acc -= SIM_DT; this.simStep(); steps++; }
+    if (steps >= T.sim.maxSteps) this.acc = 0;
+
     this.court.update(this.realT, real);
+    this.fx.update(real * this.timeScale);
+    this.render(real);
+  }
+
+  /** Human edges (button presses) are held until a sim step consumes them, so a press is never lost between steps. */
+  private latchIntent(i: number, n: Intent) {
+    const l = this.latch[i];
+    l.mx = n.mx; l.mz = n.mz; l.sprint = n.sprint; l.shootHeld = n.shootHeld; l.checkHeld = n.checkHeld;
+    l.shootDown ||= n.shootDown; l.shootUp ||= n.shootUp;
+    l.a ||= n.a; l.b ||= n.b; l.c ||= n.c; l.shove ||= n.shove;
+  }
+
+  private logIntent(i: number, I: Intent) {
+    const q = (v: number) => (Math.round(clamp(v, -1, 1) * 127) + 128) & 255;
+    const bits = (I.sprint ? 1 : 0) | (I.shootHeld ? 2 : 0) | (I.shootDown ? 4 : 0) | (I.shootUp ? 8 : 0) | (I.a ? 16 : 0) | (I.b ? 32 : 0) | (I.c ? 64 : 0) | (I.shove ? 128 : 0) | (I.checkHeld ? 256 : 0);
+    const v = q(I.mx) | (q(I.mz) << 8) | (bits << 16);
+    if (v !== this.lastLogged[i]) { this.lastLogged[i] = v; this.inputLog.push(this.tick, i, v); }
+  }
+
+  /** Everything that affects the outcome of a match advances here, at a fixed rate: same seed + same inputs = same match. */
+  simStep() {
+    if (this.hitT > 0) { this.hitT -= SIM_DT; return; }
+    if (this.slowT > 0) { this.slowT -= SIM_DT; if (this.slowT <= 0) this.slowT = 0; }
+    else this.timeScale += (1 - this.timeScale) * Math.min(1, SIM_DT * 6);
+    const dt = SIM_DT * this.timeScale;
+    this.tick++;
+    this.time_ += dt;
 
     const ints: Intent[] = [emptyIntent(), emptyIntent()];
     for (let i = 0; i < 2; i++) {
-      const c = this.ctrls[i];
-      let I = c ? c.poll() : emptyIntent();
+      const L = this.latch[i];
+      let I: Intent = this.ctrls[i] ? { ...L } : emptyIntent();
+      L.shootDown = L.shootUp = L.a = L.b = L.c = L.shove = false;
       const br = this.brains[i];
       if (br && this.phase === 'live') I = br.think(this.hoopers[i], this.hoopers[1 - i], this, dt);
       ints[i] = this.phase === 'live' ? I : emptyIntent();
+      if (this.ctrls[i] && this.phase === 'live') this.logIntent(i, ints[i]);
     }
 
-    if (this.phase === 'intro') { this.phaseT -= real; if (this.phaseT <= 0) this.phase = 'live'; }
+    if (this.phase === 'intro') { this.phaseT -= SIM_DT; if (this.phaseT <= 0) this.phase = 'live'; }
     if (this.phase === 'point') {
-      this.phaseT -= real;
+      this.phaseT -= SIM_DT;
       if (this.phaseT <= 0) { this.resetPositions(this.nextOffense); this.phase = 'live'; this.showBanner('CHECK', '', 0.6); }
     }
 
@@ -490,8 +538,12 @@ export class GameScene extends Phaser.Scene {
       this.cleared = true;
       this.popupAt(hold, 'CLEARED', '#7dffb0', 16);
     }
-    this.fx.update(dt);
-    this.render(real, dt);
+    for (const h of this.hoopers) h.simPose(dt, this);
+  }
+
+  /** Snapshot for replays and, later, server-side verification of ranked results. */
+  replay() {
+    return { seed: this.seed, hz: T.sim.hz, steps: this.tick, cfg: { mode: this.cfg.mode, court: this.cfg.court, level: this.cfg.level, target: this.cfg.target }, log: this.inputLog };
   }
 
   private setPaused(p: boolean) {
@@ -517,8 +569,8 @@ export class GameScene extends Phaser.Scene {
     this.pauseUi = objs;
   }
 
-  private render(real: number, dt: number) {
-    for (const h of this.hoopers) h.render(dt || 0.0001, this);
+  private render(real: number) {
+    for (const h of this.hoopers) h.render();
     const b = this.ball;
     const hold = this.holder;
     b.fire = b.fire || (!!hold && hold.fireOn);
