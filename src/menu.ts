@@ -62,7 +62,7 @@ export class MenuScene extends Phaser.Scene {
   private rollRival() { this.rival = rivalFor(courtInfo(this.cfg.court).region); }
 
   private setCourt(id: CourtId) {
-    if (this.courtId === id) return;
+    if (this.courtId === id && this.court) return;
     this.court?.destroy();
     this.court = buildCourt(this, id);
     this.courtId = id;
@@ -284,7 +284,9 @@ export class MenuScene extends Phaser.Scene {
     const s = save();
     s.lastCourt = this.cfg.court; s.level = this.cfg.level; s.target = this.cfg.target; persist();
     const cfg: GameCfg = { mode: this.cfg.mode, court: this.cfg.court, p1: this.myLook(), p2: this.rival, level: this.cfg.level, target: this.cfg.target };
-    this.court?.destroy(); this.court = undefined;
+    this.court?.destroy();
+    this.court = undefined;
+    this.courtId = undefined;
     this.scene.start('game', cfg);
   }
 

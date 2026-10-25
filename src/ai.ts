@@ -14,6 +14,7 @@ export class Brain {
   private reactT = -1;
   private seenShoot = false;
   private tgtZ = 0;
+  private tgtX = NaN;
   private planT = 0;
   private wantThree = false;
   private shotRoll = 0;
@@ -93,12 +94,27 @@ export class Brain {
   }
 
   private defense(I: Intent, me: Hooper, opp: Hooper, g: GameScene, dt: number) {
-    this.tgtZ += (opp.z - this.tgtZ) * Math.min(1, dt / (this.lvl.react * 0.7 + 0.03));
+    if (!Number.isFinite(this.tgtX)) { this.tgtX = me.x; this.tgtZ = me.z; }
+    const juking = opp.act === 'juke';
+    const lateral = Math.abs(opp.vz) > 95;
+    const zSmooth = this.lvl.react * (juking ? 2.2 : 1.35) + (juking ? 0.14 : 0.06);
+    const aimZ = juking ? opp.z - opp.vz * 0.06 : opp.z;
+    this.tgtZ += (aimZ - this.tgtZ) * Math.min(1, dt / zSmooth);
+
     const gap = 78 + 48 * (1 - this.lvl.aggr);
     const tx = Math.min(opp.x + gap, T.hoop.x - 30);
-    I.mx = clamp((tx - me.x) / 26, -1, 1);
-    I.mz = clamp((this.tgtZ - me.z) / 12, -1, 1);
-    I.sprint = Math.abs(tx - me.x) > 110 && me.stamina > 20;
+    const xSmooth = this.lvl.react * (juking || lateral ? 1.8 : 0.95) + 0.05;
+    this.tgtX += (tx - this.tgtX) * Math.min(1, dt / xSmooth);
+
+    const mxDiv = juking ? 38 : lateral ? 32 : 26;
+    const mzDiv = juking ? 24 : 16;
+    let mx = clamp((this.tgtX - me.x) / mxDiv, -1, 1);
+    let mz = clamp((this.tgtZ - me.z) / mzDiv, -1, 1);
+    if (juking) { mx *= 0.45; mz *= 0.3; }
+    else if (lateral) { mx *= 0.72; mz *= 0.55; }
+    I.mx = mx;
+    I.mz = mz;
+    I.sprint = !juking && Math.abs(this.tgtX - me.x) > 110 && me.stamina > 20;
     const adx = Math.abs(opp.x - me.x), adz = Math.abs(opp.z - me.z);
     if (adx < 100 && adz < 50) I.checkHeld = true;
 
@@ -111,7 +127,7 @@ export class Brain {
       if (this.reactT <= 0 && opp.meter > 0.08 && adx < 165 && adz < 52 && me.act === 'free' && this.lastJump <= 0 && g.rand() < 0.35 + this.lvl.aggr * 0.45) {
         I.shootDown = true; this.lastJump = 1.2;
       }
-      I.mx = clamp((opp.x + 40 - me.x) / 26, -1, 1);
+      I.mx = clamp((opp.x + 40 - me.x) / 30, -1, 1);
     } else this.seenShoot = false;
 
     if (me.act === 'free' && opp.act === 'free' || opp.act === 'juke') {
