@@ -7,7 +7,9 @@ import { Brain } from './ai';
 import { FX, shadowEllipse } from './fx';
 import { Controller, MenuNav, emptyIntent, makeControllers, Intent } from './input';
 import { Loadout, rivalFor } from './loadout';
-import { GH, GW, PX, clamp, mix, rng } from './pixel';
+import { GW, PX, clamp, mix, rng } from './pixel';
+import { VH, VIEW_TOP, VW, fixedAt, fixedOrigin, setViewport } from './viewport';
+import { Legend, LEGEND_H } from './legend';
 import { label, textWidth } from './font';
 import { addCash, persist, save } from './save';
 
@@ -25,6 +27,7 @@ type Phase = 'intro' | 'live' | 'point' | 'over';
 type Txt = Phaser.GameObjects.BitmapText;
 
 const SIM_DT = 1 / T.sim.hz;
+const GW_WORLD = GW * PX;
 
 const LEVEL_PAY: Record<AiLevel, number> = { rookie: 0.8, hooper: 1, legend: 1.6 };
 const STYLE_PAY: [RegExp, number][] = [
@@ -53,7 +56,9 @@ export class GameScene extends Phaser.Scene {
   private hud: Record<string, Txt> = {};
   private banner!: Txt;
   private bannerSub!: Txt;
-  private hints: Txt[] = [];
+  private legend: Legend | null = null;
+  private camX = 0;
+  private camV = 0;
   private pauseUi: Phaser.GameObjects.GameObject[] = [];
   private overUi: Phaser.GameObjects.GameObject[] = [];
   private paused = false;
@@ -82,14 +87,15 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     const cfg = this.cfg;
-    this.hoopers = []; this.hud = {}; this.hints = []; this.pauseUi = []; this.overUi = [];
+    this.hoopers = []; this.hud = {}; this.legend = null; this.pauseUi = []; this.overUi = [];
     this.time_ = 0; this.realT = 0; this.paused = false; this.winner = null; this.timeScale = 1; this.slowT = 0; this.hitT = 0; this.overT = 0;
     this.style = [0, 0]; this.buckets = [0, 0]; this.result = null;
     this.acc = 0; this.tick = 0; this.latch = [emptyIntent(), emptyIntent()]; this.lastLogged = [-1, -1]; this.inputLog = [];
     this.seed = (cfg.seed ?? (Math.random() * 0xffffffff)) >>> 0;
     this.rng = rng(this.seed);
+    setViewport(this, VW, VH);
     const cam = this.cameras.main;
-    cam.setBackgroundColor('#000000'); cam.setZoom(1 / PX); cam.setScroll(GW, GH);
+    cam.setBackgroundColor('#000000'); cam.setZoom(1 / PX);
     this.court = buildCourt(this, cfg.court);
     this.fx = new FX(this);
     this.shadows = this.add.graphics().setDepth(-600);
@@ -114,8 +120,9 @@ export class GameScene extends Phaser.Scene {
     this.hoopers[1].isCpu = cfg.mode !== '2p';
     this.buildHud();
     this.resetPositions(0);
+    this.snapCamera();
     this.phase = 'intro'; this.phaseT = 1.9;
-    this.showBanner('CHECK BALL', `FIRST TO ${cfg.target}  //  ARC = 2  INSIDE = 1  DUNK = 2  //  NO FOULS`, 1.7);
+    this.showBanner('CHECK BALL', `FIRST TO ${cfg.target}  //  ARC = 2  INSIDE = 1  DUNK = 2`, 1.7);
     (window as unknown as { __g: GameScene }).__g = this;
   }
 
@@ -126,29 +133,28 @@ export class GameScene extends Phaser.Scene {
   get holder(): Hooper | null { return this.hoopers.find((h) => h.hasBall) ?? null; }
 
   private txt(x: number, y: number, s: string, color = 0xffffff, k = 1, ox = 0, oy = 0, depth = 6100) {
-    return label(this, x * PX, y * PX, s, color, { k, ox, oy, depth });
+    return label(this, fixedAt(x, VW), fixedAt(y, VH), s, color, { k, ox, oy, depth }).setScrollFactor(0);
   }
 
   private buildHud() {
-    const h = this.hud;
-    h.scoreA = this.txt(205, 5, '0', 0xffd24a, 2, 1);
-    h.colon = this.txt(213, 5, ':', 0xffffff, 2, 0.5);
-    h.scoreB = this.txt(221, 5, '0', 0x7fd4ff, 2, 0);
-    h.sub = this.txt(213, 21, '', 0xa8a8c0, 1, 0.5);
+    const h = this.hud, cx = VW / 2;
+    this.hudG.setScrollFactor(0).setPosition(fixedOrigin(VW), fixedOrigin(VH));
+    h.scoreA = this.txt(cx - 8, 5, '0', 0xffd24a, 2, 1);
+    h.colon = this.txt(cx, 5, ':', 0xffffff, 2, 0.5);
+    h.scoreB = this.txt(cx + 8, 5, '0', 0x7fd4ff, 2, 0);
+    h.sub = this.txt(cx, 21, '', 0xa8a8c0, 1, 0.5);
     h.nameA = this.txt(6, 3, '', 0xffd24a, 1, 0);
-    h.nameB = this.txt(GW - 6, 3, '', 0x7fd4ff, 1, 1);
+    h.nameB = this.txt(VW - 6, 3, '', 0x7fd4ff, 1, 1);
     h.fireA = this.txt(6, 25, 'ON FIRE', 0xff8a2a, 1, 0).setVisible(false);
-    h.fireB = this.txt(GW - 6, 25, 'ON FIRE', 0xff8a2a, 1, 1).setVisible(false);
-    const hint = (y: number, s: string) => { const t = this.txt(213, y, s, 0xd0d0e0, 1, 0.5).setAlpha(0.8); this.hints.push(t); };
-    hint(221, 'SPACE SHOOT: HOLD, RELEASE IN GREEN   J CROSS   K SPIN   L DUNK   SHIFT SPRINT');
-    hint(230, 'DEFENSE  J STEAL   SPACE JUMP/BLOCK   R CHECK   E SHOVE   ESC PAUSE');
-    this.banner = this.txt(213, 90, '', 0xffffff, 3, 0.5, 0.5, 6200).setAlpha(0);
-    this.bannerSub = this.txt(213, 112, '', 0xffe45e, 1, 0.5, 0.5, 6200).setAlpha(0);
+    h.fireB = this.txt(VW - 6, 25, 'ON FIRE', 0xff8a2a, 1, 1).setVisible(false);
+    if (this.cfg.mode !== 'sim') this.legend = new Legend(this, VW, VH, this.cfg.mode === '2p' ? ['P1 KB', 'P2 PAD'] : ['KEYS', 'PAD']);
+    this.banner = this.txt(cx, 78, '', 0xffffff, 3, 0.5, 0.5, 6200).setAlpha(0);
+    this.bannerSub = this.txt(cx, 98, '', 0xffe45e, 1, 0.5, 0.5, 6200).setAlpha(0);
   }
 
   showBanner(main: string, sub = '', dur = 1.2, color = '#ffffff') {
     const c = parseInt(color.replace('#', ''), 16);
-    const w = (textWidth(main, 3) + 6) > GW - 10 ? 2 : 3;
+    const w = (textWidth(main, 3) + 6) > VW - 10 ? 2 : 3;
     this.banner.setText(main.toUpperCase()).setTint(c).setAlpha(1).setScale(PX * w);
     this.bannerSub.setText(sub.toUpperCase()).setAlpha(sub ? 1 : 0);
     this.tweens.killTweensOf([this.banner, this.bannerSub]);
@@ -214,7 +220,7 @@ export class GameScene extends Phaser.Scene {
     this.fx.popup(sx - 40, sy - 60, `${lab}  +${info.pts}`, info.pts > 1 ? '#ffd24a' : '#ffffff', 40, 60);
     for (const [re, pay] of STYLE_PAY) if (re.test(lab)) { this.style[h.id] += pay; break; }
     this.shake(info.pts > 1 ? 160 : 90, info.pts > 1 ? 0.008 : 0.004);
-    h.mood = 'hype'; h.moodT = 2.4; h.celeb = Math.floor(Math.random() * 3);
+    h.mood = 'hype'; h.moodT = 2.4; h.celeb = Math.floor(this.rand() * 3);
     o.mood = 'down'; o.moodT = 2.4;
     this.court.cheer(info.pts > 1 || info.perfect ? 1 : 0.6);
     this.afterPoint(h);
@@ -258,8 +264,8 @@ export class GameScene extends Phaser.Scene {
     const ui = this.overUi;
     const rows = this.result?.lines.length ?? 0;
     const ph = 60 + rows * 9 + (this.result ? 26 : 8);
-    const px = 113, py = Math.round((GH - ph) / 2) - 6, pw = 202;
-    const g = this.add.graphics().setDepth(7000);
+    const pw = 202, px = Math.round((VW - pw) / 2), py = Math.round((VH - LEGEND_H - ph) / 2) - 6;
+    const g = this.add.graphics().setDepth(7000).setScrollFactor(0).setPosition(fixedOrigin(VW), fixedOrigin(VH));
     const R = (x: number, y: number, ww: number, hh: number, c: number, al = 1) => { g.fillStyle(c, al); g.fillRect(x * PX, y * PX, ww * PX, hh * PX); };
     R(px - 1, py - 1, pw + 2, ph + 2, 0x000000, 0.9); R(px, py, pw, ph, 0x0c0c16, 0.94); R(px, py, pw, 2, 0xff7a1a); R(px, py + ph - 2, pw, 2, 0x3a3a52);
     ui.push(g);
@@ -475,6 +481,7 @@ export class GameScene extends Phaser.Scene {
     while (this.acc >= SIM_DT && steps < T.sim.maxSteps) { this.acc -= SIM_DT; this.simStep(); steps++; }
     if (steps >= T.sim.maxSteps) this.acc = 0;
 
+    this.updateCamera(real);
     this.court.update(this.realT, real);
     this.fx.update(real * this.timeScale);
     this.render(real);
@@ -546,13 +553,44 @@ export class GameScene extends Phaser.Scene {
     return { seed: this.seed, hz: T.sim.hz, steps: this.tick, cfg: { mode: this.cfg.mode, court: this.cfg.court, level: this.cfg.level, target: this.cfg.target }, log: this.inputLog };
   }
 
+  private cameraTarget() {
+    const [a, b] = this.hoopers, half = (VW * PX) / 2, margin = 110;
+    const ball = this.ball;
+    const holder = this.holder;
+    let focus = (a.x + b.x) / 2;
+    if (!holder && ball.mode !== 'held') focus = focus * 0.45 + ball.x * 0.55;
+    const lead = holder ? clamp(holder.vx * 0.16, -48, 48) : 0;
+    let c = focus + lead;
+    const lo = Math.max(a.x, b.x) + margin - half, hi = Math.min(a.x, b.x) - margin + half;
+    if (lo <= hi) c = clamp(c, lo, hi);
+    return clamp(c, half, GW_WORLD - half);
+  }
+
+  /** Critically damped follow: no overshoot, so the frame glides rather than wobbles. */
+  private updateCamera(dt: number) {
+    const target = this.cameraTarget(), smooth = 0.32, w = 2 / smooth, x = w * dt;
+    const e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+    const change = this.camX - target, temp = (this.camV + w * change) * dt;
+    this.camV = (this.camV - w * temp) * e;
+    this.camX = target + (change + temp) * e;
+    this.applyCamera();
+  }
+
+  private snapCamera() { this.camX = this.cameraTarget(); this.camV = 0; this.applyCamera(); }
+
+  /** Scroll in whole art pixels so the pixel grid never shimmers while the frame glides. */
+  private applyCamera() {
+    const left = Math.round((this.camX - (VW * PX) / 2) / PX);
+    this.cameras.main.setScroll(left * PX + (VW * (PX - 1)) / 2, VIEW_TOP * PX + (VH * (PX - 1)) / 2);
+  }
+
   private setPaused(p: boolean) {
     this.paused = p;
     this.pauseUi.forEach((o) => o.destroy());
     this.pauseUi = [];
     if (!p) return;
-    const g = this.add.graphics().setDepth(7000);
-    g.fillStyle(0x000000, 0.74); g.fillRect(0, 0, GW * PX, GH * PX);
+    const g = this.add.graphics().setDepth(7000).setScrollFactor(0).setPosition(fixedOrigin(VW), fixedOrigin(VH));
+    g.fillStyle(0x000000, 0.74); g.fillRect(0, 0, VW * PX, VH * PX);
     const lines: [string, number, number][] = [
       ['PAUSED', 0xffffff, 3], ['', 0, 1],
       ['ESC / START   RESUME', 0xffe45e, 1], ['BACKSPACE / CIRCLE   QUIT TO MENU', 0xffe45e, 1], ['', 0, 1],
@@ -563,9 +601,9 @@ export class GameScene extends Phaser.Scene {
       ['DEFENSE  STEAL J   BLOCK SPACE   HAND-CHECK R / L2', 0xc8c8d8, 1],
       ['DIRTY SHOVE  E / L1', 0xc8c8d8, 1],
     ];
-    let y = 40;
+    let y = 30;
     const objs: Phaser.GameObjects.GameObject[] = [g];
-    for (const [s, c, k] of lines) { if (s) objs.push(this.txt(213, y, s, c, k, 0.5, 0, 7001)); y += k === 3 ? 26 : 11; }
+    for (const [s, c, k] of lines) { if (s) objs.push(this.txt(VW / 2, y, s, c, k, 0.5, 0, 7001)); y += k === 3 ? 26 : 11; }
     this.pauseUi = objs;
   }
 
@@ -614,6 +652,11 @@ export class GameScene extends Phaser.Scene {
       R(mx - 1, by - 2, 2, 8, 0xffffff);
       if (contest > 0.25) R(bx, by + 6, w * contest, 1, 0xff3a3a);
     }
+    if (this.needsClear && !this.cleared && this.holder && this.phase === 'live') {
+      const x = Math.round((T.hoop.x - T.arcR - 4) / PX);
+      const al = 0.5 + 0.3 * Math.sin(this.realT * 10);
+      for (let y = Math.round((T.court.floorY - T.court.laneHalf) / PX); y < (T.court.floorY + T.court.laneHalf) / PX; y += 4) R(x, y, 1, 2, 0xffe45e, al);
+    }
   }
 
   private drawHud() {
@@ -621,13 +664,14 @@ export class GameScene extends Phaser.Scene {
     g.clear();
     const R = (x: number, y: number, w: number, h: number, c: number, a = 1) => { g.fillStyle(c, a); g.fillRect(Math.round(x) * PX, Math.round(y) * PX, Math.round(w) * PX, Math.round(h) * PX); };
     const [a, b] = this.hoopers, H = this.hud;
-    R(168, 1, 90, 30, 0x000000, 0.8); R(169, 2, 88, 28, 0x0c0c16, 0.7); R(169, 28, 88, 2, 0xff7a1a);
+    const bx = Math.round(VW / 2 - 45);
+    R(bx, 1, 90, 30, 0x000000, 0.8); R(bx + 1, 2, 88, 28, 0x0c0c16, 0.7); R(bx + 1, 28, 88, 2, 0xff7a1a);
     H.scoreA.setText(`${a.score}`); H.scoreB.setText(`${b.score}`);
     H.sub.setText(`${courtInfo(this.cfg.court).name}  //  TO ${this.cfg.target}`);
     H.nameA.setText(`${this.nameOf(a)}  ${a.loadout.name}`);
     H.nameB.setText(`${b.loadout.name}  ${this.nameOf(b)}`);
     const bars = (h: Hooper, right: boolean) => {
-      const w = 84, x0 = right ? GW - 6 - w : 6;
+      const w = 84, x0 = right ? VW - 6 - w : 6;
       R(x0 - 2, 12, w + 4, 12, 0x000000, 0.7);
       R(x0, 13, w, 5, 0x2a2a34); R(x0, 19, w, 4, 0x2a2a34);
       const hf = h.fireOn ? h.fireT / T.heat.fireTime : h.heat / T.heat.max;
@@ -641,12 +685,11 @@ export class GameScene extends Phaser.Scene {
     bars(a, false); bars(b, true);
     const fl = [H.fireA, H.fireB];
     fl.forEach((t, i) => { const on = this.hoopers[i].fireOn; t.setVisible(on); if (on) t.setAlpha(0.6 + 0.4 * Math.sin(this.realT * 16)); });
-    const hintA = this.phase === 'live' && this.realT < 16 ? 0.85 : this.phase === 'intro' ? 0.85 : 0;
-    this.hints.forEach((t) => t.setAlpha(t.alpha + (hintA - t.alpha) * 0.05));
-    if (this.needsClear && !this.cleared && this.holder && this.phase === 'live') {
-      const x = Math.round((T.hoop.x - T.arcR - 4) / PX);
-      const al = 0.5 + 0.3 * Math.sin(this.realT * 10);
-      for (let y = Math.round((T.court.floorY - T.court.laneHalf) / PX); y < (T.court.floorY + T.court.laneHalf) / PX; y += 4) R(x, y, 1, 2, 0xffe45e, al);
+    const lg = this.legend;
+    if (lg) {
+      const ctxOf = (h: Hooper) => (h.hasBall ? 'offense' : 'defense') as 'offense' | 'defense';
+      lg.set(0, ctxOf(this.hoopers[0]));
+      lg.set(1, ctxOf(this.hoopers[this.cfg.mode === '2p' ? 1 : 0]));
     }
   }
 }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GH, GW, PX, Pix, pixTexture } from './pixel';
+import { setViewport } from './viewport';
 import { CourtId, CourtScene, buildCourt } from './courts';
 import { Puppet, Rig, restRig } from './puppet';
 import { BASE_LOADOUT, FITS, Loadout, buildLoadout, itemById, rivalFor, STARTER_EQUIP, REGION_IDS } from './loadout';
@@ -11,6 +12,7 @@ export class LabScene extends Phaser.Scene {
   constructor() { super('lab'); }
 
   create() {
+    setViewport(this, GW, GH);
     const q0 = new URLSearchParams(location.search);
     const cid = q0.get('court') as CourtId | null;
     const bg = new Pix(GW, GH);

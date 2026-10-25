@@ -11,8 +11,8 @@ export const T = {
   input: { buffer: 0.12 },
   move: {
     walk: 305, sprint: 480, ballMult: 0.93, zFactor: 0.8,
-    accel: 7200, stopAccel: 9600, turnMult: 1.7,
-    burst: 1.9, burstTime: 0.16,
+    accel: 5600, stopAccel: 8400, turnMult: 1.7,
+    burst: 1.5, burstTime: 0.16,
     sprintFloor: 380,
   },
   stamina: { max: 100, sprintDrain: 22, regen: 17, regenIdleBonus: 10, lowAt: 22 },

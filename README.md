@@ -10,6 +10,8 @@
 - **Locker and shop**: earn cash in 1P matches (buckets, style plays, wins), buy cosmetic items per slot or whole regional fits, try them on before buying and swap what you wear in the locker. Progress is saved in `localStorage`
 - **Rivals** get a random look drawn from the region of the court you play on
 - Keyboard and gamepad (DualShock 4 via the standard Gamepad API mapping)
+- **Match camera**: the match frames a slightly zoomed window of the court (384x216 art pixels) and glides left and right with the play, always in whole art pixels. A controls strip for keyboard and gamepad stays on the bottom edge and switches between offense and defense actions with possession
+- **Fixed-step simulation**: gameplay runs at a fixed 240 Hz independent of the display refresh rate, with buffered button presses (120 ms), a seeded RNG and a compact input log (`GameScene.replay()`), so a match is reproducible from its seed and inputs. This is the groundwork for ranked play
 - Not implemented yet, on purpose: in-game pickups (items that appear during a match). The data model and scene hooks are kept simple so they can be added later
 
 ## Run
@@ -49,6 +51,8 @@ npm run build      # typecheck + production build
 - `src/pixel.ts` and `src/font.ts` are the pixel toolkit (framebuffer, dithering, shading, bitmap font)
 - `src/courtkit.ts` has the scenery painters and the light model; `src/art_*.ts` compose each court and `src/courts.ts` bakes them into three layers plus live effects. To add a court, add an entry to `ART` in `src/court_art.ts` and to `COURTS` in `src/courts.ts`
 - `src/save.ts` persists cash, owned items and equipment
+- `src/viewport.ts` and `src/legend.ts` hold the match viewport size, screen-fixed HUD helpers and the controls strip
+- `public/audio/bgm` and `public/audio/sfx` are where music and sound effects go (served as `/audio/bgm/...` and `/audio/sfx/...`)
 
 ## Dev scripts
 
@@ -58,6 +62,7 @@ They use the system Chrome through `playwright-core`. Start `npm run dev` first.
 - `scripts/flow.mjs` clicks through menu, match, pause and back
 - `scripts/shot.mjs '<query>' out.png waitMs [key:ms ...]` screenshots (`CLIP`, `DSF`, `EVAL`, `POST` env)
 - `scripts/sheet.mjs <court> <scene,...>` animation strips of player one
+- `scripts/determinism.mjs [court] [seed]` plays one seeded CPU match at 30, 60, 144 fps and with jittery frames, and checks that the results are identical
 - `scripts/perf.mjs <court>` per-frame CPU cost of the simulation and rendering
 
-Debug URLs: `/?auto=chicago&mode=sim` (CPU vs CPU), `/?auto=harlem&mode=1p`, `/?lab=1&pose=run` (sprite lab), `/?lab=1&court=la` (court viewer).
+Debug URLs: `/?auto=chicago&mode=sim&seed=1234` (CPU vs CPU, optional seed), `/?auto=harlem&mode=1p`, `/?lab=1&pose=run` (sprite lab; `top=tank,tee,...` previews garment kinds), `/?lab=1&court=la` (court viewer).

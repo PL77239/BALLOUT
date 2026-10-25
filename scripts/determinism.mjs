@@ -28,6 +28,8 @@ for (const fps of [30, 60, 144, 'jitter']) {
   console.log(String(fps).padEnd(7), JSON.stringify(res.snap[3000].score), 'ball', res.snap[3000].ball.map((v) => v.toFixed(2)).join(','));
   await page.close();
 }
+const diff = (k) => runs.map((r) => JSON.stringify(r.snap[k]));
+if (process.env.DBG) console.log(diff(1500).join('\n'));
 const same = runs.every((r) => JSON.stringify(r.snap) === JSON.stringify(runs[0].snap));
 console.log(same ? 'DETERMINISTIC: all runs match' : 'MISMATCH between runs');
 await browser.close();

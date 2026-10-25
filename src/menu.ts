@@ -5,6 +5,7 @@ import { MenuNav } from './input';
 import { FITS, ITEMS, Item, Loadout, REGIONS, SKIN_NAMES, SLOTS, SLOT_NAMES, STARTER_EQUIP, Slot, buildLoadout, itemById, itemsFor, rivalFor } from './loadout';
 import { Puppet, Rig, restRig } from './puppet';
 import { GH, GW, PX, mix } from './pixel';
+import { setViewport } from './viewport';
 import { label } from './font';
 import { buyFit, buyItem, equip, fitCost, owns, persist, save } from './save';
 import type { GameCfg } from './game';
@@ -42,6 +43,7 @@ export class MenuScene extends Phaser.Scene {
   constructor() { super('menu'); }
 
   create() {
+    setViewport(this, GW, GH);
     this.cameras.main.setZoom(1 / PX).setScroll(GW, GH).setBackgroundColor('#000000');
     this.ui = []; this.pups = []; this.t = 0; this.sel = 0; this.screen = 'main'; this.msg = ''; this.previewOverlay = null;
     const s = save();
