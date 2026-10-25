@@ -53,7 +53,7 @@ npm run build      # typecheck + production build
 - `src/courtkit.ts` has the scenery painters and the light model; `src/art_*.ts` compose each court and `src/courts.ts` bakes them into three layers plus live effects. To add a court, add an entry to `ART` in `src/court_art.ts` and to `COURTS` in `src/courts.ts`
 - `src/save.ts` persists cash, owned items and equipment
 - `src/viewport.ts` and `src/legend.ts` hold the match viewport size, screen-fixed HUD helpers and the controls strip
-- `public/audio/bgm` and `public/audio/sfx` are where music and sound effects go (served as `/audio/bgm/...` and `/audio/sfx/...`)
+- `public/audio/bgm` (one playlist folder per court under `courts/`, plus `menu/` and `stingers/`) and `public/audio/sfx` are where music and sound effects go (served as `/audio/bgm/...` and `/audio/sfx/...`)
 
 ## Dev scripts
 
