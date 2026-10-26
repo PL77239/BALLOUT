@@ -302,12 +302,9 @@ export class Puppet {
     const hcW = [neckW[0] + Math.sin(headTh) * 19, neckW[1] + Math.cos(headTh) * 19];
     const head = { x: X(hcW[0]), y: Y(hcW[1]), th: headTh };
 
-    /* ---- hair / hood behind the head ---- */
+    /* ---- hair bulk behind the body ---- */
     b.part = 8;
     this.hairBack(b, head, mir, u, back, l, sx);
-    if (l.top === 'hoodie') {
-      b.begin().frame(nx - sx * 1.2 * u, ny + 0.5 * u, r.lean * mir, mir, u, 7, (x, y) => ((x + 3.5) ** 2) / 16 + ((y + 0.5) ** 2) / 11 <= 1).commit(shade(l.topColor, 0.82));
-    }
 
     /* ---- far limbs, torso, near leg ---- */
     b.part = 1; this.legPiece(b, legB, l, skin, u, sx);
@@ -315,13 +312,18 @@ export class Puppet {
     b.part = 3; this.torsoPiece(b, [hx, hy], [nx, ny], l, skin, u, r.lean, sx, mir);
     b.part = 4; this.legPiece(b, legF, l, skin, u, sx);
     if (l.top === 'bigTee') { b.part = 6; this.bigTeeHem(b, [hx, hy], [nx, ny], l, u); }
+    if (l.top === 'hoodie') {
+      b.part = 9;
+      b.begin().frame(nx - sx * 1.2 * u, ny + 0.5 * u, r.lean * mir, mir, u, 7, (x, y) => ((x + 3.5) ** 2) / 16 + ((y + 0.5) ** 2) / 11 <= 1).commit(shade(l.topColor, 0.82));
+    }
 
-    /* ---- head ---- */
+    /* ---- head (face + hair on skull; hats drawn later) ---- */
     b.part = 5; this.headPiece(b, head, r, l, skin, u, sx, mir, back, front);
     this.chainPiece(b, [hx, hy], [nx, ny], l, u, r.lean, sx);
 
-    /* ---- near arm ---- */
+    /* ---- near arm, then headwear on top ---- */
     b.part = 7; this.armPiece(b, armF, l, skin, u, false);
+    b.part = 10; this.headWear(b, head, r, l, u, sx, mir, back, front);
 
     p.outline(OUT);
     p.upload(this.tex.getContext());
@@ -445,7 +447,7 @@ export class Puppet {
     const t = l.top;
     const wv = (kind: 'plaid' | 'baffle', a: number[], z: number[]) => this.weave(b, a, z, u, kind, tc, tt);
     if (t === 'tee' || t === 'jersey' || t === 'bigTee') {
-      if (t === 'tee') { sleeveUp(tc, 0, 0.55, 0.5); b.begin().cap(sx0, sy0, ex, ey, 2.7 * u, 2.5 * u, 0.5, 0.58, false, false).commit(tt, { flat: true, line: null }); }
+      if (t === 'tee') { sleeveUp(tc, 0, 0.58, 0.5); b.begin().cap(sx0, sy0, ex, ey, 2.85 * u, 2.65 * u, 0.48, 0.6, false, false).commit(tt, { flat: true, line: null }); }
       if (t === 'jersey') { sleeveUp(tc, 0, 0.52, 0.48); b.begin().cap(sx0, sy0, ex, ey, 2.75 * u, 2.55 * u, 0.48, 0.56, false, false).commit(tt, { flat: true, line: null }); }
       if (t === 'bigTee') { sleeveUp(tc, 0, 0.72, 0.95); b.begin().cap(sx0, sy0, ex, ey, 3.05 * u, 2.85 * u, 0.68, 0.76, false, false).commit(shade(tc, 0.88), { flat: true, line: null }); }
     } else if (t === 'hoodie' || t === 'longsleeve' || t === 'flannel' || t === 'puffer') {
@@ -516,6 +518,7 @@ export class Puppet {
     b.begin().cap(hx, hy, nx, ny, (4.8 + extra) * u, (6.2 + extra) * u, t0, 1, false, true).commit(l.topColor);
     if (tp === 'flannel') this.weave(b, [hx, hy], [nx, ny], u, 'plaid', l.topColor, l.topTrim);
     if (tp === 'puffer') this.weave(b, [hx, hy], [nx, ny], u, 'baffle', l.topColor, l.topTrim);
+    b.begin().cap(hx, hy, nx, ny, (5.15 + extra) * u, (6.55 + extra * 0.45) * u, 0.24, 0.34, false, false).commit(shade(l.topColor, 0.93), { flat: true, line: null });
     if (hood || tp === 'tee' || tp === 'longsleeve') b.begin().cap(hx, hy, nx, ny, (5 + extra) * u, (6.4 + extra * 0.5) * u, 0.27, 0.37, false, false).commit(l.topTrim, { flat: true, line: null });
     if (tp === 'puffer') b.begin().cap(hx, hy, nx, ny, (4.9 + extra) * u, (6.3 + extra) * u, t0, t0 + 0.08, false, false).commit(l.topTrim, { flat: true, line: null });
     if (tp === 'tank') b.begin().cap(hx, hy, nx, ny, (4.8 + extra) * u, (6.6 + extra) * u, 0.2, 0.26, false, false).commit(l.topTrim, { flat: true, line: null });
@@ -657,14 +660,59 @@ export class Puppet {
       F(10, (x, y) => skull(x, y) && !hairOn(x, y) && x < -3 && y < 3.4 && y >= 1.2).commit(shade(skin, 0.7), { flat: true, line: null });
       if (l.hair === 'waves') for (let y = -5; y <= -2; y += 1) for (let x = -4; x <= 3; x++) { if (((x + y * 2) & 3) === 0) { const [qx, qy] = this.loc(hd, sx, u, x, y); if (this.pix.alpha(qx, qy)) this.pix.set(qx, qy, shade(hc, 1.7)); } }
       if (l.hair === 'twists') for (let i = 0; i < 5; i++) { const [qx, qy] = this.loc(hd, sx, u, -4 + i * 1.7, -5.6 - (i % 2)); this.pix.set(qx, qy, hc); this.pix.set(qx, qy - 1, shade(hc, 1.4)); }
-    } else if (l.hair === 'hightop') {
-      F(12, (x, y) => (x >= -5 && x <= 3.6 && y >= -10 && y <= -2.4) || hairOn(x, y)).commit(hc, { hi: shade(hc, 1.6) });
-    } else if (l.hair === 'afro') {
-      F(11, (x, y) => skull(x, y) && y < -3.6).commit(hc, { line: null, hi: shade(hc, 1.4) });
     } else if (l.hair === 'bald') {
       const [qx, qy] = this.loc(hd, sx, u, -1.5, -4.2); this.pix.set(qx, qy, shade(skin, 1.35));
     }
 
+    if (l.face === 'beard') F(10, (x, y) => jaw(x, y) && y >= 1.4 && x > -2.4 && !(x > 3 && y < 3.6)).commit(l.faceColor, { line: null });
+    if (l.face === 'stache') F(8, (x, y) => x >= -2.4 && x <= 5.8 && y >= 2.2 && y <= 3.1 && (front || x >= 1.6)).commit(l.faceColor, { line: null });
+    if (l.face === 'goatee') F(8, (x, y) => x >= 2.0 && x <= 5.2 && y >= 3.0 && y <= 6).commit(l.faceColor, { line: null });
+    if (l.face === 'shades' && !back) {
+      F(10, (x, y) => (x >= 0.6 && x <= 6.4 && y >= -2.0 && y <= 0.5) || (x >= -3.6 && x <= 0.8 && y >= -1.4 && y <= -0.6)).commit(l.faceColor, { line: null, flat: true });
+      const [qx, qy] = this.loc(hd, sx, u, 4.4, -1.4); this.pix.set(qx, qy, 0x8fb8d8);
+    }
+    if (l.face === 'glasses' && !back) {
+      for (const [cx, cy] of [[2.6, -0.6], [5.2, -0.6]]) {
+        for (let a = 0; a < 8; a++) { const [qx, qy] = this.loc(hd, sx, u, cx + Math.cos(a * 0.785) * 1.7, cy + Math.sin(a * 0.785) * 1.7); this.pix.set(qx, qy, l.faceColor); }
+      }
+    }
+
+    if (back) return;
+    const px = (lx: number, ly: number, c: Col) => { const [qx, qy] = this.loc(hd, sx, u, lx, ly); this.pix.set(qx, qy, c); };
+    const blinking = this.blink > 0 || r.emo < -0.5;
+    const shadesOn = l.face === 'shades';
+    const grill = l.face === 'grillz';
+    if (front) {
+      for (const ex of [-2, 2]) { if (!shadesOn) { px(ex, -0.5, 0xffffff); px(ex + 1, -0.5, OUT); } px(ex, -1.9, shade(l.hairColor, 0.8)); }
+      px(0, 1.5, shade(skin, 0.75));
+      for (const mx of [-1, 0, 1]) px(mx, 4, r.mouth > 0.4 ? 0x5a1a22 : grill ? 0xf2c648 : shade(skin, 0.6));
+      return;
+    }
+    if (!shadesOn && l.face !== 'glasses') {
+      if (blinking) { px(2.6, -0.2, OUT); px(3.6, -0.2, OUT); } else { px(2.6, -0.6, 0xffffff); px(3.6, -0.6, OUT); px(3.6, 0.4, OUT); }
+      const bro = r.emo < -0.3 ? 0.8 : r.emo > 0.4 ? -0.4 : 0;
+      px(2.2, -2.3 - bro * 0.4, shade(hc, 0.9)); px(3.3, -2.3 + bro, shade(hc, 0.9)); px(4.4, -2.3 + bro * 1.4, shade(hc, 0.9));
+    } else if (l.face === 'glasses') { px(2.6, -0.6, 0xffffff); px(3.6, -0.6, OUT); }
+    px(-1.2, 0.8, shade(skin, 0.72)); px(-1.2, 1.8, shade(skin, 0.72));
+    const mc = grill ? 0xf2c648 : l.face === 'beard' || l.face === 'goatee' ? shade(skin, 0.6) : shade(skin, 0.55);
+    if (r.mouth > 0.4) { px(3.4, 3.4, grill ? 0xf2c648 : 0x5a1a22); px(4.4, 3.4, grill ? 0xf2c648 : 0x5a1a22); px(3.4, 4.4, 0x7a2a32); px(4.4, 4.4, 0x5a1a22); }
+    else if (r.emo > 0.4) { px(3.0, 3.6, mc); px(4.0, 3.9, mc); px(5.0, 3.6, mc); px(5.6, 3.1, mc); }
+    else if (r.emo < -0.4) { px(3.4, 4.1, mc); px(4.4, 3.6, mc); px(5.2, 4.1, mc); }
+    else { px(3.6, 3.6, mc); px(4.6, 3.6, mc); }
+    void mir;
+  }
+
+  /** Hats, tall hair, and other layers that must sit in front of the torso and arms. */
+  private headWear(b: Brush, hd: { x: number; y: number; th: number }, r: Rig, l: Loadout, u: number, sx: number, mir: number, back: boolean, front: boolean) {
+    const F = (ext: number, pred: (x: number, y: number) => boolean) => b.begin().frame(hd.x, hd.y, hd.th, sx, u, ext, pred);
+    const hc = l.hairColor;
+    const skull = (x: number, y: number) => ((x) ** 2) / 31 + ((y + 0.3) ** 2) / 33 <= 1;
+    const hairOn = (x: number, y: number) => skull(x, y) && (y < -2.4 || (x < -2.6 && y < 1.2) || (x < -4.2 && y < 2.4));
+    if (l.hair === 'hightop') {
+      F(12, (x, y) => (x >= -5 && x <= 3.6 && y >= -10 && y <= -2.4) || hairOn(x, y)).commit(hc, { hi: shade(hc, 1.6) });
+    } else if (l.hair === 'afro') {
+      F(11, (x, y) => skull(x, y) && y < -3.6).commit(hc, { line: null, hi: shade(hc, 1.4) });
+    }
     const hd0 = l.headColor, ht = l.headTrim;
     const crown = (x: number, y: number, ry: number) => ((x + 0.2) ** 2) / 38 + ((y + 0.9) ** 2) / (ry * ry) <= 1;
     switch (l.head) {
@@ -712,43 +760,7 @@ export class Puppet {
         break;
       default: break;
     }
-
-    if (l.face === 'beard') F(10, (x, y) => jaw(x, y) && y >= 1.4 && x > -2.4 && !(x > 3 && y < 3.6)).commit(l.faceColor, { line: null });
-    if (l.face === 'stache') F(8, (x, y) => x >= -2.4 && x <= 5.8 && y >= 2.2 && y <= 3.1 && (front || x >= 1.6)).commit(l.faceColor, { line: null });
-    if (l.face === 'goatee') F(8, (x, y) => x >= 2.0 && x <= 5.2 && y >= 3.0 && y <= 6).commit(l.faceColor, { line: null });
-    if (l.face === 'shades' && !back) {
-      F(10, (x, y) => (x >= 0.6 && x <= 6.4 && y >= -2.0 && y <= 0.5) || (x >= -3.6 && x <= 0.8 && y >= -1.4 && y <= -0.6)).commit(l.faceColor, { line: null, flat: true });
-      const [qx, qy] = this.loc(hd, sx, u, 4.4, -1.4); this.pix.set(qx, qy, 0x8fb8d8);
-    }
-    if (l.face === 'glasses' && !back) {
-      for (const [cx, cy] of [[2.6, -0.6], [5.2, -0.6]]) {
-        for (let a = 0; a < 8; a++) { const [qx, qy] = this.loc(hd, sx, u, cx + Math.cos(a * 0.785) * 1.7, cy + Math.sin(a * 0.785) * 1.7); this.pix.set(qx, qy, l.faceColor); }
-      }
-    }
-
-    if (back) return;
-    const px = (lx: number, ly: number, c: Col) => { const [qx, qy] = this.loc(hd, sx, u, lx, ly); this.pix.set(qx, qy, c); };
-    const blinking = this.blink > 0 || r.emo < -0.5;
-    const shadesOn = l.face === 'shades';
-    const grill = l.face === 'grillz';
-    if (front) {
-      for (const ex of [-2, 2]) { if (!shadesOn) { px(ex, -0.5, 0xffffff); px(ex + 1, -0.5, OUT); } px(ex, -1.9, shade(l.hairColor, 0.8)); }
-      px(0, 1.5, shade(skin, 0.75));
-      for (const mx of [-1, 0, 1]) px(mx, 4, r.mouth > 0.4 ? 0x5a1a22 : grill ? 0xf2c648 : shade(skin, 0.6));
-      return;
-    }
-    if (!shadesOn && l.face !== 'glasses') {
-      if (blinking) { px(2.6, -0.2, OUT); px(3.6, -0.2, OUT); } else { px(2.6, -0.6, 0xffffff); px(3.6, -0.6, OUT); px(3.6, 0.4, OUT); }
-      const bro = r.emo < -0.3 ? 0.8 : r.emo > 0.4 ? -0.4 : 0;
-      px(2.2, -2.3 - bro * 0.4, shade(hc, 0.9)); px(3.3, -2.3 + bro, shade(hc, 0.9)); px(4.4, -2.3 + bro * 1.4, shade(hc, 0.9));
-    } else if (l.face === 'glasses') { px(2.6, -0.6, 0xffffff); px(3.6, -0.6, OUT); }
-    px(-1.2, 0.8, shade(skin, 0.72)); px(-1.2, 1.8, shade(skin, 0.72));
-    const mc = grill ? 0xf2c648 : l.face === 'beard' || l.face === 'goatee' ? shade(skin, 0.6) : shade(skin, 0.55);
-    if (r.mouth > 0.4) { px(3.4, 3.4, grill ? 0xf2c648 : 0x5a1a22); px(4.4, 3.4, grill ? 0xf2c648 : 0x5a1a22); px(3.4, 4.4, 0x7a2a32); px(4.4, 4.4, 0x5a1a22); }
-    else if (r.emo > 0.4) { px(3.0, 3.6, mc); px(4.0, 3.9, mc); px(5.0, 3.6, mc); px(5.6, 3.1, mc); }
-    else if (r.emo < -0.4) { px(3.4, 4.1, mc); px(4.4, 3.6, mc); px(5.2, 4.1, mc); }
-    else { px(3.6, 3.6, mc); px(4.6, 3.6, mc); }
-    void mir;
+    void r; void mir; void back; void front;
   }
 
   /** Flapping cloth tails from the back of the head, driven by the inertia trail. */

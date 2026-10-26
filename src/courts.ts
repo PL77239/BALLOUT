@@ -7,7 +7,7 @@ import { BOOM_X } from './court_common';
 import { music } from './music';
 import { Crowd } from './crowd';
 
-export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la' | 'fairmount';
+export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'chiraq' | 'warsaw' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la' | 'fairmount';
 
 export interface CourtInfo { id: CourtId; name: string; sub: string; region: RegionId; night: boolean }
 export const COURTS: CourtInfo[] = [
@@ -19,6 +19,8 @@ export const COURTS: CourtInfo[] = [
   { id: 'la', name: 'SOUTH CENTRAL', sub: 'LOS ANGELES  //  NIGHT', region: 'la', night: true },
   { id: 'fairmount', name: 'THE WOODS', sub: 'FAIRMOUNT PARK, PHILLY  //  NIGHT', region: 'philly', night: true },
   { id: 'chicago', name: 'SOUTH SIDE', sub: 'CHICAGO  //  GOLDEN HOUR', region: 'chi', night: false },
+  { id: 'chiraq', name: 'CHIRAQ', sub: 'SOUTH SIDE, CHICAGO  //  NIGHT', region: 'chiraq', night: true },
+  { id: 'warsaw', name: 'MOKOTÓW', sub: 'WARSAW  //  OVERCAST', region: 'warsaw', night: false },
   { id: 'harlem', name: 'THE PARK', sub: 'HARLEM, NEW YORK  //  DUSK', region: 'harlem', night: false },
 ];
 export const courtInfo = (id: CourtId) => COURTS.find((c) => c.id === id)!;
@@ -197,6 +199,7 @@ export function buildCourt(scene: Phaser.Scene, id: CourtId): CourtScene {
   });
 
   const hoopKey = 'hoopfront_' + id;
+  if (scene.textures.exists(hoopKey)) scene.textures.remove(hoopKey);
   const hoopPix = new Pix(36, 40);
   const hoopTex = pixTexture(scene, hoopKey, hoopPix);
   const hoopImg = scene.add.image((HXP - 16) * PX, (RIMY - 4) * PX, hoopKey).setOrigin(0).setScale(PX).setDepth(FY * PX + 1);

@@ -51,6 +51,8 @@ export class Hooper {
   trickDunk = false;
   dunkFrom = { x: 0, z: 0 };
   dunkHit = false;
+  dunkSlam = false;
+  dunkSlamAt = 0;
   swipeHit = false;
   shoveHit = false;
   pumpedT = 0;
@@ -189,6 +191,8 @@ export class Hooper {
     this.setAct('dunk', T.dunk.airtime);
     this.dunkFrom = { x: this.x, z: this.z };
     this.dunkHit = false;
+    this.dunkSlam = false;
+    this.dunkSlamAt = 0;
     this.trickDunk = this.comboN >= 2 && g.gt - this.comboT < 1.4;
     this.stamina = Math.max(0, this.stamina - 14);
     g.fx.dust(this.x, this.sy, 6, 0);
@@ -267,7 +271,7 @@ export class Hooper {
         if (this.h <= 0 && this.actT > this.actDur) this.setAct('recover', 0.12);
         break;
       case 'juke': this.tickJuke(dt, I, g); break;
-      case 'dunk': this.tickDunk(dt, g); break;
+      case 'dunk': this.tickDunk(dt, I, g); break;
       case 'swipe':
         this.locomote(dt, I, false, 0.3, g);
         if (!this.swipeHit && this.actT > 0.06 && this.actT < 0.17) { this.swipeHit = g.resolveSwipe(this); }
@@ -366,7 +370,7 @@ export class Hooper {
     if (this.actT >= this.actDur) this.setAct('free');
   }
 
-  private tickDunk(dt: number, g: GameScene) {
+  private tickDunk(dt: number, I: Intent, g: GameScene) {
     const d = T.dunk, p = clamp(this.actT / d.hitAt, 0, 1);
     const e = 1 - Math.pow(1 - p, 2);
     const tx = T.hoop.x - 40;
@@ -375,7 +379,14 @@ export class Hooper {
     const u = clamp(this.actT / d.airtime, 0, 1);
     this.h = d.height * 4 * u * (1 - u);
     this.vh = 0;
-    if (!this.dunkHit && this.actT >= d.hitAt) { this.dunkHit = true; g.dunkHit(this); }
+    if (!this.dunkSlam && I.shootDown) { this.dunkSlam = true; this.dunkSlamAt = this.actT; }
+    if (!this.dunkHit && this.actT >= d.hitAt) {
+      this.dunkHit = true;
+      const sweet = d.hitAt, window = d.greenHalf * d.airtime;
+      const t = this.dunkSlam ? this.dunkSlamAt : d.airtime * 2;
+      if (Math.abs(t - sweet) <= window) g.dunkHit(this);
+      else g.dunkMiss(this);
+    }
     if (this.actT >= d.airtime) { this.h = 0; this.setAct('recover', 0.2); g.fx.dust(this.x, this.sy, 8, 0); }
     void dt;
   }

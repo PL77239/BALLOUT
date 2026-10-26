@@ -1,6 +1,6 @@
 import type { Col } from './pixel';
 
-export type RegionId = 'bk' | 'chi' | 'harlem' | 'queens' | 'philly' | 'detroit' | 'atl' | 'la';
+export type RegionId = 'bk' | 'chi' | 'chiraq' | 'warsaw' | 'harlem' | 'queens' | 'philly' | 'detroit' | 'atl' | 'la';
 export type HairKind = 'bald' | 'fade' | 'hightop' | 'waves' | 'afro' | 'braids' | 'locs' | 'twists';
 export type HeadKind = 'none' | 'fullcap' | 'backcap' | 'fitted' | 'beanie' | 'headband' | 'durag' | 'bucket' | 'bandana';
 export type FaceKind = 'none' | 'shades' | 'beard' | 'goatee' | 'glasses' | 'stache' | 'grillz';
@@ -58,6 +58,16 @@ export const REGIONS: Record<RegionId, Region> = {
     id: 'chi', name: 'CHICAGO', city: 'SOUTH SIDE', a: 0xd01c24, b: 0x111111, c: 0xffffff,
     tops: ['tank', 'jersey', 'tee'], bottoms: ['shorts', 'longShorts'], heads: ['headband', 'fullcap', 'bandana'], hairs: ['braids', 'fade', 'twists'], shoes: ['high', 'runner'],
     nicks: ['WINDY', 'BEAN', 'L-TRAIN', 'DEEP DISH', 'SIXTY-THREE', 'HANDSOME', 'CLOUDS'],
+  },
+  chiraq: {
+    id: 'chiraq', name: 'CHIRAQ', city: 'SOUTH SIDE', a: 0x111111, b: 0xd01c24, c: 0xf4f4f0,
+    tops: ['hoodie', 'jersey', 'bigTee'], bottoms: ['sweats', 'longShorts'], heads: ['durag', 'fullcap', 'beanie'], hairs: ['braids', 'locs', 'fade'], shoes: ['high', 'runner'],
+    nicks: ['DRILL', 'L-STOP', 'SIX CORNER', 'O-BLOCK', 'CHI-TOWN', 'COLD', 'SLIDE'],
+  },
+  warsaw: {
+    id: 'warsaw', name: 'WARSAW', city: 'MOKOTÓW', a: 0xd22b3a, b: 0xffffff, c: 0x0e8a4a,
+    tops: ['hoodie', 'longsleeve', 'tee'], bottoms: ['joggers', 'sweats'], heads: ['beanie', 'fitted', 'none'], hairs: ['fade', 'waves', 'hightop'], shoes: ['runner', 'low'],
+    nicks: ['MOKOTÓW', 'TRAM', 'PALACE', 'VISTULA', 'PIĄTEK', 'BLOCK', 'KIELBASA'],
   },
   harlem: {
     id: 'harlem', name: 'HARLEM', city: 'THE PARK', a: 0x5a2d91, b: 0xf2c230, c: 0xffffff,

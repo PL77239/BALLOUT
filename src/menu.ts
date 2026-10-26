@@ -46,6 +46,9 @@ export class MenuScene extends Phaser.Scene {
   create() {
     setViewport(this, GW, GH);
     this.cameras.main.setZoom(1 / PX).setScroll(GW, GH).setBackgroundColor('#000000');
+    this.court?.destroy();
+    this.court = undefined;
+    this.courtId = undefined;
     this.ui = []; this.pups = []; this.t = 0; this.sel = 0; this.screen = 'main'; this.msg = ''; this.previewOverlay = null;
     const s = save();
     this.cfg.court = (COURTS.some((c) => c.id === s.lastCourt) ? s.lastCourt : 'brooklyn') as CourtId;
