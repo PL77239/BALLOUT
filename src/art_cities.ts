@@ -53,7 +53,6 @@ export const chiraq: CourtArt = {
       }
     });
     L.mover(train, 150, 94, 32, -1040, 420);
-    L.mover(carSprite(L, 0x1a2030, { lit: true }), 46, 148, 22, -995, 320);
   },
 };
 
@@ -130,7 +129,6 @@ export const warsaw: CourtArt = {
       p.rect(2, 18, 8, 3, 0x20202a); p.rect(108, 18, 8, 3, 0x20202a);
     });
     L.mover(tram, 120, 118, -14, -1020, 520, { flip: true });
-    L.mover(carSprite(L, 0x3a4858, { lit: false }), 46, 148, 12, -990, 360);
   },
 };
 

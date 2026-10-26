@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from './sfx';
 import { Puppet, restRig } from './puppet';
 import { poseOf } from './anim';
 import { Loadout } from './loadout';
@@ -156,6 +157,7 @@ export class Hooper {
     const dirX = Math.abs(I.mx) > 0.25 ? Math.sign(I.mx) : 0;
     this.moveKind = kind;
     this.setAct('juke', MOVE_DUR[kind]);
+    sfx.squeak();
     this.protectT = T.moves.protect + (kind === 'spin' ? 0.1 : 0);
     this.ankleChecked = false;
     this.dribbleMoves++;
@@ -210,7 +212,8 @@ export class Hooper {
   startDunk(g: GameScene): boolean {
     if (!this.hasBall) return false;
     const dx = T.hoop.x - this.x;
-    if (dx > T.dunk.range || dx < -30) return false;
+    if (dx < 8 || Math.hypot(dx, this.z * 1.8) > T.dunk.range || Math.abs(this.z) > 42) return false;
+    if (this.stamina < 14 || (dx > 90 && this.vx < 105)) return false;
     if (g.needsClear && !g.cleared) return false;
     this.setAct('dunk', T.dunk.airtime);
     this.dunkFrom = { x: this.x, z: this.z };
@@ -338,8 +341,23 @@ export class Hooper {
     }
   }
 
+  private bounceBeat = -1;
+  private lastCutZ = 0;
+  private lastCutX = 0;
+  private cutAt = -10;
+
   private locomote(dt: number, I: Intent, sprint: boolean, mul: number, g: GameScene) {
     const m = T.move;
+    if (this.hasBall && this.act === 'free' && sprint && Math.hypot(I.mx, I.mz) > 0.5) {
+      const len = Math.hypot(I.mx, I.mz), x = I.mx / len, z = I.mz / len;
+      const hadDirection = Math.hypot(this.lastCutX, this.lastCutZ) > 0.5;
+      const sharpCut = hadDirection && x * this.lastCutX + z * this.lastCutZ < 0.45;
+      if (sharpCut) {
+        if (g.gt - this.cutAt < 0.7 && Math.hypot(this.vx, this.vz) > 150) g.ankleCheck(this, true);
+        sfx.squeak();
+      }
+      if (!hadDirection || sharpCut) { this.lastCutX = x; this.lastCutZ = z; this.cutAt = g.gt; }
+    }
     let spd = (sprint ? m.sprint : m.walk) * (0.78 + this.stats.speed / 115);
     if (this.hasBall) spd *= m.ballMult;
     if (this.stamina < T.stamina.lowAt) spd *= 0.86;
@@ -351,7 +369,7 @@ export class Hooper {
       spd *= clamp(stick / their, 0.72, 1.08);
     }
     if (o.I.checkHeld && !o.hasBall && this.hasBall && Math.abs(o.x - this.x) < 100 && Math.abs(o.z - this.z) < 40) {
-      spd *= 0.72; this.stamina = Math.max(0, this.stamina - 6 * dt);
+      spd *= 0.84; this.stamina = Math.max(0, this.stamina - 6 * dt);
     }
     if (this.hasBall && this.act === 'free' && o.pumpedT > 0) spd *= 1;
     const tx = I.mx * spd * mul, tz = I.mz * spd * m.zFactor * mul;
@@ -430,6 +448,8 @@ export class Hooper {
       this.carried = { x: this.x + f * (r.fHx + 4), z: this.z, h: this.h + r.fHy + 10, depthBias: 0.6 };
       return;
     }
+    const beat = Math.floor(g.gt / T.ball.dribblePeriod - 0.5);
+    if (beat !== this.bounceBeat) { if (this.bounceBeat >= 0) sfx.bounce(0.65); this.bounceBeat = beat; }
     const bounce = Math.abs(Math.cos(Math.PI * ((g.gt / T.ball.dribblePeriod) % 1)));
     const targetOx = this.handSide > 0 ? 32 : 2;
     this.ballOx += (targetOx - this.ballOx) * Math.min(1, 16 * (1 / 60));

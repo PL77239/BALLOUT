@@ -48,10 +48,7 @@ export const atl: CourtArt = {
     });
   },
   live(L) {
-    for (let i = 0; i < 3; i++) {
-      const cs = carSprite(L, [0x30303a, 0x4a2a2a, 0x2a3a4a][i], { kind: i === 1 ? 'van' : 'sedan', flip: i % 2 === 1, lit: true });
-      L.mover(cs, 46, 2, (i % 2 ? -1 : 1) * (50 + i * 16), -1090, 90 + i * 60, { x0: i * 130 });
-    }
+    // Traffic removed to keep the court backdrop calm.
   },
 };
 
@@ -130,7 +127,6 @@ export const la: CourtArt = {
       g.fillStyle(0xff3a3a, Math.sin(t * 6) > 0 ? 1 : 0);
       g.fillRect(Math.round(hx + 10) * 3, Math.round(hy) * 3, 3, 3);
     });
-    L.mover(carSprite(L, 0x3a2a5a, { kind: 'low', lit: true }), 46, 138, 24, -995, 280);
   },
 };
 

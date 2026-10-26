@@ -36,12 +36,12 @@ export const T = {
   moves: { comboWindow: 0.8, ankleCheckAt: 0.12, ankleRange: 140, ankleZ: 56, protect: 0.3, dash: 1.3, dur: { cross: 0.28, spin: 0.38, btb: 0.31 } },
   steal: { range: 112, zRange: 34, base: 0.28, sprintBonus: 0.42, jukeBonus: 0.36, lowStaminaBonus: 0.2, whiffRecover: 0.5, swipe: 0.25 },
   shove: { cooldown: 1.15, cost: 13, knock: 560, fumble: 0.4, range: 66 },
-  dunk: { range: 300, airtime: 0.8, hitAt: 0.44, height: 150, greenHalf: 0.075, windowSec: 0.12 },
+  dunk: { range: 155, airtime: 0.8, hitAt: 0.44, height: 150, greenHalf: 0.075, windowSec: 0.12 },
   rules: { target: 11, makeItTakeIt: true, insidePts: 1, arcPts: 2, dunkPts: 2 },
   ai: {
-    rookie: { shootJitter: 0.145, react: 0.58, aggr: 0.12, shoot: 0.22 },
-    hooper: { shootJitter: 0.1, react: 0.4, aggr: 0.38, shoot: 0.45 },
-    legend: { shootJitter: 0.065, react: 0.24, aggr: 0.58, shoot: 0.62 },
+    rookie: { shootJitter: 0.13, react: 0.53, aggr: 0.17, shoot: 0.27 },
+    hooper: { shootJitter: 0.09, react: 0.37, aggr: 0.42, shoot: 0.49 },
+    legend: { shootJitter: 0.06, react: 0.22, aggr: 0.62, shoot: 0.66 },
   },
 };
 
