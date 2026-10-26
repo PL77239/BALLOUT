@@ -38,7 +38,12 @@ export class Brain {
       if (me.meter >= this.releaseAt) { I.shootUp = true; I.shootHeld = false; }
       return;
     }
-    if (me.act === 'release' || me.act === 'dunk') return;
+    if (me.act === 'release') return;
+    if (me.act === 'dunk') {
+      const sweet = T.dunk.hitAt, w = T.dunk.greenHalf * T.dunk.airtime * (0.85 + this.lvl.shoot * 0.3);
+      if (me.actT >= sweet - w * 0.4 && me.actT < sweet + w) I.shootDown = true;
+      return;
+    }
     const dist = g.distToHoop(me.x, me.z);
     const dx = opp.x - me.x, dz = opp.z - me.z;
     const near = Math.abs(dx) < 135 && Math.abs(dz) < 56;

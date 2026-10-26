@@ -2,6 +2,8 @@ import { music } from './music';
 import Phaser from 'phaser';
 import { T, AiLevel } from './tuning';
 import { buildCourt, courtInfo, CourtId, CourtScene } from './courts';
+
+const COURT_MUSIC: Partial<Record<CourtId, string>> = { chiraq: 'chicago', warsaw: 'philly' };
 import { Ball, ShotInfo } from './ball';
 import { Hooper } from './hooper';
 import { Brain } from './ai';
@@ -88,6 +90,11 @@ export class GameScene extends Phaser.Scene {
 
   init(cfg: GameCfg) { this.cfg = cfg; }
 
+  shutdown() {
+    this.court?.destroy();
+    this.legend?.destroy();
+  }
+
   create() {
     const cfg = this.cfg;
     this.hoopers = []; this.hud = {}; this.legend = null; this.pauseUi = []; this.overUi = [];
@@ -101,7 +108,7 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBackgroundColor('#000000'); cam.setZoom(1 / PX);
     this.court = buildCourt(this, cfg.court);
-    if (cfg.mode !== 'sim') music.play(cfg.court, this.court.boomX);
+    if (cfg.mode !== 'sim') music.play(COURT_MUSIC[cfg.court] ?? cfg.court, this.court.boomX);
     this.fx = new FX(this);
     this.shadows = this.add.graphics().setDepth(-600);
     this.meterG = this.add.graphics().setDepth(3000);
@@ -240,7 +247,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.phase = 'point';
-    this.pointCountdown = 1.35;
+    this.pointCountdown = 2;
     this.pointCountShown = -1;
     this.nextOffense = T.rules.makeItTakeIt ? scorer.id : 1 - scorer.id;
   }
@@ -288,6 +295,20 @@ export class GameScene extends Phaser.Scene {
       y += 14;
     }
     t(px + pw / 2, py + ph - 12, 'ENTER REMATCH     BACKSPACE MENU', 0x8a8aa0, 1);
+  }
+
+  dunkMiss(h: Hooper) {
+    const hp = T.hoop;
+    h.hasBall = false;
+    const b = this.ball;
+    b.setHeld(h.x + h.facing * 18, h.z, hp.rimH - 8);
+    b.mode = 'loose'; b.owner = null; b.lastOwner = h; b.info = null;
+    b.vx = 60 + this.rand() * 80; b.vh = -280 - this.rand() * 120; b.vz = (this.rand() - 0.5) * 80;
+    h.pickupLock = 0.45;
+    this.popupAt(h, 'RIM!', '#ff6a5a', 34);
+    this.fx.ring(hp.x, T.court.floorY - hp.rimH, 0xffffff, 10, 280, 0.25);
+    this.shake(120, 0.006);
+    h.mood = 'down'; h.moodT = 1.2;
   }
 
   dunkHit(h: Hooper) {
@@ -633,7 +654,7 @@ export class GameScene extends Phaser.Scene {
       ['MOVE  WASD / STICK      SPRINT  SHIFT / R1', 0xc8c8d8, 1],
       ['SHOOT  SPACE / X: HOLD, RELEASE IN GREEN, TAP = PUMP FAKE', 0xc8c8d8, 1],
       ['CROSSOVER  J / SQUARE      SPIN  K / CIRCLE', 0xc8c8d8, 1],
-      ['DUNK OR BEHIND-THE-BACK  L / TRIANGLE', 0xc8c8d8, 1],
+      ['DUNK  L / TRIANGLE   TAP SHOOT IN GREEN AT RIM', 0xc8c8d8, 1],
       ['DEFENSE  STEAL J   BLOCK SPACE   HAND-CHECK R / L2', 0xc8c8d8, 1],
       ['DIRTY SHOVE  E / L1', 0xc8c8d8, 1],
     ];
@@ -672,21 +693,34 @@ export class GameScene extends Phaser.Scene {
     g.clear();
     const R = (x: number, y: number, w: number, h: number, c: number, a = 1) => { g.fillStyle(c, a); g.fillRect(Math.round(x) * PX, Math.round(y) * PX, Math.round(w) * PX, Math.round(h) * PX); };
     for (const h of this.hoopers) {
-      if (h.act !== 'shoot') continue;
-      const w = 44, bx = Math.round(h.x / PX - w / 2), by = Math.round(h.sy / PX + 7);
-      const range = 1.1, S = T.shot.sweet;
-      const { green, contest } = h.meterInfo;
-      R(bx - 2, by - 2, w + 4, 8, 0x08080c, 0.9);
-      R(bx, by, w, 4, 0x24363a);
-      const gx0 = bx + ((S - green) / range) * w, gw = Math.max(2, ((green * 2) / range) * w);
-      const mx = bx + clamp(h.meter / range, 0, 1) * w;
-      R(bx, by, mx - bx, 4, 0x4a9ad0);
-      const inZone = Math.abs(h.meter - S) <= green;
-      R(gx0, by, gw, 4, inZone ? 0x9dffc4 : 0x2fd060);
-      R(gx0 - 1, by - 1, gw + 2, 1, 0x08080c); R(gx0 - 1, by + 4, gw + 2, 1, 0x08080c);
-      R(bx + (S / range) * w, by, 1, 4, 0xffffff);
-      R(mx - 1, by - 2, 2, 8, 0xffffff);
-      if (contest > 0.25) R(bx, by + 6, w * contest, 1, 0xff3a3a);
+      if (h.act === 'shoot') {
+        const w = 44, bx = Math.round(h.x / PX - w / 2), by = Math.round(h.sy / PX + 7);
+        const range = 1.1, S = T.shot.sweet;
+        const { green, contest } = h.meterInfo;
+        R(bx - 2, by - 2, w + 4, 8, 0x08080c, 0.9);
+        R(bx, by, w, 4, 0x24363a);
+        const gx0 = bx + ((S - green) / range) * w, gw = Math.max(2, ((green * 2) / range) * w);
+        const mx = bx + clamp(h.meter / range, 0, 1) * w;
+        R(bx, by, mx - bx, 4, 0x4a9ad0);
+        const inZone = Math.abs(h.meter - S) <= green;
+        R(gx0, by, gw, 4, inZone ? 0x9dffc4 : 0x2fd060);
+        R(gx0 - 1, by - 1, gw + 2, 1, 0x08080c); R(gx0 - 1, by + 4, gw + 2, 1, 0x08080c);
+        R(bx + (S / range) * w, by, 1, 4, 0xffffff);
+        R(mx - 1, by - 2, 2, 8, 0xffffff);
+        if (contest > 0.25) R(bx, by + 6, w * contest, 1, 0xff3a3a);
+      } else if (h.act === 'dunk' && !h.dunkHit) {
+        const d = T.dunk, w = 40, bx = Math.round(h.x / PX - w / 2), by = Math.round(h.sy / PX - h.h / PX - 18);
+        const sweet = d.hitAt / d.airtime, green = d.greenHalf;
+        const m = clamp(h.actT / d.airtime, 0, 1);
+        R(bx - 2, by - 2, w + 4, 8, 0x08080c, 0.9);
+        R(bx, by, w, 4, 0x24363a);
+        const gx0 = bx + ((sweet - green) / 1) * w, gw = Math.max(2, (green * 2 / 1) * w);
+        R(bx, by, (m * w), 4, 0x4a9ad0);
+        const inZone = Math.abs(m - sweet) <= green;
+        R(gx0, by, gw, 4, inZone ? 0x9dffc4 : 0x2fd060);
+        R(bx + sweet * w, by, 1, 4, 0xffffff);
+        R(bx + m * w - 1, by - 2, 2, 8, 0xffffff);
+      }
     }
     if (this.needsClear && !this.cleared && this.holder && this.phase === 'live') {
       const x = Math.round((T.hoop.x - T.arcR - 4) / PX);

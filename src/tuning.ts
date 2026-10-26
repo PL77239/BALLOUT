@@ -10,7 +10,7 @@ export const T = {
   sim: { hz: 240, maxSteps: 24 },
   input: { buffer: 0.12 },
   move: {
-    walk: 305, sprint: 480, ballMult: 0.93, zFactor: 0.8,
+    walk: 278, sprint: 438, ballMult: 0.91, zFactor: 0.8,
     accel: 5600, stopAccel: 8400, turnMult: 1.7,
     burst: 1.5, burstTime: 0.16,
     sprintFloor: 380,
@@ -19,9 +19,9 @@ export const T = {
   heat: { max: 100, decay: 2.4, fireTime: 14 },
   jump: { g: 2600, vBlock: 830 },
   shot: {
-    meterTime: 0.85,
+    meterTime: 0.92,
     sweet: 0.8,
-    greenHalf: 0.058,
+    greenHalf: 0.048,
     pumpTap: 0.16,
     contestRange: 165,
     contestPenalty: 0.62,
@@ -34,7 +34,7 @@ export const T = {
   moves: { comboWindow: 0.8, ankleCheckAt: 0.12, ankleRange: 140, ankleZ: 56, protect: 0.3, dash: 1.3, dur: { cross: 0.28, spin: 0.38, btb: 0.31 } },
   steal: { range: 112, zRange: 34, base: 0.3, sprintBonus: 0.15, lowStaminaBonus: 0.2, whiffRecover: 0.5, swipe: 0.25 },
   shove: { cooldown: 1.15, cost: 13, knock: 560, fumble: 0.4, range: 66 },
-  dunk: { range: 310, airtime: 0.74, hitAt: 0.4, height: 150 },
+  dunk: { range: 285, airtime: 0.78, hitAt: 0.42, height: 150, greenHalf: 0.038 },
   rules: { target: 11, makeItTakeIt: true, insidePts: 1, arcPts: 2, dunkPts: 2 },
   ai: {
     rookie: { shootJitter: 0.145, react: 0.58, aggr: 0.12, shoot: 0.22 },
