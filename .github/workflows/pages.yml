@@ -2,18 +2,22 @@ name: GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, cursor/pixel-art-overhaul-24cd]
+  pull_request:
+    branches: [main, cursor/pixel-art-overhaul-24cd]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'production' }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,11 +26,27 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: Build for the repository subdirectory
+        run: npm run build
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
-      - uses: peaceiris/actions-gh-pages@v4
+      - name: Check the published entry point and assets
+        run: node scripts/check-pages.mjs
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          publish_branch: gh-pages
+          path: dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy the compiled game
+        id: deployment
+        uses: actions/deploy-pages@v4
