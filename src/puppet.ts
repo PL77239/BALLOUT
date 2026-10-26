@@ -639,12 +639,16 @@ export class Puppet {
     if (kind === 'none' || this.cur.turn < -.28) return;
     const gold = kind === 'gold' || kind === 'cuban' || kind === 'rope' || kind === 'cross';
     const col = gold ? 0xf0c040 : kind === 'rosary' ? 0x8a1c24 : 0xdfe6ee, dk = gold ? 0xb88820 : kind === 'rosary' ? 0x4a0e14 : 0x8d99a8;
-    const ang = lean;
-    // Jewellery hangs inside the chest silhouette, away from bright side seams.
-    const breadth = .78+.22*(1-Math.abs(this.cur.turn));
-    const at = (t: number, off: number) => [h[0]+(n[0]-h[0])*t+Math.cos(ang)*off*breadth*u*(sx<0?-1:1), h[1]+(n[1]-h[1])*t+Math.sin(ang)*off*breadth*u];
+    // Project onto the front plane of the actual, leaning torso. The spine
+    // centre is not the chest surface in profile; mirrored lean needs the same frame.
+    const length=Math.hypot(n[0]-h[0],n[1]-h[1])||1;
+    const direction=sx<0?-1:1;
+    const normal=[(h[1]-n[1])/length*direction,(n[0]-h[0])/length*direction];
+    const profile=Math.abs(this.cur.turn);
+    const surface=4.2*profile,loop=2.2-1.4*profile;
+    const at=(t:number,off:number)=>[h[0]+(n[0]-h[0])*t+normal[0]*off*u,h[1]+(n[1]-h[1])*t+normal[1]*off*u];
     const low = kind==='rosary'?.43:kind==='rope'?.57:.65;
-    const path = [at(.96,-1.8),at(.83,-2.6),at(low,0),at(.83,2.6),at(.96,1.8)];
+    const path=[at(.96,surface*.35-loop),at(.83,surface-loop),at(low,surface+.4),at(.83,surface+loop),at(.96,surface*.35+loop)];
     const p = this.pix;
     const end = path[2];
     // Dark backing keeps silver readable against white shirts and piping.
@@ -668,7 +672,7 @@ export class Puppet {
       } else p.line(x0, y0, x1, y1, col);
     }
     const sw = this.chain;
-    const ex = end[0] + sw.x * sx, ey = end[1] + sw.y;
+    const ex = end[0] + clamp(sw.x * sx,-1.2*u,1.2*u), ey = end[1] + clamp(sw.y,-u,u);
     if (kind === 'rope' || kind === 'cuban') return;
     const px = Math.round(ex), py = Math.round(ey);
     p.line(end[0], end[1], ex, ey, dk);

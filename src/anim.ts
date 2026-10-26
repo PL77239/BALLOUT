@@ -188,17 +188,16 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
     }
     case 'fall': {
       const tt = h.actT;
-      const trip = seg(tt, 0, 0.16), drop = seg(tt, 0.12, 0.34), flat = seg(tt, 0.34, 0.5), rise = seg(tt, 0.85, 1.15);
-      const down = ease(drop) * (1 - ease(rise));
-      r.hipY = lerp(86, 74, ease(trip)) * (1 - down) + 15 * down;
-      r.lean = lerp(0.2, -0.2, ease(trip)) * (1 - down) + -1.32 * down + 0.5 * ease(rise) * down;
-      r.head = 0.3 * down;
-      const legsOut = down;
-      r.fFx = lerp(18, 34, legsOut); r.fFy = lerp(0, 10, legsOut) + 8 * Math.sin(flat * Math.PI) * 0;
-      r.bFx = lerp(-14, 22, legsOut); r.bFy = lerp(0, 22, ease(flat)) * down;
-      r.fAnk = r.bAnk = 0.2 * down;
-      hands(lerp(24, -2, down), lerp(4, -50, down), lerp(-14, -22, down), lerp(14, -56, down));
-      r.emo = -1; r.mouth = tt < 0.8 ? 1 : 0;
+      const trip=ease(seg(tt,0,.18)),drop=ease(seg(tt,.12,.38)),rise=ease(seg(tt,.82,1.15));
+      const down=drop*(1-rise);
+      // One seated collapse, with feet below the hips throughout the fall.
+      // The old hips dropped below the raised ankles and flipped the leg IK.
+      r.hipY=lerp(88,78,trip)*(1-down)+38*down;
+      r.lean=lerp(.12,-.72,down);r.head=.18*down;
+      r.fFx=lerp(18,44,down);r.bFx=lerp(-14,10,down);
+      r.fFy=0;r.bFy=2*down;r.fAnk=.12*down;r.bAnk=-.08*down;
+      hands(lerp(24,20,down),lerp(4,-24,down),lerp(-14,-8,down),lerp(14,-30,down));
+      r.emo=-1;r.mouth=0;
       break;
     }
     case 'recover': {

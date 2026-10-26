@@ -11,7 +11,7 @@ const hairMasks=new Set();
 for(const hair of ['crop','cornrows','shortlocs','flattop','mohawk','bun']){
  const p=frame(hair,{...base,hair},restRig());hairMasks.add(Array.from(p.pix.px).join(','));
  for(const head of ['fullcap','backcap','beanie','bucket']){
-  const a=new Puppet(scene,{...base,hair,head});a.paint();const b=new Puppet(scene,{...base,hair:hairUnderHeadwear(hair,head),head});b.paint();assert.deepEqual(a.pix.px,b.pix.px,'new hair respects hats');
+  const a=new Puppet(scene,{...base,hair,head});a.t=0;a.paint();const b=new Puppet(scene,{...base,hair:hairUnderHeadwear(hair,head),head});b.t=0;b.paint();assert.deepEqual(a.pix.px,b.pix.px,'new hair respects hats');
  }
 }
 assert.equal(hairMasks.size,6);
