@@ -595,14 +595,14 @@ export class GameScene extends Phaser.Scene {
   /** Human edges (button presses) are held until a sim step consumes them, so a press is never lost between steps. */
   private latchIntent(i: number, n: Intent) {
     const l = this.latch[i];
-    l.mx = n.mx; l.mz = n.mz; l.sprint = n.sprint; l.shootHeld = n.shootHeld; l.checkHeld = n.checkHeld;
+    l.mx = n.mx; l.mz = n.mz; l.cHeld=n.cHeld; l.sprint = n.sprint; l.shootHeld = n.shootHeld; l.checkHeld = n.checkHeld;
     l.shootDown ||= n.shootDown; l.shootUp ||= n.shootUp;
     l.a ||= n.a; l.b ||= n.b; l.c ||= n.c; l.shove ||= n.shove;
   }
 
   private logIntent(i: number, I: Intent) {
     const q = (v: number) => (Math.round(clamp(v, -1, 1) * 127) + 128) & 255;
-    const bits = (I.sprint ? 1 : 0) | (I.shootHeld ? 2 : 0) | (I.shootDown ? 4 : 0) | (I.shootUp ? 8 : 0) | (I.a ? 16 : 0) | (I.b ? 32 : 0) | (I.c ? 64 : 0) | (I.shove ? 128 : 0) | (I.checkHeld ? 256 : 0);
+    const bits = (I.sprint ? 1 : 0) | (I.shootHeld ? 2 : 0) | (I.shootDown ? 4 : 0) | (I.shootUp ? 8 : 0) | (I.a ? 16 : 0) | (I.b ? 32 : 0) | (I.c ? 64 : 0) | (I.shove ? 128 : 0) | (I.checkHeld ? 256 : 0) | (I.cHeld ? 512 : 0);
     const v = q(I.mx) | (q(I.mz) << 8) | (bits << 16);
     if (v !== this.lastLogged[i]) { this.lastLogged[i] = v; this.inputLog.push(this.tick, i, v); }
   }

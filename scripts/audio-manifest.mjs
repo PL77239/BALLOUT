@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
@@ -9,7 +10,7 @@ import { join, relative } from 'node:path';
 // per-track gain at playback so every track lands at the same loudness. Re-run after adding or replacing tracks.
 
 const run = promisify(execFile);
-const ROOT = new URL('../public/audio/bgm/', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('../public/audio/bgm/', import.meta.url));
 const OUT = join(ROOT, 'manifest.json');
 const TARGET = -16;
 const MIN_GAIN = -14, MAX_GAIN = 9;
@@ -35,7 +36,7 @@ for (const [key, dir] of dirs) {
     const full = join(abs, file), f = relative(ROOT, full).split('\\').join('/');
     const size = statSync(full).size;
     const prev = known.get(f);
-    const entry = prev && prev.size === size && !force ? prev : null;
+    const entry = prev && prev.size === size && !force && (scanOnly || typeof prev.lufs==='number') ? prev : null;
     const slot = { f, size, gain: 0 };
     lists[key].push(slot);
     if (entry) Object.assign(slot, entry);
@@ -59,4 +60,4 @@ await Promise.all(Array.from({ length: 4 }, async () => { for (let j = queue.shi
 
 writeFileSync(OUT, JSON.stringify({ target: TARGET, lists }, null, 1) + '\n');
 const n = Object.values(lists).reduce((s, l) => s + l.length, 0);
-console.log(`manifest: ${n} tracks (${jobs.length} measured) -> ${relative(process.cwd(), OUT)}`);
+console.log(`manifest: ${n} tracks (${jobs.length} ${scanOnly ? 'new entries indexed' : 'measured'}) -> ${relative(process.cwd(), OUT)}`);

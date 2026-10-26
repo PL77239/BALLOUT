@@ -170,6 +170,7 @@
     "dur": 345
    }
   ],
+  "marseille": [],
   "philly": [
    {
     "f": "courts/philly/Cant Stop, Wont Stop.mp3",
@@ -222,6 +223,23 @@
     "dur": 188
    }
   ],
-  "warsaw": []
+  "warsaw": [
+   {
+    "f": "courts/warsaw/DJ 600V - 93, 94.mp3",
+    "size": 6947152,
+    "gain": -4.1,
+    "lufs": -11.9,
+    "tp": 0.6,
+    "dur": 289
+   },
+   {
+    "f": "courts/warsaw/Witaj w Domu.mp3",
+    "size": 4441278,
+    "gain": -6.3,
+    "lufs": -9.7,
+    "tp": 1.4,
+    "dur": 185
+   }
+  ]
  }
 }

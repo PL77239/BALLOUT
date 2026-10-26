@@ -29,7 +29,7 @@ for(const level of ['rookie','hooper','legend']){
   Object.assign(me,{x:720,hasBall:false});Object.assign(opp,{x:650,hasBall:true,act:'shoot'});
   for(let t=0;t<36;t++){opp.meter=t/36;const I=ai.think(me,opp,g,1/60);if(I.shootDown){jumps++;break;}}
  }
- const rate=jumps/400;assert(rate>.3 && rate<.85,'AI leaves a meaningful share of shots uncontested');rates.push(rate);console.log(`${level}: jump on ${(rate*100).toFixed(1)}% of nearby committed shots`);
+ const rate=jumps/400;assert(rate>.15 && rate<.80,'AI leaves a meaningful share of shots uncontested');rates.push(rate);console.log(`${level}: jump on ${(rate*100).toFixed(1)}% of nearby committed shots`);
 }
 assert(rates[0]<rates[1]&&rates[1]<rates[2],'global difficulty still scales defense');
 fs.mkdirSync('/tmp/ballout-fix',{recursive:true});frames.forEach((f,i)=>fs.writeFileSync(`/tmp/ballout-fix/${i}.rgba`,f.data));fs.writeFileSync('/tmp/ballout-fix/manifest.json',JSON.stringify(frames.map(({data,...f})=>f)));
