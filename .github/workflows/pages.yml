@@ -26,6 +26,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Index court music folders
+        run: node scripts/audio-manifest.mjs --scan-only
       - name: Build for the repository subdirectory
         run: npm run build
         env:

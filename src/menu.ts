@@ -3,8 +3,9 @@ import Phaser from 'phaser';
 import { AiLevel } from './tuning';
 import { COURTS, CourtId, CourtScene, buildCourt, courtInfo } from './courts';
 import { MenuNav } from './input';
+import { unlockedRival } from './save';
 import { bossAt, bossToLoadout, bossesFor, type Boss } from './bosses';
-import { FITS, ITEMS, Item, Loadout, REGIONS, SKIN_NAMES, SLOTS, SLOT_NAMES, STARTER_EQUIP, Slot, buildLoadout, itemById, itemsFor } from './loadout';
+import { FITS, ITEMS, Item, Loadout, REGIONS, SKIN_NAMES, SLOTS, SLOT_NAMES, STARTER_EQUIP, Slot, applyLookPatch, buildLoadout, itemById, itemsFor } from './loadout';
 import { Puppet, Rig, restRig } from './puppet';
 import { GH, GW, PX, mix } from './pixel';
 import { setViewport } from './viewport';
@@ -17,7 +18,7 @@ const MODES: GameCfg['mode'][] = ['1p', '2p'];
 const LEVELS: AiLevel[] = ['rookie', 'hooper', 'legend'];
 const TARGETS = [7, 11, 15, 21];
 const MAIN_ROWS = ['PLAY', 'LOCKER', 'SHOP'] as const;
-const PLAY_ROWS = ['COURT', 'MODE', 'CPU LEVEL', 'FIRST TO', 'RIVAL', 'START'] as const;
+const PLAY_ROWS = ['COURT', 'MODE', 'GLOBAL AI', 'FIRST TO', 'RIVAL', 'START'] as const;
 const SHOP_TABS = ['FITS', ...SLOTS] as const;
 type Tab = (typeof SHOP_TABS)[number];
 
@@ -59,7 +60,7 @@ export class MenuScene extends Phaser.Scene {
     this.cfg.target = TARGETS.includes(s.target) ? s.target : 11;
     this.g = this.add.graphics().setDepth(5000);
     music.play('menu');
-    this.rivalIdx = 0;
+    this.rivalIdx = unlockedRival(this.cfg.court);
     this.pickRival();
     this.setCourt(this.cfg.court);
     this.makePups();
@@ -67,12 +68,13 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private pickRival() {
+    this.rivalIdx = Math.min(this.rivalIdx,unlockedRival(this.cfg.court));
     this.rivalBoss = bossAt(this.cfg.court, this.rivalIdx);
     this.rival = bossToLoadout(this.rivalBoss);
   }
 
   private cycleRival(d: number) {
-    const n = bossesFor(this.cfg.court).length;
+    const n = Math.min(bossesFor(this.cfg.court).length,unlockedRival(this.cfg.court)+1);
     this.rivalIdx = (this.rivalIdx + d + n) % n;
     this.pickRival();
   }
@@ -106,7 +108,7 @@ export class MenuScene extends Phaser.Scene {
 
   private previewLook(): Loadout {
     const l = this.myLook();
-    return this.previewOverlay ? { ...l, ...this.previewOverlay } : l;
+    return this.previewOverlay ? applyLookPatch(l,this.previewOverlay) : l;
   }
 
   private idle(t: number): Rig {
@@ -187,7 +189,7 @@ export class MenuScene extends Phaser.Scene {
     const ci = courtInfo(this.cfg.court), c = this.cfg;
     const vals = [
       ci.name, c.mode === '1p' ? '1 PLAYER' : '2 PLAYERS', c.level.toUpperCase(), `${c.target}`,
-      `${this.rival.name}`, 'GO',
+      `${this.rivalIdx+1}/6`, 'GO',
     ];
     PLAY_ROWS.forEach((r, i) => {
       const y = 39 + i * 13, on = i === this.sel;
@@ -201,10 +203,11 @@ export class MenuScene extends Phaser.Scene {
     this.panel(6, 146, 178, 40);
     this.T(14, 152, ci.sub, GOLD);
     this.T(14, 164, c.mode === '1p' ? 'YOU EARN CASH FOR BUCKETS, STYLE AND WINS' : 'LOCAL VERSUS: NO CASH PAYOUT', GREY);
-    this.T(14, 174, 'COURT BOSS  //  ARROWS CYCLE (A-Z)', DIM);
+    this.T(14, 174, `RIVALS ${unlockedRival(c.court)+1}/6 // WIN TO UNLOCK`, DIM);
     this.T(GW - 8, 30, ci.name, WHITE, 2, 1);
     this.T(266, 112, 'YOU', GOLD, 1, 0.5);
     this.T(336, 112, this.rival.name, 0x7fd4ff, 1, 0.5);
+    if(c.mode==='1p') { const next=bossesFor(c.court)[unlockedRival(c.court)+1]; this.T(336,122,next?`LOCKED: ${next.name}`:'COURT CLEARED',DIM,1,.5); }
     this.footer('UP/DOWN SELECT   LEFT/RIGHT CHANGE   ENTER GO   BACKSPACE BACK');
   }
 
@@ -299,7 +302,7 @@ export class MenuScene extends Phaser.Scene {
   private startGame() {
     const s = save();
     s.lastCourt = this.cfg.court; s.level = this.cfg.level; s.target = this.cfg.target; persist();
-    const cfg: GameCfg = { mode: this.cfg.mode, court: this.cfg.court, p1: this.myLook(), p2: this.rival, p2Stats: this.rivalBoss.stats, level: this.cfg.level, target: this.cfg.target };
+    const cfg: GameCfg = { mode: this.cfg.mode, court: this.cfg.court, p1: this.myLook(), p2: this.rival, p2Stats: this.rivalBoss.stats, rivalIdx: this.rivalIdx, level: this.cfg.level, target: this.cfg.target };
     this.court?.destroy();
     this.court = undefined;
     this.courtId = undefined;
@@ -333,9 +336,9 @@ export class MenuScene extends Phaser.Scene {
     if (n.dx) {
       const d = n.dx;
       switch (PLAY_ROWS[this.sel]) {
-        case 'COURT': c.court = COURTS[(COURTS.findIndex((x) => x.id === c.court) + d + COURTS.length) % COURTS.length].id; this.setCourt(c.court); this.rivalIdx = 0; this.pickRival(); this.makePups(); break;
+        case 'COURT': c.court = COURTS[(COURTS.findIndex((x) => x.id === c.court) + d + COURTS.length) % COURTS.length].id; this.setCourt(c.court); this.rivalIdx = unlockedRival(c.court); this.pickRival(); this.makePups(); break;
         case 'MODE': c.mode = this.cycle(MODES, c.mode, d); break;
-        case 'CPU LEVEL': c.level = this.cycle(LEVELS, c.level, d); break;
+        case 'GLOBAL AI': c.level = this.cycle(LEVELS, c.level, d); break;
         case 'FIRST TO': c.target = this.cycle(TARGETS, c.target, d); break;
         case 'RIVAL': this.cycleRival(d); this.pups[1]?.dress(this.rival); break;
         default: break;

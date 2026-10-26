@@ -96,6 +96,19 @@ Debug URLs: `/?auto=chicago&mode=sim&seed=1234` (CPU vs CPU, optional seed), `/?
 - Dunks require a takeoff within 190 world units of the basket, a central lane position and 10 stamina. There is no velocity threshold. An active defender in the takeoff lane must be passed or moved out of the path; a grounded/staggered defender is beaten. DUNK READY appears before takeoff when eligible. Press L/V or Triangle to start; the timing meter appears during the dunk.
 - Ankle breakers are probabilistic (7–48% per eligible attempt), based on defensive commitment, movement, fatigue and skill. Attempts have a 0.85-second cooldown, and fallen defenders retain immunity. Quick sprint direction changes can also trigger an attempt.
 - All three AI levels are slightly stronger offensively. Defensive containment has short, difficulty-dependent lapses and applies less movement slowdown.
-- Original Web Audio Foley adds varied ball bounces, sneaker squeaks, rim/board impacts, net sounds and slam accents. Audio starts after a keyboard or pointer gesture, as required by browsers. These are synthesized effects, not recordings from NBA Street.
+- Recorded CC0 court Foley replaces oscillator effects: three bounce variations, two rim impacts, two net sounds and two shoe chirps. Audio starts after a keyboard or pointer gesture. Sources and edit points are in public/audio/sfx/CREDITS.md; no NBA Street audio is sampled.
 
 Run `node scripts/check-gameplay.cjs` for headless dunk, ankle-breaker and AI containment regression checks. `npm run build` also checks TypeScript before bundling.
+
+
+### Rival ladder, rebounds and movement
+
+Each of the 11 courts has six named rivals. Beat the currently unlocked rival to unlock the next; previously beaten rivals remain replayable. Progress is saved per court without resetting money or clothing in old saves. Rookie / Hooper / Legend controls global AI difficulty, and each successive rival raises stats and decision quality within it. Local PvP uses the same player stats for both players.
+
+For a missed shot, move under the ball, **jump with Space (pad: X)**, then **press J (pad: Square) in the air** to open a short catch window. Position and timing decide the rebound; there is no guaranteed catch. Ground balls still use proximity pickup. Defensive rebounds still require clearing the arc. The controls strip switches to rebound instructions while the ball is in flight or loose.
+
+Movement keeps the existing top speeds, with higher acceleration/braking, quicker reversals, a 90 ms action buffer and a slightly faster simulation pace. The AI now receives single-tap jump inputs correctly and chooses a timed contest once per shot rather than repeatedly rolling for an early jump.
+
+Chiraq and Warsaw now have independent music folders: `public/audio/bgm/courts/chiraq/` and `public/audio/bgm/courts/warsaw/`. Add MP3/OGG/M4A/WAV files there. Pages builds scan folders automatically (`--scan-only`, no FFmpeg needed). Run `npm run audio` locally with FFmpeg for per-track loudness measurement; newly scanned tracks otherwise use unity gain.
+
+Checks: `node scripts/check-progression-rebounds.cjs`, `node scripts/check-gameplay.cjs`, `node scripts/check-wardrobe.cjs`, `node scripts/check-sfx.mjs`, and `npm run build`.

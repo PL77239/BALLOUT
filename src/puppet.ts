@@ -293,7 +293,7 @@ export class Puppet {
     };
     const arm = (far: boolean) => {
       const hxT = (far ? r.bHx : r.fHx) + bx, hyT = far ? r.bHy : r.fHy;
-      const sw = [shW[0] + (far ? -1.5 : 1.5), shW[1]];
+      const sw = [shW[0] + (far ? -6 : 6), shW[1]];
       const [a1, a2] = ik(UPPER, FORE, hxT - sw[0], sw[1] - hyT, -1);
       const el = [sw[0] + UPPER * Math.sin(a1), sw[1] - UPPER * Math.cos(a1)];
       const wr = [el[0] + FORE * Math.sin(a2), el[1] - FORE * Math.cos(a2)];
@@ -339,7 +339,7 @@ export class Puppet {
     const far = L.far, k = far ? 0.74 : 1;
     const sk = shade(skin, k), bc = shade(l.bottomColor, k), bt = shade(l.bottomTrim, k);
     const [hx, hy] = L.hp, [kx, ky] = L.kn, [ax, ay] = L.an;
-    b.begin().cap(hx, hy, kx, ky, 4.3 * u, 3.0 * u).commit(sk);
+    b.begin().cap(hx, hy, kx, ky, 4.3 * u, 3.0 * u,0,1,false,true).commit(sk);
     b.begin().disc(kx, ky, 2.05 * u).commit(shade(sk, 0.88), { line: null, flat: true });
     b.begin().cap(kx, ky, ax, ay, 2.8 * u, 1.9 * u).commit(sk);
     b.begin().disc(Math.round(kx + (ax - kx) * 0.08), Math.round(ky + (ay - ky) * 0.08), 1.35 * u).commit(shade(sk, 1.12), { line: null, flat: true });
@@ -369,7 +369,7 @@ export class Puppet {
     const bot = l.bottom;
     if (bot==='jorts' || bot==='chinoShorts') b.begin().disc(kx,ky,5.6*u).commit(bc,{line:null});
     if (bot === 'shorts') {
-      b.begin().cap(hx, hy, kx, ky, 5.0 * u, 5.8 * u, 0, 0.62, true, false).commit(bc);
+      b.begin().cap(hx, hy, kx, ky, 5.0 * u, 5.8 * u, 0, 0.62, false, false).commit(bc);
       b.begin().cap(hx, hy, kx, ky, 5.1 * u, 5.9 * u, 0.54, 0.64, false, false).commit(bt, { flat: true, line: null });
       if (l.bottomTrim !== l.bottomColor) {
         for (const o of [0.18, 0.28, 0.38]) {
@@ -378,17 +378,17 @@ export class Puppet {
       }
     } else if (bot === 'longShorts') {
       const ex = kx + (kx - hx) * 0.12, ey = ky + (ky - hy) * 0.12;
-      b.begin().cap(hx, hy, ex, ey, 5.6 * u, 6.6 * u, 0, 1, true, false).commit(bc);
+      b.begin().cap(hx, hy, ex, ey, 5.6 * u, 6.6 * u, 0, 1, false, false).commit(bc);
       b.begin().cap(hx, hy, ex, ey, 5.7 * u, 6.7 * u, 0.88, 1, false, false).commit(bt, { flat: true, line: null });
     } else if (bot === 'jorts') {
       const ex = kx + (ax - kx) * 0.16, ey = ky + (ay - ky) * 0.16;
-      b.begin().cap(hx, hy, kx, ky, 4.4 * u, 5.5 * u, 0, 1, true, false).commit(bc);
+      b.begin().cap(hx, hy, kx, ky, 4.4 * u, 5.5 * u, 0, 1, false, false).commit(bc);
       b.begin().cap(kx, ky, ex, ey, 5.5 * u, 5.7 * u, 0, 1, false, false).commit(bc);
       b.begin().cap(kx, ky, ex, ey, 5.6 * u, 5.8 * u, 0.74, 1, false, false).commit(bt, { flat: true, line: null });
       stitch(hx, hy, kx, ky, 4.4 * u, bt);
     } else if (bot === 'chinoShorts') {
       const w = [4.3, 5.2, 5.4, 5.0];
-      b.begin().cap(hx, hy, kx, ky, w[0] * u, w[1] * u, 0, 1, true, false).commit(bc);
+      b.begin().cap(hx, hy, kx, ky, w[0] * u, w[1] * u, 0, 1, false, false).commit(bc);
       b.begin().cap(kx, ky, ax, ay, w[2] * u, w[3] * u, 0, 0.34, false, false).commit(bc);
       b.begin().cap(kx, ky, ax, ay, (w[3] + 0.2) * u, (w[3] + 0.2) * u, 0.27, 0.34, false, false).commit(bt, { flat: true, line: null });
       crease(hx, hy, kx, ky, 0.96);
@@ -397,7 +397,7 @@ export class Puppet {
       const W: Record<string, number[]> = { joggers: [5.3, 4.3, 3.8, 2.3], sweats: [6.2, 5.3, 4.8, 4.0], jeans: [5.4, 4.8, 4.6, 4.2], khakis: [5.8, 5.2, 4.8, 4.1] };
       const [w0, w1, w2, w3] = W[bot];
       b.begin().disc(kx,ky,Math.max(w1,w2)*u).commit(bc,{line:null});
-      b.begin().cap(hx, hy, kx, ky, w0 * u, w1 * u, 0, 1, true, false).commit(bc);
+      b.begin().cap(hx, hy, kx, ky, w0 * u, w1 * u, 0, 1, false, false).commit(bc);
       b.begin().cap(kx, ky, ax, ay, w2 * u, w3 * u, 0, 0.94, false, false).commit(bc);
       if (bot === 'jeans') {
         b.begin().cap(kx, ky, ax, ay, (w3 + 0.1) * u, (w3 + 0.2) * u, 0.86, 0.95, false, false).commit(shade(l.bottomColor, k * 1.25), { flat: true, line: null });
@@ -547,26 +547,28 @@ export class Puppet {
     const [hx, hy] = h, [nx, ny] = n;
     // The shoulder line ends below the neck; a capsule extending past the
     // neck made every shirt look like a padded tube around the face.
-    b.begin().cap(hx, hy, nx, ny, 4.7 * u, 6.2 * u, 0.18, 0.88, false, false).commit(skin);
+
     b.begin().cap(hx, hy, nx, ny, 2.1 * u, 2.1 * u, 0.82, 1.08, false, false).commit(skin);
     const tp = l.top;
     // A shared pelvis closes the gap between the two articulated trouser legs.
     // Keep the waistband at the hips, below the shirt rather than on the chest.
-    b.begin().cap(hx, hy, nx, ny, 7.3*u, 7.3*u, -0.10, 0.06, false, false).commit(l.bottomColor,{line:null});
+
     const cut = GARMENT_CUTS[tp];
     const height = Math.hypot(nx - hx, ny - hy) / u;
     const angle = Math.atan2(nx - hx, hy - ny);
     const shoulderY = -height * 0.87;
     const hemY = -cut.hem;
     // Wider front/back and narrower profile, without collapsing at a turn.
-    const breadth = 0.84 + 0.16 * (1 - Math.abs(this.cur.turn));
+    const breadth = 0.62 + 0.38 * (1 - Math.abs(this.cur.turn));
     const widthAt = (y: number) => {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
       return (t < 0.72 ? lerp(cut.waist, cut.chest, t / 0.72) : lerp(cut.chest, cut.shoulder, (t - 0.72) / 0.28)) * breadth;
     };
-    const cloth = (x: number, y: number) => y >= shoulderY && y <= hemY && Math.abs(x) <= widthAt(y)
+    const cloth = (x: number, y: number) => y >= shoulderY && y <= hemY && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
       && !(y < shoulderY + 2.5 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
     const frame = (pred: (x: number, y: number) => boolean) => b.begin().frame(hx, hy, angle, mir, u, 38, (x, y) => cloth(x,y) && pred(x,y));
+    b.begin().cap(hx,hy,nx,ny,cut.waist*breadth*u,cut.waist*breadth*u,-.10,.02,false,false).commit(l.bottomColor,{line:null});
+    if(tp==='tank' || tp==='jersey') b.begin().frame(hx,hy,angle,mir,u,38,(x,y)=>y>=shoulderY && y<shoulderY+3 && Math.abs(x)<cut.neck).commit(skin,{line:null});
     b.begin().frame(hx, hy, angle, mir, u, 38, cloth).commit(l.topColor);
     // Cloth shadows follow the garment, rather than the screen or animation frame.
     b.ink((x,y) => {
@@ -623,7 +625,7 @@ export class Puppet {
     const ang = lean;
     const e = Math.max(0, topExtra(l.top) - 0.85);
     const fwd = [Math.cos(ang) * sx, Math.sin(ang)];
-    const at = (t: number, off: number) => [h[0] + (n[0] - h[0]) * t + fwd[0] * (off + e) * u, h[1] + (n[1] - h[1]) * t + fwd[1] * (off + e) * u];
+    const at = (t: number, off: number) => [h[0] + (n[0] - h[0]) * t + fwd[0] * (off + e) * (.62+.38*(1-Math.abs(this.cur.turn))) * u, h[1] + (n[1] - h[1]) * t + fwd[1] * (off + e) * (.62+.38*(1-Math.abs(this.cur.turn))) * u];
     const path = kind === 'rope' ? [at(0.98, 4.6), at(0.9, 6.9), at(0.74, 7.4), at(0.6, 7.0), at(0.5, 6.4)]
       : kind === 'rosary' ? [at(0.98, 4.8), at(0.9, 7.1), at(0.72, 7.7), at(0.54, 7.3), at(0.4, 6.5)]
       : [at(0.98, 4.6), at(0.9, 6.9), at(0.78, 7.2), at(0.7, 6.6)];

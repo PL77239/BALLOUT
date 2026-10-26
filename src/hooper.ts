@@ -48,6 +48,7 @@ export class Hooper {
   protectT = 0;
   ankleChecked = false;
   shoveCD = 0;
+  reboundT = 0;
   pickupLock = 0;
   handSide = 1;
   ballOx = 32;
@@ -267,6 +268,8 @@ export class Hooper {
 
   update(dt: number, I: Intent, g: GameScene) {
     this.I = I;
+    this.reboundT=Math.max(0,this.reboundT-dt);
+    if(!this.hasBall && this.act==='block' && this.h>15 && I.a) this.reboundT=.22;
     this.tAlive += dt;
     this.shoveCD = Math.max(0, this.shoveCD - dt);
     this.pickupLock = Math.max(0, this.pickupLock - dt);
@@ -286,7 +289,7 @@ export class Hooper {
     else this.stamina = Math.min(this.staminaMax, this.stamina + (T.stamina.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
 
     for (const k of BUFFERED) this.buf[k] = I[k] ? T.input.buffer : Math.max(0, this.buf[k] - dt);
-    if (!I.shootHeld) this.buf.shootDown = 0;
+    if (!I.shootHeld && !I.shootDown) this.buf.shootDown = 0;
     const canAct = this.act === 'free' || (this.act === 'juke' && this.actT > this.actDur * 0.4);
     if (canAct) {
       if (this.hasBall) {

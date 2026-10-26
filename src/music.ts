@@ -193,7 +193,7 @@ class Music {
     const t = this.queue.pop()!;
     this.lastTrack = t;
     const el = this.el, ctx = this.ctx;
-    this.trackGain.gain.setValueAtTime(Math.pow(10, t.gain / 20), ctx.currentTime);
+    this.trackGain.gain.setValueAtTime(Math.pow(10, (t.gain ?? 0) / 20), ctx.currentTime);
     el.src = BASE + 'audio/bgm/' + t.f.split('/').map(encodeURIComponent).join('/');
     this.now = t.f.replace(/^.*\//, '').replace(/\.[^.]+$/, '');
     this.fade.gain.cancelScheduledValues(ctx.currentTime);

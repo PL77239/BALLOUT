@@ -36,6 +36,11 @@ export function hairUnderHeadwear(hair: HairKind, head: HeadKind): HairKind {
   return covers && (hair==='afro' || hair==='hightop') ? 'fade' : hair;
 }
 
+/** Item previews must clear item-specific details just like equipping a fresh loadout. */
+export function applyLookPatch(base: Loadout,patch: Partial<Loadout>): Loadout {
+ return {...base,...(patch.top?{topGraphic:undefined,jerseyNumber:undefined}:{}),...(patch.bottom?{bottomDetail:undefined}:{}),...patch};
+}
+
 export const SKIN_TONES: Col[] = [0xf2cfa8, 0xd9a273, 0xb87a4b, 0x8a5634, 0x5e3a24, 0x3f2618];
 export const SKIN_NAMES = ['LIGHT', 'TAN', 'CARAMEL', 'BROWN', 'DEEP', 'EBONY'];
 

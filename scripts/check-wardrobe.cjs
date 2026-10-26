@@ -60,6 +60,9 @@ for(const head of ['fullcap','backcap','fitted','beanie','bucket','durag'])for(c
 }
 assert.equal(hairUnderHeadwear('afro','none'),'afro');
 assert.equal(hairUnderHeadwear('afro','headband'),'afro');
+const {applyLookPatch}=load('loadout');
+const shopPreview=applyLookPatch({...base,topGraphic:'number',jerseyNumber:23,bottomDetail:'crosses'},{top:'tee',bottom:'jeans'});
+assert.equal(shopPreview.topGraphic,undefined,'shop preview clears the previous print');assert.equal(shopPreview.bottomDetail,undefined,'shop preview clears previous patches');
 const idSet=new Set();for(const item of ITEMS){assert(!idSet.has(item.id),'unique store item ID');idSet.add(item.id);}
 for(const item of ITEMS.filter(i=>i.slot==='top')){
  const outfit=buildLoadout({...STARTER_EQUIP,top:item.id});assert.equal(outfit.top,item.patch.top);

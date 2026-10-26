@@ -55,3 +55,18 @@ Eight new backward caps are in the store. Afro/hi-top hair uses a tucked renderi
 `Hooper.canDunk` is shared by controls, AI and the DUNK READY hint. Takeoff requires possession, a free/juke grounded state, at least 10 stamina, the ball cleared when necessary, and a close central position (190 world-unit weighted radius, lane offset at most 50). There is no minimum running speed. Active defenders within 34 depth units of the approach lane prevent takeoff until the attacker has a clear 24-unit lead; falling, staggered or recovering defenders count as beaten. A defender outside the approach lane does not block takeoff. Starting with L/V or Triangle shows the existing timing meter. A defender may still attempt a block after takeoff.
 
 The tests cover standing takeoff, distance/lane/stamina limits, passing versus an active guard, an off-lane defender, a jumping guard, grounded defenders, clearance and invalid player states. Headwear tests compare tucked afro/hi-top renders to short hair and verify that the equipped hairstyle is not mutated.
+
+
+## Follow-up: seams, progression, contests and rebounds
+
+The torso is narrower in profile, the shoulder contour tapers, and each arm attaches at an appropriate side offset. Trouser legs and skin no longer have rounded hip caps pushing through the shirt; the pelvis bridge now matches the current garment width. Neckline skin is drawn only where exposed. Chains follow the narrower torso. Store previews clear the previous top/bottom's optional graphics before applying another item's patch.
+
+All courts have six ordered rivals with strictly increasing stats. Only a victory over an unlocked selected rival advances progression; losses, PvP and replays cannot skip locked opponents. Save migration keeps existing equipment/currency. Global AI difficulty remains separate from tier. The menu shows the unlocked count and next locked rival.
+
+AI shot defense now preserves a jump tap even without held shoot input. Each shot gets one contest decision with a reaction delay and a later takeoff window. Active rebounds use jump then steal in the air, for both player and CPU; nearby ground balls retain proximity pickup. The UI shows rebound controls when the ball is airborne/loose.
+
+Acceleration/braking and direction reversals are sharper, while top speed remains unchanged. The fixed simulation remains 240 Hz; action buffer is 90 ms. Local PvP stats are equal for both players. This is movement tuning, not a networked ranked implementation.
+
+Independent Chiraq/Warsaw BGM folders are scanned automatically in CI. SFX now use nine trimmed CC0 recording variants with no oscillator fallback; see public/audio/sfx/CREDITS.md. Backboard/dunk accents reuse softened rim recordings. Audio is gesture-unlocked, decoded once and pooled in Web Audio.
+
+New checks cover old-save migration, ordered ladders on all 11 maps, actual win/loss advancement, global/tier separation, AI jump taps, active/ground rebounds, prompt reversal/braking, store-preview detail reset and valid unclipped PCM audio files. Full match playtesting and listening in the target browser remain necessary for final feel/mix balancing.
