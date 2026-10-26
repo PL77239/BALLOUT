@@ -283,7 +283,8 @@ export class Puppet {
     const nx = X(neckW[0]), ny = Y(neckW[1]);
 
     const leg = (far: boolean) => {
-      const ox = far ? -9 : 9;
+      // Seat joins under the shirt; volume opens out down the thighs.
+      const ox = far ? -5 : 5;
       const fx = far ? r.bFx : r.fFx, fy = far ? r.bFy : r.fFy, ank = far ? r.bAnk : r.fAnk;
       const [a1, a2] = ik(THIGH, SHIN, bx + fx - (hipW[0] + ox), hipW[1] - (fy + ANKLE), 1);
       const hp = [hipW[0] + ox, hipW[1]];
@@ -556,19 +557,19 @@ export class Puppet {
     const cut = GARMENT_CUTS[tp];
     const height = Math.hypot(nx - hx, ny - hy) / u;
     const angle = Math.atan2(nx - hx, hy - ny);
-    const shoulderY = -height * 0.87;
-    const hemY = -cut.hem;
+    const shoulderY = -height;
+    const hemY = -cut.hem + 1.5;
     // Wider front/back and narrower profile, without collapsing at a turn.
-    const breadth = 0.62 + 0.38 * (1 - Math.abs(this.cur.turn));
+    const breadth = 0.78 + 0.22 * (1 - Math.abs(this.cur.turn));
     const widthAt = (y: number) => {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
       return (t < 0.72 ? lerp(cut.waist, cut.chest, t / 0.72) : lerp(cut.chest, cut.shoulder, (t - 0.72) / 0.28)) * breadth;
     };
     const cloth = (x: number, y: number) => y >= shoulderY && y <= hemY && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
-      && !(y < shoulderY + 2.5 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
+      && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
     const frame = (pred: (x: number, y: number) => boolean) => b.begin().frame(hx, hy, angle, mir, u, 38, (x, y) => cloth(x,y) && pred(x,y));
     b.begin().cap(hx,hy,nx,ny,cut.waist*breadth*u,cut.waist*breadth*u,-.10,.02,false,false).commit(l.bottomColor,{line:null});
-    if(tp==='tank' || tp==='jersey') b.begin().frame(hx,hy,angle,mir,u,38,(x,y)=>y>=shoulderY && y<shoulderY+3 && Math.abs(x)<cut.neck).commit(skin,{line:null});
+    if(tp==='tank' || tp==='jersey') b.begin().frame(hx,hy,angle,mir,u,38,(x,y)=>y>=shoulderY && y<shoulderY+1.5 && Math.abs(x)<cut.neck).commit(skin,{line:null});
     b.begin().frame(hx, hy, angle, mir, u, 38, cloth).commit(l.topColor);
     // Cloth shadows follow the garment, rather than the screen or animation frame.
     b.ink((x,y) => {
