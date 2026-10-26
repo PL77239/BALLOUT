@@ -1,7 +1,8 @@
 import type { Col } from './pixel';
+import type { TopGraphic } from './wardrobe';
 
-export type RegionId = 'bk' | 'chi' | 'chiraq' | 'warsaw' | 'harlem' | 'queens' | 'philly' | 'detroit' | 'atl' | 'la';
-export type HairKind = 'bald' | 'fade' | 'hightop' | 'waves' | 'afro' | 'braids' | 'locs' | 'twists';
+export type RegionId = 'bk' | 'chi' | 'chiraq' | 'warsaw' | 'marseille' | 'harlem' | 'queens' | 'philly' | 'detroit' | 'atl' | 'la';
+export type HairKind = 'bald' | 'fade' | 'hightop' | 'waves' | 'afro' | 'braids' | 'locs' | 'twists' | 'crop' | 'cornrows' | 'shortlocs' | 'flattop' | 'mohawk' | 'bun';
 export type HeadKind = 'none' | 'fullcap' | 'backcap' | 'fitted' | 'beanie' | 'headband' | 'durag' | 'bucket' | 'bandana';
 export type FaceKind = 'none' | 'shades' | 'beard' | 'goatee' | 'glasses' | 'stache' | 'grillz';
 export type TopKind = 'tank' | 'tee' | 'hoodie' | 'jersey' | 'longsleeve' | 'bigTee' | 'flannel' | 'puffer';
@@ -19,11 +20,25 @@ export interface Loadout {
   head: HeadKind; headColor: Col; headTrim: Col;
   face: FaceKind; faceColor: Col;
   top: TopKind; topColor: Col; topTrim: Col;
+  /** Optional item-level details; old saves and rivals remain compatible. */
+  topGraphic?: TopGraphic; jerseyNumber?: number;
   bottom: BottomKind; bottomColor: Col; bottomTrim: Col;
+  bottomDetail?: 'none' | 'stitched' | 'crosses' | 'ripped' | 'stripe';
   shoes: ShoeKind; shoeColor: Col; shoeSole: Col; shoeTrim: Col;
   socks: SockKind; sockColor: Col; sockTrim: Col;
   chain: ChainKind;
   wrist: WristKind; wristColor: Col;
+}
+
+/** Render bulky hair tucked under a covering hat without changing equipped/saved hair. */
+export function hairUnderHeadwear(hair: HairKind, head: HeadKind): HairKind {
+  const covers = head==='fullcap' || head==='backcap' || head==='fitted' || head==='beanie' || head==='bucket' || head==='durag';
+  return covers && (['afro','hightop','shortlocs','flattop','mohawk','bun'].includes(hair)) ? 'fade' : hair;
+}
+
+/** Item previews must clear item-specific details just like equipping a fresh loadout. */
+export function applyLookPatch(base: Loadout,patch: Partial<Loadout>): Loadout {
+ return {...base,...(patch.top?{topGraphic:undefined,jerseyNumber:undefined}:{}),...(patch.bottom?{bottomDetail:undefined}:{}),...patch};
 }
 
 export const SKIN_TONES: Col[] = [0xf2cfa8, 0xd9a273, 0xb87a4b, 0x8a5634, 0x5e3a24, 0x3f2618];
@@ -64,10 +79,11 @@ export const REGIONS: Record<RegionId, Region> = {
     tops: ['hoodie', 'jersey', 'bigTee'], bottoms: ['sweats', 'longShorts'], heads: ['durag', 'fullcap', 'beanie'], hairs: ['braids', 'locs', 'fade'], shoes: ['high', 'runner'],
     nicks: ['DRILL', 'L-STOP', 'SIX CORNER', 'O-BLOCK', 'CHI-TOWN', 'COLD', 'SLIDE'],
   },
+  marseille:{id:'marseille',name:'MARSEILLE',city:'VIEUX-PORT',a:0x51b7dc,b:0xecece4,c:0x253e58,tops:['jersey','hoodie','bigTee'],bottoms:['joggers','sweats','longShorts'],heads:['backcap','none','bucket'],hairs:['fade','cornrows','shortlocs'],shoes:['runner','low'],nicks:['MASSILIA','PANIER','LA GARDE','LE PORT','TREIZE']},
   warsaw: {
-    id: 'warsaw', name: 'WARSAW', city: 'MOKOTÓW', a: 0xd22b3a, b: 0xffffff, c: 0x0e8a4a,
+    id: 'warsaw', name: 'WARSAW', city: 'CENTRUM', a: 0xd22b3a, b: 0xffffff, c: 0x0e8a4a,
     tops: ['hoodie', 'longsleeve', 'tee'], bottoms: ['joggers', 'sweats'], heads: ['beanie', 'fitted', 'none'], hairs: ['fade', 'waves', 'hightop'], shoes: ['runner', 'low'],
-    nicks: ['MOKOTÓW', 'TRAM', 'PALACE', 'VISTULA', 'PIĄTEK', 'BLOCK', 'KIELBASA'],
+    nicks: ['CENTRUM', 'TRAM', 'PALACE', 'VISTULA', 'PIĄTEK', 'BLOCK', 'KIELBASA'],
   },
   harlem: {
     id: 'harlem', name: 'HARLEM', city: 'THE PARK', a: 0x5a2d91, b: 0xf2c230, c: 0xffffff,
@@ -113,7 +129,7 @@ export const SLOTS: Slot[] = ['hair', 'head', 'face', 'top', 'bottom', 'shoes', 
 export const SLOT_NAMES: Record<Slot, string> = { hair: 'HAIR', head: 'HEADWEAR', face: 'FACE', top: 'TOP', bottom: 'BOTTOM', shoes: 'SHOES', socks: 'SOCKS', chain: 'CHAIN', wrist: 'WRIST' };
 
 const KIND_NAMES: Record<string, string> = {
-  bald: 'SHAVED', fade: 'FADE', hightop: 'HI-TOP', waves: 'WAVES', afro: 'AFRO', braids: 'BRAIDS', locs: 'LOCS', twists: 'TWISTS',
+  bald: 'SHAVED', fade: 'FADE', hightop: 'HI-TOP', waves: 'WAVES', afro: 'AFRO', braids: 'BRAIDS', locs: 'LOCS', twists: 'TWISTS', crop: 'TEXTURED CROP', cornrows: 'CORNROWS', shortlocs: 'SHORT LOCS', flattop: 'FLAT TOP', mohawk: 'BURST MOHAWK', bun: 'LOC BUN',
   none: 'NONE', fullcap: 'FULL CAP', backcap: 'BACKWARDS CAP', beanie: 'BEANIE', headband: 'HEADBAND', durag: 'DURAG', bucket: 'BUCKET HAT', bandana: 'BANDANA', fitted: 'FITTED CAP',
   shades: 'SHADES', beard: 'BEARD', goatee: 'GOATEE', glasses: 'ROUND SPECS', stache: 'MUSTACHE', grillz: 'GRILLZ',
   tank: 'TANK', tee: 'TEE', hoodie: 'HOODIE', jersey: 'JERSEY', longsleeve: 'LONGSLEEVE', bigTee: 'BIG TEE', flannel: 'FLANNEL', puffer: 'PUFFER',
@@ -135,7 +151,7 @@ function buildCatalog() {
 
   add('hair', 'hair.fade.black', 'FADE', 0, 'any', { hair: 'fade', hairColor: 0x15110e });
   add('hair', 'hair.bald', 'SHAVED', 0, 'any', { hair: 'bald' });
-  const hairBase: [string, number][] = [['fade', 40], ['hightop', 90], ['waves', 80], ['afro', 120], ['braids', 140], ['locs', 160], ['twists', 150]];
+  const hairBase: [string, number][] = [['fade', 40], ['hightop', 90], ['waves', 80], ['afro', 120], ['braids', 140], ['locs', 160], ['twists', 150], ['crop', 85], ['cornrows', 150], ['shortlocs', 145], ['flattop', 115], ['mohawk', 135], ['bun', 165]];
   for (const [k, p] of hairBase) {
     HAIR_COLORS.forEach(([cn, cc], i) => {
       if (k === 'fade' && i === 0) return;
@@ -153,6 +169,12 @@ function buildCatalog() {
   add('head', 'head.durag.white', 'WHITE DURAG', 70, 'any', { head: 'durag', headColor: 0xeeeeea, headTrim: 0xeeeeea });
   add('head', 'head.bucket.tan', 'TAN BUCKET', 90, 'any', { head: 'bucket', headColor: 0xc9a46a, headTrim: 0x7a5a30 });
   add('head', 'head.bandana.red', 'RED BANDANA', 55, 'any', { head: 'bandana', headColor: 0xc0201e, headTrim: 0xf4f4f0 });
+  for(const [id,name,body,trim] of [
+    ['black','BLACK SILVER',0x181a22,0xd7dbe3],['navy','NAVY CREAM',0x223453,0xe8ddbd],
+    ['red','RED WHITE',0x9f283c,0xf3ece0],['forest','FOREST GOLD',0x254b3b,0xd5b65b],
+    ['purple','PURPLE GOLD',0x613c87,0xe4bd54],['cream','CREAM BURGUNDY',0xddcfad,0x752838],
+    ['sky','SKY BLACK',0x80b6c8,0x222b37],['washed','WASHED CHARCOAL',0x5d6268,0xd8d2bd],
+  ] as const) add('head',`head.backcap.${id}`,`${name} BACKCAP`,95,'any',{head:'backcap',headColor:body,headTrim:trim});
   add('head', 'head.backcap.white', 'WHITE BACKCAP', 75, 'any', { head: 'backcap', headColor: 0xeeeeea, headTrim: 0x222222 });
 
   add('face', 'face.none', 'NONE', 0, 'any', { face: 'none' });
@@ -163,6 +185,26 @@ function buildCatalog() {
 
   add('top', 'top.tee.white', 'WHITE TEE', 0, 'any', { top: 'tee', topColor: 0xf0f0ea, topTrim: 0x222222 });
   add('top', 'top.tank.black', 'BLACK TANK', 0, 'any', { top: 'tank', topColor: 0x1d1d22, topTrim: 0xf0f0ea });
+  // Original streetwear pieces: gothic hardware, embroidered denim and bold rap-era graphics.
+  add('top','top.tee.gothic','GOTHIC CROSS TEE',145,'any',{top:'tee',topColor:0x17191f,topTrim:0xd5d9e0,topGraphic:'cross'});
+  add('top','top.bigtee.stacked','STACKED TYPE BIG TEE',155,'any',{top:'bigTee',topColor:0xf1e4cb,topTrim:0xa52643,topGraphic:'stacked'});
+  add('top','top.hoodie.gothic','SILVER CROSS HOODIE',220,'any',{top:'hoodie',topColor:0x20212b,topTrim:0xd4dae5,topGraphic:'cross'});
+  add('top','top.hoodie.stars','STAR PATCH HOODIE',195,'any',{top:'hoodie',topColor:0x5a355f,topTrim:0xf3c875,topGraphic:'stars'});
+  add('top','top.bigtee.washed','WASHED STAR BIG TEE',165,'any',{top:'bigTee',topColor:0x626862,topTrim:0xe0cf9e,topGraphic:'stars'});
+  add('top','top.longsleeve.racing','RACING STRIPE LS',155,'any',{top:'longsleeve',topColor:0x344c61,topTrim:0xf0dfba,topGraphic:'stripe'});
+  add('top','top.jersey.8','GOLD COURT 08',175,'any',{top:'jersey',topColor:0xdda52f,topTrim:0x613e91,topGraphic:'number',jerseyNumber:8});
+  add('top','top.jersey.1','SKYLINE 01',175,'any',{top:'jersey',topColor:0x78b5d5,topTrim:0xf4efdf,topGraphic:'number',jerseyNumber:1});
+  add('top','top.puffer.cream','CREAM PANEL PUFFER',230,'any',{top:'puffer',topColor:0xd8c9a6,topTrim:0x343744,topGraphic:'box'});
+  add('bottom','bottom.jeans.flap','FLAP STITCH DENIM',205,'any',{bottom:'jeans',bottomColor:0x354a6b,bottomTrim:0xe4ca8f,bottomDetail:'stitched'});
+  add('bottom','bottom.jeans.cross','SILVER PATCH DENIM',235,'any',{bottom:'jeans',bottomColor:0x242832,bottomTrim:0xcbd0db,bottomDetail:'crosses'});
+  add('bottom','bottom.jeans.distressed','DISTRESSED WASH DENIM',210,'any',{bottom:'jeans',bottomColor:0x6486a0,bottomTrim:0xd8d4c8,bottomDetail:'ripped'});
+  add('bottom','bottom.sweats.track','SIDE STRIPE SWEATS',160,'any',{bottom:'sweats',bottomColor:0x263a37,bottomTrim:0xe3d6ad,bottomDetail:'stripe'});
+  add('bottom','bottom.longshorts.court','VARSITY LONG SHORTS',150,'any',{bottom:'longShorts',bottomColor:0x613e91,bottomTrim:0xdda52f,bottomDetail:'stripe'});
+  add('head','head.fitted.star','STAR FITTED',130,'any',{head:'fitted',headColor:0x613e91,headTrim:0xdda52f});
+  add('shoes','shoes.high.cream','CREAM COURT HIGHS',180,'any',{shoes:'high',shoeColor:0xe2d6b8,shoeTrim:0x8b2637,shoeSole:0xa99b7f});
+  add('top', 'top.tee.court', 'COURT LOGO TEE', 95, 'any', { top: 'tee', topColor: 0x222630, topTrim: 0xf0c55a, topGraphic: 'box' });
+  add('top', 'top.jersey.23', 'VARSITY 23', 150, 'any', { top: 'jersey', topColor: 0x9e2937, topTrim: 0xffe6b1, topGraphic: 'number', jerseyNumber: 23 });
+  add('top', 'top.bigtee.diagonal', 'DIAGONAL OVERSIZE', 135, 'any', { top: 'bigTee', topColor: 0x263c55, topTrim: 0x78d7ce, topGraphic: 'diagonal' });
   add('top', 'top.tee.black', 'BLACK TEE', 40, 'any', { top: 'tee', topColor: 0x1d1d22, topTrim: 0x4a4a54 });
   add('top', 'top.tank.white', 'WHITE TANK', 40, 'any', { top: 'tank', topColor: 0xf0f0ea, topTrim: 0x222222 });
   add('top', 'top.hoodie.grey', 'GREY HOODIE', 85, 'any', { top: 'hoodie', topColor: 0x8d949e, topTrim: 0x22262c });
@@ -227,7 +269,6 @@ function buildCatalog() {
   add('head', 'head.fitted.queens', 'QUEENS FITTED', 105, 'queens', { head: 'fitted', headColor: 0x1c2f66, headTrim: 0xf4f4f0 });
 
   add('face', 'face.stache', 'MUSTACHE', 70, 'la', { face: 'stache', faceColor: 0x15110e });
-  add('face', 'face.grillz', 'GOLD GRILLZ', 260, 'atl', { face: 'grillz', faceColor: 0xf0c040 });
 
   add('top', 'top.bigtee.white', 'WHITE BIG TEE', 60, 'any', { top: 'bigTee', topColor: WHITE, topTrim: 0x2a2a30 });
   add('top', 'top.bigtee.black', 'BLACK BIG TEE', 65, 'any', { top: 'bigTee', topColor: BLACK, topTrim: 0x4a4a54 });
@@ -292,8 +333,8 @@ function buildCatalog() {
     ['queens', 'QUEENS WORKWEAR', ['head.fitted.queens', 'top.puffer.tan', 'bottom.khakis.navy', 'shoes.boot.wheat', 'chain.cross']],
     ['philly', 'BROAD STREET', ['head.fitted.red', 'top.puffer.philly', 'bottom.jeans.dark', 'shoes.boot.black', 'chain.ice']],
     ['chi', 'SOUTH SIDE CREASE', ['head.fullcap.navy', 'top.bigtee.black', 'bottom.khakis.tan', 'shoes.classic.black', 'chain.cross']],
-    ['atl', 'UNDER THE PASS', ['head.backcap.white', 'top.bigtee.atl', 'bottom.jorts.wash', 'socks.stripe.gold', 'shoes.slides.white', 'chain.rope', 'face.grillz']],
-    ['atl', 'TRAP SUMMER', ['head.bandana.red', 'top.bigtee.black', 'bottom.jorts.dark', 'socks.stripe.black', 'shoes.classic.black', 'chain.ice', 'face.grillz']],
+    ['atl', 'UNDER THE PASS', ['head.backcap.white', 'top.bigtee.atl', 'bottom.jorts.wash', 'socks.stripe.gold', 'shoes.slides.white', 'chain.rope']],
+    ['atl', 'TRAP SUMMER', ['head.bandana.red', 'top.bigtee.black', 'bottom.jorts.dark', 'socks.stripe.black', 'shoes.classic.black', 'chain.ice']],
   ];
   const wardrobe = new Map<RegionId, number>();
   for (const [reg, name, ids] of curated) {

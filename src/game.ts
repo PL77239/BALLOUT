@@ -1,10 +1,11 @@
 import { music } from './music';
+import { net, closeNet } from './net';
 import Phaser from 'phaser';
 import { sfx } from './sfx';
 import { T, AiLevel } from './tuning';
 import { buildCourt, courtInfo, CourtId, CourtScene } from './courts';
 
-const COURT_MUSIC: Partial<Record<CourtId, string>> = { chiraq: 'chicago', warsaw: 'philly' };
+
 import { Ball, ShotInfo } from './ball';
 import { Hooper } from './hooper';
 import { Brain } from './ai';
@@ -16,19 +17,23 @@ import { GW, PX, clamp, mix, rng } from './pixel';
 import { VH, VIEW_TOP, VW, fixedAt, fixedOrigin, setViewport } from './viewport';
 import { Legend, LEGEND_H } from './legend';
 import { label, textWidth } from './font';
-import { addCash, persist, save } from './save';
+import { addCash, persist, save, recordRivalWin } from './save';
 import { type TimingGrade, timingLabel } from './timing';
 
 export interface GameCfg {
-  mode: '1p' | '2p' | 'sim';
+  mode: '1p' | '2p' | 'sim' | 'online';
+  netRole?: 'host'|'guest';
   court: CourtId;
   p1: Loadout;
   p2?: Loadout;
   p2Stats?: BossStats;
+  rivalIdx?: number;
   level: AiLevel;
   target: number;
   seed?: number;
 }
+
+const cfgRival = (cfg: GameCfg) => cfg.mode==='1p' && cfg.rivalIdx!==undefined;
 
 type Phase = 'intro' | 'live' | 'point' | 'over';
 type Txt = Phaser.GameObjects.BitmapText;
@@ -54,10 +59,17 @@ export class GameScene extends Phaser.Scene {
   cleared = true;
   phase: Phase = 'intro';
   private phaseT = 0;
+  private netSendT = 0;
+  private netSeq = 0;
+  private netLastSeq = -1;
+  private netReadyAt = 0;
+  private netStatus: HTMLDivElement|null = null;
+  private guestTarget: any = null;
   private court!: CourtScene;
   private ctrls: (Controller | null)[] = [null, null];
   private brains: (Brain | null)[] = [null, null];
   private shadows!: Phaser.GameObjects.Graphics;
+  private dunkHints: Txt[] = [];
   private meterG!: Phaser.GameObjects.Graphics;
   private hudG!: Phaser.GameObjects.Graphics;
   private hud: Record<string, Txt> = {};
@@ -98,13 +110,15 @@ export class GameScene extends Phaser.Scene {
   init(cfg: GameCfg) { this.cfg = cfg; }
 
   shutdown() {
+    if(this.cfg.netRole)closeNet();
+    this.netStatus?.remove();this.netStatus=null;
     this.court?.destroy();
     this.legend?.destroy();
   }
 
   create() {
     const cfg = this.cfg;
-    this.hoopers = []; this.hud = {}; this.legend = null; this.pauseUi = []; this.overUi = [];
+    this.hoopers = []; this.dunkHints = []; this.hud = {}; this.legend = null; this.pauseUi = []; this.overUi = [];
     this.time_ = 0; this.realT = 0; this.paused = false; this.winner = null; this.timeScale = 1; this.slowT = 0; this.hitT = 0; this.overT = 0;
     this.style = [0, 0]; this.buckets = [0, 0]; this.result = null;
     this.pointCountdown = 0; this.pointCountShown = -1;
@@ -115,7 +129,7 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBackgroundColor('#000000'); cam.setZoom(1 / PX);
     this.court = buildCourt(this, cfg.court);
-    if (cfg.mode !== 'sim') music.play(COURT_MUSIC[cfg.court] ?? cfg.court, this.court.boomX);
+    if (cfg.mode !== 'sim') music.play(cfg.court, this.court.boomX);
     this.fx = new FX(this);
     this.shadows = this.add.graphics().setDepth(-600);
     this.meterG = this.add.graphics().setDepth(3000);
@@ -123,19 +137,20 @@ export class GameScene extends Phaser.Scene {
 
     this.ball = new Ball(this, {
       onScore: (info, clean) => this.onScore(info, clean),
-      onRim: (sp) => { if (sp > 120) { sfx.rim(); this.fx.sparks(this.ball.x, this.ball.sy, 4, 0xffb060, 160); } },
-      onBoard: (sp) => { if (sp > 120) { sfx.board(); this.fx.ring(this.ball.x, this.ball.sy, 0xffffff, 8, 120, 0.2); } },
-      onFloor: (sp) => { if (sp > 80) sfx.bounce(sp / 700); if (sp > 300) this.fx.dust(this.ball.x, T.court.floorY + this.ball.z, 2, 0, 0.5); },
+      onRim: (sp) => { if (sp > 120) { this.netSound('rim'); sfx.rim(); this.fx.sparks(this.ball.x, this.ball.sy, 4, 0xffb060, 160); } },
+      onBoard: (sp) => { if (sp > 120) { this.netSound('board'); sfx.board(); this.fx.ring(this.ball.x, this.ball.sy, 0xffffff, 8, 120, 0.2); } },
+      onFloor: (sp) => { if (sp > 80) {this.netSound('bounce');sfx.bounce(sp / 700);} if (sp > 300) this.fx.dust(this.ball.x, T.court.floorY + this.ball.z, 2, 0, 0.5); },
       onWall: () => { this.cameras.main.shake(60, 0.002); },
     });
 
     const rival = cfg.p2 ?? bossToLoadout(bossAt(cfg.court, 0));
-    const rStats = cfg.p2Stats ?? bossAt(cfg.court, 0).stats;
+    const rStats = cfg.mode==='2p' ? PLAYER_STATS : cfg.p2Stats ?? bossAt(cfg.court, cfg.rivalIdx ?? 0).stats;
     this.hoopers = [new Hooper(this, 0, cfg.p1, PLAYER_STATS), new Hooper(this, 1, rival, rStats)];
+    this.dunkHints = this.hoopers.map(() => label(this,0,0,'DUNK READY',0x8dffb4,{ox:0.5,depth:3001}).setVisible(false));
     this.hoopers.forEach((h) => { h.onIgnite = () => this.onIgnite(h); });
-    const [c1, c2] = makeControllers(cfg.mode === '2p');
-    this.ctrls = [cfg.mode === 'sim' ? null : c1, cfg.mode === '2p' ? c2 : null];
-    this.brains = [cfg.mode === 'sim' ? new Brain(cfg.level) : null, cfg.mode === '2p' ? null : new Brain(cfg.level)];
+    const [c1, c2] = makeControllers(cfg.mode === '2p' && !cfg.netRole);
+    this.ctrls = [cfg.mode === 'sim' ? null : c1, cfg.mode === '2p' && !cfg.netRole ? c2 : null];
+    this.brains = [cfg.mode === 'sim' ? new Brain(cfg.level,cfg.rivalIdx ?? 0) : null, cfg.mode === '2p' ? null : new Brain(cfg.level,cfg.rivalIdx ?? 0)];
     this.hoopers[0].isCpu = cfg.mode === 'sim';
     this.hoopers[1].isCpu = cfg.mode !== '2p';
     this.buildHud();
@@ -144,6 +159,8 @@ export class GameScene extends Phaser.Scene {
     this.phase = 'intro'; this.phaseT = 3.15; this.introCountShown = -1;
     this.showBanner('CHECK BALL', `FIRST TO ${cfg.target}  //  TAP SHOOT IN GREEN`, 1.4);
     (window as unknown as { __g: GameScene }).__g = this;
+    this.events.once('shutdown',()=>this.shutdown());
+    if(cfg.netRole && net) this.bindNetwork();
   }
 
   rand() { return this.rng(); }
@@ -167,12 +184,13 @@ export class GameScene extends Phaser.Scene {
     h.nameB = this.txt(VW - 6, 3, '', 0x7fd4ff, 1, 1);
     h.fireA = this.txt(6, 25, 'ON FIRE', 0xff8a2a, 1, 0).setVisible(false);
     h.fireB = this.txt(VW - 6, 25, 'ON FIRE', 0xff8a2a, 1, 1).setVisible(false);
-    if (this.cfg.mode !== 'sim') this.legend = new Legend(this, VW, VH, this.cfg.mode === '2p' ? ['P1 KB', 'P2 PAD'] : ['KEYS', 'PAD']);
+    if (this.cfg.mode !== 'sim') this.legend = new Legend(this, VW, VH, this.cfg.netRole ? ['KEYS','PAD'] : this.cfg.mode === '2p' ? ['P1 KB', 'P2 PAD'] : ['KEYS', 'PAD']);
     this.banner = this.txt(cx, 78, '', 0xffffff, 3, 0.5, 0.5, 6200).setAlpha(0);
     this.bannerSub = this.txt(cx, 98, '', 0xffe45e, 1, 0.5, 0.5, 6200).setAlpha(0);
   }
 
   showBanner(main: string, sub = '', dur = 1.2, color = '#ffffff') {
+    if(this.cfg.netRole==='host')net?.send({type:'event',kind:'banner',main,sub,dur,color});
     const c = parseInt(color.replace('#', ''), 16);
     const w = (textWidth(main, 3) + 6) > VW - 10 ? 2 : 3;
     this.banner.setText(main.toUpperCase()).setTint(c).setAlpha(1).setScale(PX * w);
@@ -182,6 +200,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   popupAt(h: Hooper, text: string, color = '#ffe45e', size = 28) {
+    if(this.cfg.netRole==='host')net?.send({type:'event',kind:'popup',id:h.id,text,color,size});
     for (const [re, pay] of STYLE_PAY) if (re.test(text)) { this.style[h.id] += pay; break; }
     this.fx.popup(h.x + (Math.random() - 0.5) * 30, h.sy - h.h - 205, text, color, size);
   }
@@ -275,7 +294,7 @@ export class GameScene extends Phaser.Scene {
       if (win) lines.push(['WIN BONUS', Math.round(70 * mult)]);
       total = lines.reduce((a, l) => a + l[1], 0);
       const s = save();
-      s.games++; if (win) s.wins++;
+      s.games++; if (win) { s.wins++; if(cfgRival(this.cfg) && recordRivalWin(this.cfg.court,this.cfg.rivalIdx!)) lines.push(['NEXT RIVAL UNLOCKED',0]); }
       addCash(total); persist();
       this.result = { win, lines, total };
     }
@@ -299,12 +318,12 @@ export class GameScene extends Phaser.Scene {
     let y = py + 47;
     if (this.result) {
       for (const [n, v] of this.result.lines) {
-        t(px + 24, y, n, 0xa8a8c0, 1, 0); t(px + pw - 24, y, `+$${v}`, 0x7dffb0, 1, 1); y += 9;
+        t(px + 24, y, n, n==='NEXT RIVAL UNLOCKED'?0x7dffb0:0xa8a8c0, 1, 0); if(n!=='NEXT RIVAL UNLOCKED') t(px + pw - 24, y, `+$${v}`, 0x7dffb0, 1, 1); y += 9;
       }
       t(px + 24, y + 2, this.result.win ? 'CASH EARNED' : 'CASH EARNED', 0xffffff, 1, 0); t(px + pw - 24, y + 2, `+$${this.result.total}`, 0xffd24a, 1, 1);
       y += 14;
     }
-    t(px + pw / 2, py + ph - 12, 'ENTER REMATCH     BACKSPACE MENU', 0x8a8aa0, 1);
+    t(px + pw / 2, py + ph - 12, this.cfg.netRole ? 'LEAVE ROOM TO PLAY AGAIN' : 'ENTER REMATCH     BACKSPACE MENU', 0x8a8aa0, 1);
   }
 
   dunkMiss(h: Hooper, grade: TimingGrade = 'bad') {
@@ -325,7 +344,6 @@ export class GameScene extends Phaser.Scene {
     const tag = GameScene.PERFECT_TAGS[Math.floor(this.rand() * GameScene.PERFECT_TAGS.length)];
     const text = contested ? `${tag}!  (CONTESTED)` : `${tag}!`;
     this.popupAt(h, text, '#4dff88', 44);
-    music.chime();
     this.hitstop(0.05);
     this.slowmo(0.55, 0.18);
   }
@@ -333,7 +351,9 @@ export class GameScene extends Phaser.Scene {
   dunkHit(h: Hooper, perfect = true, _grade: TimingGrade = 'green') {
     const o = this.opp(h);
     const hp = T.hoop;
-    const blocked = (o.act === 'block' && o.h > 35 && Math.abs(o.x - (h.x + h.facing * 20)) < 80 && Math.abs(o.z - h.z) < 42);
+    const inFront = (o.x-h.x)*h.facing >= -8;
+    const blocked = o.act==='block' && o.h>35 &&
+      Math.abs(o.x-(h.x+h.facing*20)) < (o.isCpu?58:80) && Math.abs(o.z-h.z) < (o.isCpu?30:42) && (!o.isCpu || inFront);
     if (blocked) {
       this.ball.release(h); h.hasBall = false;
       this.ball.setHeld(h.x + h.facing * 30, h.z, h.h + 200);
@@ -462,13 +482,14 @@ export class GameScene extends Phaser.Scene {
     if (!live || this.phase !== 'live') { this.looseT = 0; return; }
     let best: Hooper | null = null, bd = 1e9;
     for (const h of this.hoopers) {
+      if (h.h>20 && h.reboundT<=0) continue;
       if (h.pickupLock > 0 || ['fall', 'stagger', 'shoot', 'dunk', 'swipe'].includes(h.act)) continue;
       const dx = Math.abs(h.x - b.x), dz = Math.abs(h.z - b.z);
-      if (dx > 44 || dz > 36) continue;
-      if (b.h > h.h + 232 || b.h < 0) continue;
+      if (dx > (h.reboundT>0?62:44) || dz > (h.reboundT>0?44:36)) continue;
+      if (b.h > h.h + (h.reboundT>0?270:232) || b.h < 0) continue;
       if (b.h > h.h + 120 && h.h < 20) continue;
       if (Math.hypot(b.vx, b.vh) > 1000) continue;
-      const d = dx + dz;
+      const d = dx + dz + Math.abs(b.h-(h.h+190))*.06 - (h.reboundT>0?18:0);
       if (d < bd) { bd = d; best = h; }
     }
     if (!best) {
@@ -481,7 +502,7 @@ export class GameScene extends Phaser.Scene {
     const lastOff = b.lastOwner;
     best.hasBall = true; b.owner = best; b.mode = 'held'; b.info = null; b.fire = false;
     if (best !== lastOff) { this.needsClear = true; this.cleared = false; this.popupAt(best, 'TAKE IT BACK', '#ffe45e', 18); }
-    if (best.h > 20) this.popupAt(best, 'BOARD!', '#ffffff', 26);
+    if (best.h > 20) { best.reboundT=0; best.gainHeat(6); this.popupAt(best, 'REBOUND!', '#ffffff', 26); }
   }
 
   private blocks() {
@@ -490,7 +511,7 @@ export class GameScene extends Phaser.Scene {
     const d = this.opp(b.info.shooter);
     if (d.act !== 'block') return;
     const hx = d.x + d.facing * 24, hh = d.h + 228;
-    if (Math.hypot(b.x - hx, b.h - hh) < 48 && Math.abs(b.z - d.z) < 42) {
+    if (Math.hypot(b.x - hx, b.h - hh) < (d.isCpu?37:48) && Math.abs(b.z - d.z) < (d.isCpu?34:42)) {
       const s = b.info.shooter;
       b.info = null; b.mode = 'loose';
       b.vx = d.facing * (240 + this.rand() * 140); b.vh = 120 + this.rand() * 120; b.vz = (this.rand() - 0.5) * 200;
@@ -535,7 +556,15 @@ export class GameScene extends Phaser.Scene {
     this.realT += real;
     music.duck(this.paused);
     music.update(real, this.camX, (this.hoopers[0].x + this.hoopers[1].x) / 2);
-    const startHit = this.ctrls.some((c) => c?.startPressed());
+    if(this.cfg.netRole) {
+      if(!net || net.closed)return;
+      net.tick();if(net.closed)return;
+      if(this.netStatus)this.netStatus.firstChild!.textContent=`ONLINE / ${this.cfg.netRole==='host'?'YOU: P1':'YOU: P2'} / ${net.rtt} MS  `;
+      if(this.cfg.netRole==='guest') {this.updateGuest(real);return;}
+      if(!net.remoteReady){if(performance.now()-this.netReadyAt>15000)net.fail('Guest did not finish loading.');return;}
+      this.latchIntent(1,net.input.poll(performance.now()));
+    }
+    const startHit = !this.cfg.netRole && this.ctrls.some((c) => c?.startPressed());
     if (this.paused || startHit) {
       const n = this.nav.poll(real);
       if (startHit && this.phase !== 'over') this.setPaused(!this.paused);
@@ -545,14 +574,14 @@ export class GameScene extends Phaser.Scene {
     if (this.phase === 'over') {
       const n = this.nav.poll(real);
       this.overT += real;
-      if (n.ok && this.overT > 1) { this.scene.restart(this.cfg); return; }
-      if (n.back) { this.scene.start('menu'); return; }
+      if (!this.cfg.netRole && n.ok && this.overT > 1) { this.scene.restart(this.cfg); return; }
+      if (!this.cfg.netRole && n.back) { this.scene.start('menu'); return; }
     }
 
     this.acc += real;
     for (let i = 0; i < 2; i++) {
       const c = this.ctrls[i];
-      if (c) this.latchIntent(i, c.poll());
+      if (c && !(this.cfg.netRole && i===1)) this.latchIntent(i, c.poll());
     }
     let steps = 0;
     while (this.acc >= SIM_DT && steps < T.sim.maxSteps) { this.acc -= SIM_DT; this.simStep(); steps++; }
@@ -562,19 +591,20 @@ export class GameScene extends Phaser.Scene {
     this.court.update(this.realT, real);
     this.fx.update(real * this.timeScale);
     this.render(real);
+    if(this.cfg.netRole==='host' && net){this.netSendT+=real;if(this.netSendT>=1/30){this.netSendT=0;net.send({type:'state',value:this.networkState()});}}
   }
 
   /** Human edges (button presses) are held until a sim step consumes them, so a press is never lost between steps. */
   private latchIntent(i: number, n: Intent) {
     const l = this.latch[i];
-    l.mx = n.mx; l.mz = n.mz; l.sprint = n.sprint; l.shootHeld = n.shootHeld; l.checkHeld = n.checkHeld;
+    l.mx = n.mx; l.mz = n.mz; l.cHeld=n.cHeld; l.sprint = n.sprint; l.shootHeld = n.shootHeld; l.checkHeld = n.checkHeld;
     l.shootDown ||= n.shootDown; l.shootUp ||= n.shootUp;
     l.a ||= n.a; l.b ||= n.b; l.c ||= n.c; l.shove ||= n.shove;
   }
 
   private logIntent(i: number, I: Intent) {
     const q = (v: number) => (Math.round(clamp(v, -1, 1) * 127) + 128) & 255;
-    const bits = (I.sprint ? 1 : 0) | (I.shootHeld ? 2 : 0) | (I.shootDown ? 4 : 0) | (I.shootUp ? 8 : 0) | (I.a ? 16 : 0) | (I.b ? 32 : 0) | (I.c ? 64 : 0) | (I.shove ? 128 : 0) | (I.checkHeld ? 256 : 0);
+    const bits = (I.sprint ? 1 : 0) | (I.shootHeld ? 2 : 0) | (I.shootDown ? 4 : 0) | (I.shootUp ? 8 : 0) | (I.a ? 16 : 0) | (I.b ? 32 : 0) | (I.c ? 64 : 0) | (I.shove ? 128 : 0) | (I.checkHeld ? 256 : 0) | (I.cHeld ? 512 : 0);
     const v = q(I.mx) | (q(I.mz) << 8) | (bits << 16);
     if (v !== this.lastLogged[i]) { this.lastLogged[i] = v; this.inputLog.push(this.tick, i, v); }
   }
@@ -591,12 +621,12 @@ export class GameScene extends Phaser.Scene {
     const ints: Intent[] = [emptyIntent(), emptyIntent()];
     for (let i = 0; i < 2; i++) {
       const L = this.latch[i];
-      let I: Intent = this.ctrls[i] ? { ...L } : emptyIntent();
+      let I: Intent = (this.ctrls[i] || this.cfg.netRole==='host'&&i===1) ? { ...L } : emptyIntent();
       L.shootDown = L.shootUp = L.a = L.b = L.c = L.shove = false;
       const br = this.brains[i];
       if (br && this.phase === 'live') I = br.think(this.hoopers[i], this.hoopers[1 - i], this, dt);
       ints[i] = this.phase === 'live' ? I : emptyIntent();
-      if (this.ctrls[i] && this.phase === 'live') this.logIntent(i, ints[i]);
+      if ((this.ctrls[i] || this.cfg.netRole==='host'&&i===1) && this.phase === 'live') this.logIntent(i, ints[i]);
     }
 
     if (this.phase === 'intro') {
@@ -694,12 +724,70 @@ export class GameScene extends Phaser.Scene {
       ['CROSSOVER  J / SQUARE      SPIN  K / CIRCLE', 0xc8c8d8, 1],
       ['DUNK  L / TRIANGLE   TAP SHOOT IN GREEN AT RIM', 0xc8c8d8, 1],
       ['DEFENSE  STEAL J   BLOCK SPACE   HAND-CHECK R / L2', 0xc8c8d8, 1],
+      ['REBOUND  JUMP THEN STEAL IN AIR: SPACE + J / X + SQUARE', 0xc8c8d8, 1],
       ['DIRTY SHOVE  E / L1', 0xc8c8d8, 1],
     ];
     let y = 30;
     const objs: Phaser.GameObjects.GameObject[] = [g];
     for (const [s, c, k] of lines) { if (s) objs.push(this.txt(VW / 2, y, s, c, k, 0.5, 0, 7001)); y += k === 3 ? 26 : 11; }
     this.pauseUi = objs;
+  }
+
+  private netSound(sound:string){if(this.cfg.netRole==='host')net?.send({type:'event',kind:'sound',sound});}
+
+  private bindNetwork() {
+    const session=net!;this.netSendT=0;this.netSeq=0;this.netLastSeq=-1;this.guestTarget=null;this.netReadyAt=performance.now();
+    const panel=document.createElement('div');panel.style.cssText='position:fixed;bottom:4px;right:8px;z-index:9000;background:#10121de8;color:#d9dfeb;padding:5px;font:12px monospace';
+    panel.append(document.createTextNode('CONNECTING… '));
+    const leave=document.createElement('button');leave.textContent='LEAVE ROOM';leave.style.cssText='background:#292b3c;color:white;border:1px solid #777;font:inherit';panel.append(leave);document.body.append(panel);this.netStatus=panel;
+    leave.onclick=()=>{closeNet();this.scene.start('menu');};
+    session.onClose=reason=>{
+      this.showBanner('DISCONNECTED',reason,30,'#ff8a5a');
+      if(panel.firstChild)panel.firstChild.textContent=reason+' ';
+    };
+    if(this.cfg.netRole==='guest') {
+      session.onState=s=>this.receiveNetworkState(s);
+      session.onEvent=e=>{if(e.kind==='sound'&&['rim','board','bounce'].includes(e.sound))(sfx as any)[e.sound]();if(e.kind==='banner')this.showBanner(String(e.main).slice(0,100),String(e.sub).slice(0,150),1.2);if(e.kind==='popup'&&(e.id===0||e.id===1))this.fx.popup(this.hoopers[e.id].x,this.hoopers[e.id].sy-205,String(e.text).slice(0,80),'#ffe45e',24);};
+      if(session.latest)this.receiveNetworkState(session.latest);
+      session.send({type:'ready'});
+      this.showBanner('YOU ARE P2','WAITING FOR HOST',1);
+    }
+  }
+
+  private networkState() {
+    const keys=['x','z','vx','vz','h','vh','facing','stamina','heat','fireT','score','act','actT','actDur','hasBall','meter','fade','shoved','comboN','moveKind','protectT','pickupLock','handSide','dunkHit','trickDunk','ph','mood','moodT','celeb','tAlive','reboundT'] as const;
+    return {seq:this.netSeq++,time:this.time_,phase:this.phase,needsClear:this.needsClear,cleared:this.cleared,
+      players:this.hoopers.map(h=>({...Object.fromEntries(keys.map(k=>[k,h[k]])),rig:{...h.puppet.cur},carried:{...h.carried},meterInfo:{...h.meterInfo}})),
+      ball:{x:this.ball.x,z:this.ball.z,h:this.ball.h,mode:this.ball.mode,fire:this.ball.fire,spin:this.ball.spin,netKick:this.ball.netKick,owner:this.ball.owner?.id??-1},
+    };
+  }
+
+  private receiveNetworkState(s:any) {
+    if(!s||!Number.isSafeInteger(s.seq)||s.seq<=this.netLastSeq||!Array.isArray(s.players)||s.players.length!==2||!s.ball||!['intro','live','point','over'].includes(s.phase))return;
+    for(const p of s.players){if(!p.rig||!p.carried||!p.meterInfo||![p.x,p.z,p.h,p.meter,p.score,...Object.values(p.rig)].every(n=>typeof n==='number'&&Number.isFinite(n)))return;}
+    if(![s.ball.x,s.ball.z,s.ball.h,s.time].every(Number.isFinite))return;
+    this.netLastSeq=s.seq;this.guestTarget=s;
+  }
+
+  private updateGuest(real:number) {
+    net?.sendInput(this.ctrls[0]?.poll()??emptyIntent());
+    const s=this.guestTarget;
+    if(s){
+      const first=this.tick===0;const k=first?1:1-Math.exp(-real*35);
+      this.time_=s.time;this.phase=s.phase;this.needsClear=s.needsClear;this.cleared=s.cleared;this.tick++;
+      this.hoopers.forEach((h,i)=>{
+        const p=s.players[i];const oldScore=h.score;
+        for(const key of ['x','z','h'] as const)h[key]+=(p[key]-h[key])*k;
+        for(const key of ['vx','vz','vh','facing','stamina','heat','fireT','score','act','actT','actDur','hasBall','meter','fade','shoved','comboN','moveKind','protectT','pickupLock','handSide','dunkHit','trickDunk','ph','mood','moodT','celeb','tAlive','reboundT'])if(p[key]!==undefined)(h as any)[key]=p[key];
+        for(const key of Object.keys(h.puppet.cur))if(typeof p.rig[key]==='number')(h.puppet.cur as any)[key]=p.rig[key];Object.assign(h.carried,p.carried);Object.assign(h.meterInfo,p.meterInfo);
+        if(h.score>oldScore){sfx.net();this.court.cheer(.8);}
+      });
+      const b=this.ball;
+      for(const key of ['x','z','h'] as const)b[key]+=(s.ball[key]-b[key])*k;
+      b.mode=s.ball.mode;b.fire=s.ball.fire;b.spin=s.ball.spin;b.netKick=s.ball.netKick;b.owner=this.hoopers[s.ball.owner]??null;
+      if(this.phase==='over'&&!this.overUi.length){this.winner=this.hoopers[0].score>=this.cfg.target?this.hoopers[0]:this.hoopers[1];this.showResults();}
+    }
+    this.updateCamera(real);this.court.update(this.realT,real);this.fx.update(real);this.render(real);
   }
 
   private render(real: number) {
@@ -731,6 +819,9 @@ export class GameScene extends Phaser.Scene {
     g.clear();
     const R = (x: number, y: number, w: number, h: number, c: number, a = 1) => { g.fillStyle(c, a); g.fillRect(Math.round(x) * PX, Math.round(y) * PX, Math.round(w) * PX, Math.round(h) * PX); };
     for (const h of this.hoopers) {
+      const ready = this.phase==='live' && this.cfg.mode!=='sim' && (h.id===0 || this.cfg.mode==='2p') && h.canDunk(this);
+      this.dunkHints[h.id]?.setVisible(ready).setPosition(h.x,h.sy-h.h-212);
+
       if (h.act === 'shoot') {
         const w = 44, bx = Math.round(h.x / PX - w / 2);
         let by = Math.round((h.sy - h.h) / PX - 14);
@@ -799,9 +890,9 @@ export class GameScene extends Phaser.Scene {
     fl.forEach((t, i) => { const on = this.hoopers[i].fireOn; t.setVisible(on); if (on) t.setAlpha(0.6 + 0.4 * Math.sin(this.realT * 16)); });
     const lg = this.legend;
     if (lg) {
-      const ctxOf = (h: Hooper) => (h.hasBall ? 'offense' : 'defense') as 'offense' | 'defense';
-      lg.set(0, ctxOf(this.hoopers[0]));
-      lg.set(1, ctxOf(this.hoopers[this.cfg.mode === '2p' ? 1 : 0]));
+      const ctxOf = (h: Hooper) => (h.hasBall ? 'offense' : this.ball.mode!=='held' ? 'rebound' : 'defense') as 'offense' | 'defense' | 'rebound';
+      lg.set(0, ctxOf(this.hoopers[this.cfg.netRole==='guest'?1:0]));
+      lg.set(1, ctxOf(this.hoopers[this.cfg.netRole ? this.cfg.netRole==='guest'?1:0 : this.cfg.mode === '2p' ? 1 : 0]));
     }
   }
 }

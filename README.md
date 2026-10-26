@@ -93,9 +93,38 @@ Debug URLs: `/?auto=chicago&mode=sim&seed=1234` (CPU vs CPU, optional seed), `/?
 
 - Background car traffic removed; court scenery, fog and rail traffic remain.
 - Player silhouettes use clearer shoulders/neck, wider torsos, separated legs and corrected clothing layers. Jerseys are sleeveless.
-- Dunks require a takeoff within 155 world units of the basket, a central lane position, stamina and forward momentum outside the immediate rim area.
+- Dunks require a takeoff within 190 world units of the basket, a central lane position and 10 stamina. There is no velocity threshold. An active defender in the takeoff lane must be passed or moved out of the path; a grounded/staggered defender is beaten. DUNK READY appears before takeoff when eligible. Press L/V or Triangle to start; the timing meter appears during the dunk.
 - Ankle breakers are probabilistic (7–48% per eligible attempt), based on defensive commitment, movement, fatigue and skill. Attempts have a 0.85-second cooldown, and fallen defenders retain immunity. Quick sprint direction changes can also trigger an attempt.
 - All three AI levels are slightly stronger offensively. Defensive containment has short, difficulty-dependent lapses and applies less movement slowdown.
-- Original Web Audio Foley adds varied ball bounces, sneaker squeaks, rim/board impacts, net sounds and slam accents. Audio starts after a keyboard or pointer gesture, as required by browsers. These are synthesized effects, not recordings from NBA Street.
+- Recorded CC0 court Foley replaces oscillator effects: three bounce variations, two rim impacts, two net sounds and two shoe chirps. Audio starts after a keyboard or pointer gesture. Sources and edit points are in public/audio/sfx/CREDITS.md; no NBA Street audio is sampled.
 
 Run `node scripts/check-gameplay.cjs` for headless dunk, ankle-breaker and AI containment regression checks. `npm run build` also checks TypeScript before bundling.
+
+
+### Rival ladder, rebounds and movement
+
+Each of the 11 courts has six named rivals. Beat the currently unlocked rival to unlock the next; previously beaten rivals remain replayable. Progress is saved per court without resetting money or clothing in old saves. Rookie / Hooper / Legend controls global AI difficulty, and each successive rival raises stats and decision quality within it. Local PvP uses the same player stats for both players.
+
+For a missed shot, move under the ball, **jump with Space (pad: X)**, then **press J (pad: Square) in the air** to open a short catch window. Position and timing decide the rebound; there is no guaranteed catch. Ground balls still use proximity pickup. Defensive rebounds still require clearing the arc. The controls strip switches to rebound instructions while the ball is in flight or loose.
+
+Movement keeps the existing top speeds, with higher acceleration/braking, quicker reversals, a 90 ms action buffer and a slightly faster simulation pace. The AI now receives single-tap jump inputs correctly and chooses a timed contest once per shot rather than repeatedly rolling for an early jump.
+
+Chiraq and Warsaw now have independent music folders: `public/audio/bgm/courts/chiraq/` and `public/audio/bgm/courts/warsaw/`. Add MP3/OGG/M4A/WAV files there. Pages builds scan folders automatically (`--scan-only`, no FFmpeg needed). Run `npm run audio` locally with FFmpeg for per-track loudness measurement; newly scanned tracks otherwise use unity gain.
+
+Checks: `node scripts/check-progression-rebounds.cjs`, `node scripts/check-gameplay.cjs`, `node scripts/check-wardrobe.cjs`, `node scripts/check-sfx.mjs`, and `npm run build`.
+
+### Neighbourhood cameos
+Each court has occasional background cameos (BMX, courier, skater, dancer or park dog walker), with locally themed outfits. The first starts after 18–38 seconds; subsequent appearances wait 35–80 seconds after the previous exit. They remain behind the court and have no collision, gameplay effects or extra audio.
+
+### Playing with a friend
+`2 PLAYERS` is local versus: keyboard + one controller, or two controllers. It does not connect separate browser sessions. For a quick remote playtest, a Windows host can run the game and share it through Parsec, with the guest using a controller. GitHub Pages serves the client only; native browser-to-browser multiplayer would require additional networking and session handling. The current match supports two players, so a third friend would take turns or spectate.
+
+### Private online 1v1 (test)
+Select **PLAY → MODE: ONLINE 1V1 → START**. The host creates a room and shares its six-character code; a friend joins from the same game version on Pages using their own keyboard/controller. [Setup, network limitations and hosting options](docs/online-play.md).
+
+### Court music and dunks
+Adding tracks under `public/audio/bgm/courts/<court>/` is indexed automatically on `npm run dev` and `npm run build`. Restart the dev server after adding files. `npm run preview` rebuilds first. Optional `npm run audio` measures loudness with FFmpeg; playback does not require FFmpeg. Warsaw uses its own playlist, and Marseille has `courts/marseille/`.
+
+Press or hold Triangle / L near the hoop to dunk. Holding retries when entering the close area. Possession, enough stamina and clearing the arc after a defensive rebound still apply. A nearby defender only prevents takeoff while actively guarding your lane; airborne blocks can still stop a dunk. Close-range failed attempts display a reason.
+
+Marseille's MASSILIA court is a fictional waterfront blacktop with a dusk Vieux-Port skyline, Fort Saint-Jean and Notre-Dame de la Garde. Landmark references: [Marseille tourism](https://www.marseille-tourisme.com/decouvrez-marseille/culture-et-patrimoine/sites-et-monuments/le-vieux-port/).

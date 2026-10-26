@@ -1,10 +1,12 @@
 import { music } from './music';
+import { openLobby } from './net';
 import Phaser from 'phaser';
 import { AiLevel } from './tuning';
 import { COURTS, CourtId, CourtScene, buildCourt, courtInfo } from './courts';
 import { MenuNav } from './input';
+import { unlockedRival } from './save';
 import { bossAt, bossToLoadout, bossesFor, type Boss } from './bosses';
-import { FITS, ITEMS, Item, Loadout, REGIONS, SKIN_NAMES, SLOTS, SLOT_NAMES, STARTER_EQUIP, Slot, buildLoadout, itemById, itemsFor } from './loadout';
+import { FITS, ITEMS, Item, Loadout, REGIONS, SKIN_NAMES, SLOTS, SLOT_NAMES, STARTER_EQUIP, Slot, applyLookPatch, buildLoadout, itemById, itemsFor } from './loadout';
 import { Puppet, Rig, restRig } from './puppet';
 import { GH, GW, PX, mix } from './pixel';
 import { setViewport } from './viewport';
@@ -13,11 +15,11 @@ import { buyFit, buyItem, equip, fitCost, owns, persist, save } from './save';
 import type { GameCfg } from './game';
 
 type Screen = 'main' | 'play' | 'locker' | 'shop';
-const MODES: GameCfg['mode'][] = ['1p', '2p'];
+const MODES: GameCfg['mode'][] = ['1p', '2p', 'online'];
 const LEVELS: AiLevel[] = ['rookie', 'hooper', 'legend'];
 const TARGETS = [7, 11, 15, 21];
 const MAIN_ROWS = ['PLAY', 'LOCKER', 'SHOP'] as const;
-const PLAY_ROWS = ['COURT', 'MODE', 'CPU LEVEL', 'FIRST TO', 'RIVAL', 'START'] as const;
+const PLAY_ROWS = ['COURT', 'MODE', 'GLOBAL AI', 'FIRST TO', 'RIVAL', 'START'] as const;
 const SHOP_TABS = ['FITS', ...SLOTS] as const;
 type Tab = (typeof SHOP_TABS)[number];
 
@@ -27,6 +29,7 @@ export class MenuScene extends Phaser.Scene {
   private nav = new MenuNav();
   private screen: Screen = 'main';
   private sel = 0;
+  private lobbyOpen = false;
   private cfg = { mode: '1p' as GameCfg['mode'], court: 'brooklyn' as CourtId, level: 'hooper' as AiLevel, target: 11 };
   private court?: CourtScene;
   private courtId?: CourtId;
@@ -59,7 +62,7 @@ export class MenuScene extends Phaser.Scene {
     this.cfg.target = TARGETS.includes(s.target) ? s.target : 11;
     this.g = this.add.graphics().setDepth(5000);
     music.play('menu');
-    this.rivalIdx = 0;
+    this.rivalIdx = unlockedRival(this.cfg.court);
     this.pickRival();
     this.setCourt(this.cfg.court);
     this.makePups();
@@ -67,12 +70,13 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private pickRival() {
+    this.rivalIdx = Math.min(this.rivalIdx,unlockedRival(this.cfg.court));
     this.rivalBoss = bossAt(this.cfg.court, this.rivalIdx);
     this.rival = bossToLoadout(this.rivalBoss);
   }
 
   private cycleRival(d: number) {
-    const n = bossesFor(this.cfg.court).length;
+    const n = Math.min(bossesFor(this.cfg.court).length,unlockedRival(this.cfg.court)+1);
     this.rivalIdx = (this.rivalIdx + d + n) % n;
     this.pickRival();
   }
@@ -106,7 +110,7 @@ export class MenuScene extends Phaser.Scene {
 
   private previewLook(): Loadout {
     const l = this.myLook();
-    return this.previewOverlay ? { ...l, ...this.previewOverlay } : l;
+    return this.previewOverlay ? applyLookPatch(l,this.previewOverlay) : l;
   }
 
   private idle(t: number): Rig {
@@ -186,8 +190,8 @@ export class MenuScene extends Phaser.Scene {
     this.panel(6, 32, 178, 96);
     const ci = courtInfo(this.cfg.court), c = this.cfg;
     const vals = [
-      ci.name, c.mode === '1p' ? '1 PLAYER' : '2 PLAYERS', c.level.toUpperCase(), `${c.target}`,
-      `${this.rival.name}`, 'GO',
+      ci.name, c.mode === '1p' ? '1 PLAYER' : c.mode === 'online' ? 'ONLINE 1V1' : '2 PLAYERS', c.level.toUpperCase(), `${c.target}`,
+      `${this.rivalIdx+1}/6`, 'GO',
     ];
     PLAY_ROWS.forEach((r, i) => {
       const y = 39 + i * 13, on = i === this.sel;
@@ -200,11 +204,12 @@ export class MenuScene extends Phaser.Scene {
     COURTS.forEach((cc, i) => this.R(14 + i * 10, 134, 8, 3, cc.id === c.court ? ORANGE : 0x3a3a50));
     this.panel(6, 146, 178, 40);
     this.T(14, 152, ci.sub, GOLD);
-    this.T(14, 164, c.mode === '1p' ? 'YOU EARN CASH FOR BUCKETS, STYLE AND WINS' : 'LOCAL VERSUS: NO CASH PAYOUT', GREY);
-    this.T(14, 174, 'COURT BOSS  //  ARROWS CYCLE (A-Z)', DIM);
+    this.T(14, 164, c.mode === '1p' ? 'YOU EARN CASH FOR BUCKETS, STYLE AND WINS' : c.mode==='online' ? 'PRIVATE ROOM: NO CASH PAYOUT' : 'LOCAL VERSUS: NO CASH PAYOUT', GREY);
+    this.T(14, 174, `RIVALS ${unlockedRival(c.court)+1}/6 // WIN TO UNLOCK`, DIM);
     this.T(GW - 8, 30, ci.name, WHITE, 2, 1);
     this.T(266, 112, 'YOU', GOLD, 1, 0.5);
     this.T(336, 112, this.rival.name, 0x7fd4ff, 1, 0.5);
+    if(c.mode==='1p') { const next=bossesFor(c.court)[unlockedRival(c.court)+1]; this.T(336,122,next?`LOCKED: ${next.name}`:'COURT CLEARED',DIM,1,.5); }
     this.footer('UP/DOWN SELECT   LEFT/RIGHT CHANGE   ENTER GO   BACKSPACE BACK');
   }
 
@@ -299,11 +304,16 @@ export class MenuScene extends Phaser.Scene {
   private startGame() {
     const s = save();
     s.lastCourt = this.cfg.court; s.level = this.cfg.level; s.target = this.cfg.target; persist();
-    const cfg: GameCfg = { mode: this.cfg.mode, court: this.cfg.court, p1: this.myLook(), p2: this.rival, p2Stats: this.rivalBoss.stats, level: this.cfg.level, target: this.cfg.target };
-    this.court?.destroy();
-    this.court = undefined;
-    this.courtId = undefined;
-    this.scene.start('game', cfg);
+    const cfg: GameCfg = { mode: this.cfg.mode, court: this.cfg.court, p1: this.myLook(), p2: this.rival, p2Stats: this.rivalBoss.stats, rivalIdx: this.rivalIdx, level: this.cfg.level, target: this.cfg.target };
+    const launch = (ready:GameCfg) => {
+      this.lobbyOpen=false;
+      this.court?.destroy();this.court=undefined;this.courtId=undefined;
+      this.scene.start('game',ready);
+    };
+    if(cfg.mode==='online') {
+      this.lobbyOpen=true;
+      openLobby(cfg,launch,()=>{this.lobbyOpen=false;});
+    }else launch(cfg);
   }
 
   update(_t: number, dtMs: number) {
@@ -313,6 +323,7 @@ export class MenuScene extends Phaser.Scene {
     this.court?.update(this.t, dt);
     const tint = (x: number, y: number) => this.court?.tintAt(x * PX, y * PX) ?? 0xffffff;
     this.pups.forEach((p, i) => { p.update(this.idle(this.t + i * 1.7), dt); p.setTint(mix(tint(p.root.x / PX, p.root.y / PX), 0xffffff, 0.2)); });
+    if(this.lobbyOpen)return;
     const n = this.nav.poll(dt);
     if (!n.dx && !n.dy && !n.ok && !n.back) return;
     if (this.screen === 'main') this.inMain(n);
@@ -333,9 +344,9 @@ export class MenuScene extends Phaser.Scene {
     if (n.dx) {
       const d = n.dx;
       switch (PLAY_ROWS[this.sel]) {
-        case 'COURT': c.court = COURTS[(COURTS.findIndex((x) => x.id === c.court) + d + COURTS.length) % COURTS.length].id; this.setCourt(c.court); this.rivalIdx = 0; this.pickRival(); this.makePups(); break;
+        case 'COURT': c.court = COURTS[(COURTS.findIndex((x) => x.id === c.court) + d + COURTS.length) % COURTS.length].id; this.setCourt(c.court); this.rivalIdx = unlockedRival(c.court); this.pickRival(); this.makePups(); break;
         case 'MODE': c.mode = this.cycle(MODES, c.mode, d); break;
-        case 'CPU LEVEL': c.level = this.cycle(LEVELS, c.level, d); break;
+        case 'GLOBAL AI': c.level = this.cycle(LEVELS, c.level, d); break;
         case 'FIRST TO': c.target = this.cycle(TARGETS, c.target, d); break;
         case 'RIVAL': this.cycleRival(d); this.pups[1]?.dress(this.rival); break;
         default: break;

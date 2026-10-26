@@ -1,6 +1,6 @@
 import { GW, Pix, mix, shade } from './pixel';
-import { FY, Scene2D, antenna, awning, bench, boombox, brick, chainFence, dumpster, graffiti, halo, hydrant, lamp, powerLine, sign, skyline, sky, slab, stars, tree, trashCan, car, cart } from './courtkit';
-import { BOOM_X, CourtArt, building, carSprite, finish, spots, truss } from './court_common';
+import { FY, Scene2D, antenna, awning, bench, boombox, brick, chainFence, dumpster, graffiti, halo, hydrant, lamp, powerLine, sign, skyline, sky, slab, stars, tree, trashCan, cart } from './courtkit';
+import { BOOM_X, CourtArt, building, finish, spots, truss } from './court_common';
 
 /* ------------------------------------------------------------------ CHIRAQ (South Side night — grittier cousin to golden-hour Chicago) */
 
@@ -41,7 +41,6 @@ export const chiraq: CourtArt = {
     finish(c, { base: 0x3a3e48, edge: 0x4a4a54, key: 0x8a1c24, lines: 0xe8e4d8, seed: 9, crack: 24, sidewalk: 0x5a5a64, speckle: 1.15 }, { board: 0xe6eaf0 }, () => {
       bench(c, 142, 160, 20); trashCan(c, 18, 160); hydrant(c, 300, 159);
       boombox(c, BOOM_X.chiraq, 160);
-      car(c, 248, 160, 0x2a3040);
     });
   },
   live(L) {
@@ -56,7 +55,7 @@ export const chiraq: CourtArt = {
   },
 };
 
-/* ------------------------------------------------------------------ WARSAW (Mokotów blocks, tram wires, Palace silhouette) */
+/* ------------------------------------------------------------------ WARSAW (Centrum: Palace of Culture, Varso and modern skyline) */
 
 export const warsaw: CourtArt = {
   seed: 91,
@@ -65,60 +64,64 @@ export const warsaw: CourtArt = {
   amb: { tint: [0.52, 0.5, 0.58], k: 0.38, lit: [1.08, 1.02, 0.96], steps: 5 },
   paint(c) {
     sky(c, [0x6a7080, 0x8a90a0, 0xa8a8b8, 0xc8b8c0, 0xe8d0d8, 0xf0e8f0], 0, 150);
-    // Palace of Culture spire
-    const px = 378;
-    c.base.rect(px - 6, 36, 14, 96, 0x6a6878); c.base.rect(px - 3, 24, 8, 14, 0x6a6878);
-    c.base.poly([px - 4, 24, px, 8, px + 4, 24], 0x7a7888);
-    for (let y = 40; y < 128; y += 6) c.base.hline(px - 5, px + 6, y, 0x5a5868);
-    c.glow.rect(px - 1, 10, 3, 6, 0xffe8c0);
-    // Varso / modern tower cluster
-    c.base.rect(318, 72, 10, 58, 0x7a8898); c.base.rect(321, 58, 4, 16, 0x8a98a8);
-    c.base.rect(332, 80, 8, 50, 0x6a7888); c.base.rect(334, 66, 4, 16, 0x7a8898);
-    // National Stadium bowl
-    c.base.ellipse(288, 128, 34, 12, 0x5a6878);
-    c.base.ellipse(288, 126, 30, 9, 0x8898a8);
-    c.base.rect(268, 128, 40, 4, 0x4a5868);
-    // Old town mast / K-R towers
-    c.base.rect(248, 88, 6, 42, 0x5a5868); c.base.poly([245, 88, 251, 88, 248, 78], 0x6a6878);
-    skyline(c, 120, 0, 310, 18, 64, 0x5a5a68, { win: 0xffe8c0, wmin: 6, wmax: 12 });
-    // Panel blocks (wielka płyta)
-    const block = (x: number, w: number, y: number, col: number, rows: number) => {
-      c.base.rect(x, y, w, 158 - y, col);
-      c.base.rect(x - 1, y - 1, w + 2, 2, shade(col, 0.7));
-      const pitchX = 10, pitchY = 12;
-      const cols = Math.floor((w - 4) / pitchX), rws = Math.min(rows, Math.floor((158 - y - 8) / pitchY));
-      for (let row = 0; row < rws; row++) {
-        for (let col_i = 0; col_i < cols; col_i++) {
-          const wx = x + 2 + col_i * pitchX, wy = y + 6 + row * pitchY;
-          c.base.rect(wx, wy, 8, 9, 0x88a0c8);
-          c.base.hline(wx, wx + 7, wy + 4, 0x4a5060);
-          c.base.vline(wx + 4, wy, wy + 8, 0x4a5060);
-          if (c.r() < 0.35) c.glow.rect(wx, wy, 8, 9, 0xffe0a0);
-        }
-      }
-      c.base.rect(x + 2, 158 - y - 8, w - 4, 6, 0x4a4a54);
-    };
-    block(-4, 58, 52, 0x9a9aa4, 8); block(56, 52, 48, 0x8a8a94, 9); block(110, 56, 50, 0xa0a0aa, 8);
-    block(164, 44, 54, 0x888890, 10); block(220, 58, 48, 0x94949e, 7);
-    block(272, 50, 56, 0x8e8e98, 9); block(332, 62, 52, 0x9696a0, 7);
-    // Tram wires
-    powerLine(c, 0, 46, GW, 58, 6);
-    powerLine(c, 0, 52, GW, 62, 5);
-    c.base.rect(180, 148, 24, 10, 0xd22b3a); c.base.rect(180, 148, 8, 10, 0xffffff);
-    graffiti(c, 238, 118, 'WAWA', 0xf4f0e8, { scale: 3, outline: 0x2a2030, shadow: 0xd22b3a });
-    graffiti(c, 246, 136, 'MOKOTÓW', 0xe8e8f0, { scale: 1, outline: 0x2a2030, shadow: 0x0e8a4a });
-    sign(c, 52, 108, 'ZŁOTY', 0xffe8c0, { scale: 1 });
-    chainFence(c, 0, 100, GW, 159, 0x9aa0a8, 0.32);
-    lamp(c, 148, 158, 56, { dir: 1, col: 0xffe8c0, k: 0.55 });
-    lamp(c, 328, 158, 56, { dir: -1, col: 0xffe8c0, k: 0.5 });
-    tree(c, 200, 156, 42, 0x3a3028, [0x5a8a48, 0x6a9a50, 0x4a7a40]);
+    // Stylized central Warsaw panorama: open sightlines above a low street edge.
+    // Distant buildings go first so they cannot cover the landmark silhouettes.
+    skyline(c, 140, 0, GW, 12, 36, 0x8992a2, { win: 0xc7cbd0, wmin: 8, wmax: 17 });
+    // Varso: narrow glass shaft, stepped crown and a long antenna.
+    c.base.rect(66, 39, 24, 101, 0x677c91);
+    c.base.rect(70, 30, 16, 10, 0x778b9d); c.base.rect(75, 24, 7, 7, 0x879aaa);
+    c.base.vline(79, 7, 25, 0xb4c1c8);
+    c.base.rect(67, 41, 4, 96, 0x9bb0ba);
+    for(let y=45;y<138;y+=5)c.base.hline(72,89,y,0x92a6b4);
+    for(let x=74;x<90;x+=5)c.base.vline(x,40,139,0x536a82);
+    // Warsaw Spire: curved silhouette with a pair of slender roof masts.
+    c.base.poly([116,139,117,91,120,67,126,50,135,47,141,62,143,91,140,139],0x70889a);
+    c.base.poly([120,138,121,89,125,62,131,52,132,138],0x9aafba);
+    c.base.vline(127,34,53,0x738393);c.base.vline(136,35,55,0x738393);
+    for(let y=70;y<138;y+=5)c.base.hline(123,139,y,0x5d758a);
+    // Palace of Culture: broad stepped wings, clock tower, crown and needle.
+    const px=222, stone=0xa69b8e, shadow=0x776f70, light=0xc5b7a1;
+    c.base.rect(px-48,111,96,30,shadow);
+    c.base.rect(px-38,103,76,37,stone);
+    c.base.rect(px-29,94,58,47,stone);
+    c.base.rect(px-20,80,40,61,stone);
+    c.base.rect(px-13,59,26,82,stone);
+    c.base.rect(px-10,44,20,17,light);
+    c.base.rect(px-12,42,24,3,shadow);
+    c.base.rect(px-8,36,16,7,stone);
+    c.base.poly([px-7,36,px-4,28,px+4,28,px+7,36],light);
+    c.base.rect(px-3,23,6,7,shadow);c.base.vline(px,7,24,0xd5c7ae);
+    c.base.rect(px+7,59,6,81,shadow);c.base.rect(px-19,81,4,58,light);
+    for(const [x0,x1,y] of [[px-48,px+47,111],[px-38,px+37,103],[px-29,px+28,94],[px-20,px+19,80],[px-13,px+12,59]])c.base.hline(x0,x1,y,light);
+    for(let x=px-34;x<=px+34;x+=7)for(let y=116;y<137;y+=7)c.base.rect(x,y,2,4,0x5c626b);
+    for(let x=px-9;x<=px+8;x+=5)for(let y=67;y<136;y+=7)c.base.rect(x,y,2,4,0x625e60);
+    // Clock face remains a few crisp pixels at native game resolution.
+    c.base.circle(px,51,5,0xeee1c7);c.base.circle(px,51,3,0x625f63);
+    c.base.vline(px,48,51,0xf4e7c9);c.base.hline(px,px+2,51,0xf4e7c9);
+    // Zlota 44: asymmetric sail rather than another rectangular tower.
+    c.base.poly([296,140,296,65,304,49,315,36,326,140],0x7d92a4);
+    c.base.poly([300,139,300,69,305,55,313,44,311,139],0xb3c1c6);
+    for(let y=69;y<138;y+=5)c.base.hline(301,315+Math.floor((y-69)/12),y,0x617b91);
+    c.base.rect(345,77,24,64,0x708496);c.base.rect(350,67,14,11,0x8498a5);
+    for(let y=83;y<139;y+=6)c.base.hline(348,367,y,0xa5b5be);
+    // Low foreground frontage leaves the skyline visible from the court.
+    c.base.rect(0,140,GW,19,0x686770);c.base.hline(0,GW,140,0xa2a0a4);
+    c.base.rect(0,133,53,26,0x817c7d);c.base.rect(371,135,56,24,0x80797b);
+    sign(c,5,140,'CENTRUM',0xf0ddae,{scale:1});
+    graffiti(c,277,143,'WAWA',0xf4f0e8,{scale:1,outline:0x2a2030,shadow:0xd22b3a});
+    c.base.rect(183,149,20,8,0xd22b3a);c.base.rect(183,149,20,4,0xeeeeeb);
+    // Trolley wires are kept low rather than cutting across the clock/spires.
+    powerLine(c,0,128,GW,130,2);
+    chainFence(c,0,140,GW,159,0x9aa0a8,0.28);
+    lamp(c,27,158,43,{dir:1,col:0xffe8c0,k:0.45});
+    lamp(c,402,158,43,{dir:-1,col:0xffe8c0,k:0.45});
     spots(c, [[24, 157, 'stand', 1], [78, 157, 'kid'], [132, 157, 'stand'], [248, 157, 'elder', -1], [300, 157, 'stand', -1], [360, 157, 'cheer', -1]]);
   },
   paintFloor(c) {
     finish(c, { base: 0x4a5058, edge: 0x5a6068, key: 0xd22b3a, lines: 0xf0f0f0, seed: 11, crack: 14, sidewalk: 0x6a7078, speckle: 0.9 }, { board: 0xf2f2f6 }, () => {
       bench(c, 124, 160, 24); cart(c, 36, 160); trashCan(c, 286, 160);
       boombox(c, BOOM_X.warsaw, 160);
-      car(c, 168, 160, 0x4a5a68);
+
     });
   },
   live(L) {
@@ -128,7 +131,7 @@ export const warsaw: CourtArt = {
       for (let k = 4; k < 114; k += 14) { p.rect(k, 8, 10, 6, 0x88b0d8); p.hline(k, k + 9, 8, 0xe8ecf4); }
       p.rect(2, 18, 8, 3, 0x20202a); p.rect(108, 18, 8, 3, 0x20202a);
     });
-    L.mover(tram, 120, 118, -14, -1020, 520, { flip: true });
+    L.mover(tram, 120, 134, -14, -1020, 520, { flip: true });
   },
 };
 

@@ -8,9 +8,13 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 47731",
     "typecheck": "tsc --noEmit",
-    "audio": "node scripts/audio-manifest.mjs"
+    "audio": "node scripts/audio-manifest.mjs",
+    "predev": "node scripts/audio-manifest.mjs --scan-only",
+    "prebuild": "node scripts/audio-manifest.mjs --scan-only",
+    "prepreview": "npm run build"
   },
   "dependencies": {
+    "peerjs": "^1.5.5",
     "phaser": "^3.90.0"
   },
   "devDependencies": {

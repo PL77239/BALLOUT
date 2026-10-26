@@ -47,6 +47,10 @@ const B: Record<CourtId, Boss[]> = {
     { name: 'TRAP', stats: { speed: 63, accuracy: 56, stamina: 50, defense: 46 }, loadout: { head: 'backcap', top: 'tank', bottom: 'jorts', shoes: 'slides', face: 'grillz', chain: 'rope' } },
     { name: 'UNDERPASS', stats: { speed: 65, accuracy: 55, stamina: 48, defense: 44 }, loadout: { head: 'backcap', top: 'tank', bottom: 'jorts', shoes: 'slides', face: 'grillz', chain: 'rope' } },
   ],
+  marseille:[
+    {name:'LE PANIER',stats:{speed:54,accuracy:54,stamina:56,defense:48},loadout:{top:'jersey',topColor:0xe9eee9,topTrim:0x51b7dc,bottom:'joggers',bottomColor:0x253e58,hair:'cornrows',shoes:'runner'}},
+    {name:'LA CASTELLANE',stats:{speed:57,accuracy:56,stamina:57,defense:51},loadout:{top:'hoodie',topColor:0x253e58,topTrim:0x51b7dc,bottom:'sweats',head:'backcap',hair:'fade',shoes:'low'}},
+  ],
   warsaw: [
     {
       name: 'GRUBY', stats: { speed: 48, accuracy: 55, stamina: 62, defense: 58 },
@@ -74,17 +78,25 @@ const B: Record<CourtId, Boss[]> = {
 
 const DEFAULT_STATS: BossStats = { speed: 52, accuracy: 52, stamina: 52, defense: 52 };
 
+export const RIVALS_PER_COURT = 6;
+const TITLES: Record<CourtId,string[]> = {
+ brooklyn:['STOOP','FULTON','CONCRETE','KING OF THE CAGE'], queens:['ASTORIA','7 TRAIN','QUEENSBRIDGE','BOROUGH KING'],
+ harlem:['125TH','DIPLOMAT','RUCKER','HARLEM KING'], philly:['NORTHSIDE','LIBERTY','CROSSOVER','PHILLY KING'],
+ detroit:['ASSEMBLY','WOODWARD','PISTON','MOTOR KING'], chicago:['ENGLEWOOD','SOUTHSIDE','WIND CITY','COURT KING'],
+ chiraq:['O BLOCK','BLACKTOP','NIGHT SHIFT','SOUTH KING'], atl:['PEACHTREE','ZONE SIX','HOTLANTA','ATL KING'],
+ la:['CRENSHAW','SUNSET','WESTSIDE','LA KING'], warsaw:['TRAMWAJ','CENTRUM','PALACE','WAWA KING'],
+ marseille:['LA GARDE','LE PORT','TREIZE','MASSILIA KING'],
+ fairmount:['RIDGE','PARKSIDE','CREEKSIDE','PARK KING'],
+};
 export function bossesFor(court: CourtId): Boss[] {
-  const list = [...(B[court] ?? [])];
-  if (list.length < 2 && list.length === 1) {
-    list.push({ ...list[0], name: `${list[0].name} II`, stats: { ...list[0].stats, speed: list[0].stats.speed + 4 } });
-  }
-  if (!list.length) {
-    const r = courtInfo(court).region;
-    return [{ name: rivalFor(r).name, stats: DEFAULT_STATS, loadout: {} }, { name: `${rivalFor(r).name} II`, stats: DEFAULT_STATS, loadout: {} }];
-  }
-  list.sort((a, b) => a.name.localeCompare(b.name));
-  return list;
+ const originals=B[court];
+ const first=originals?.[0] ?? {name:'LOCAL',loadout:{},stats:DEFAULT_STATS};
+ return Array.from({length:RIVALS_PER_COURT},(_,tier)=>{
+  const look=originals?.[tier%originals.length] ?? first;
+  const stats={} as BossStats;
+  for(const key of ['speed','accuracy','stamina','defense'] as const) stats[key]=Math.min(94,first.stats[key]+tier*5);
+  return {name:tier<2?(originals?.[tier]?.name ?? 'LOCAL'):TITLES[court][tier-2],stats,loadout:{...look.loadout,...(tier>=2?{topGraphic:tier%2?'number' as const:'cross' as const,jerseyNumber:10+tier,head:tier%2?'backcap' as const:'fitted' as const,headColor:[0x292f40,0x743447,0x35564a,0x54386d][tier-2]}:{})}};
+ });
 }
 
 export function bossAt(court: CourtId, index: number): Boss {

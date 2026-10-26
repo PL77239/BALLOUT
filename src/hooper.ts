@@ -48,6 +48,7 @@ export class Hooper {
   protectT = 0;
   ankleChecked = false;
   shoveCD = 0;
+  reboundT = 0;
   pickupLock = 0;
   handSide = 1;
   ballOx = 32;
@@ -126,8 +127,11 @@ export class Hooper {
     const dx = d.x - this.x, dz = d.z - this.z;
     const dist = Math.hypot(dx * 0.9, dz * 2.2);
     let c = Math.max(0, 1 - dist / T.shot.contestRange);
-    if (dx * this.facing < -24) c *= 0.4;
-    if ((d.act === 'block' || d.h > 25) && dist < T.shot.contestRange * 1.25) c = Math.min(1, c + 0.35);
+    const behind=dx*this.facing < -24;
+    if (behind) c *= 0.4;
+    if ((d.act === 'block' || d.h > 25) && dist < T.shot.contestRange * 1.25)
+      c = Math.min(1, c + (d.isCpu && behind ? 0.14 : 0.35));
+    if (d.isCpu) c *= 0.72;
     if (d.act === 'fall' || d.act === 'stagger') c *= 0.2;
     return c;
   }
@@ -209,19 +213,38 @@ export class Hooper {
     this.dribbleMoves = 0;
   }
 
+  /** Shared by controls, AI and the readiness hint; no hidden velocity threshold. */
+  canDunk(g: GameScene): boolean {
+    if (!this.hasBall || (this.act!=='free' && this.act!=='juke') || this.h>8) return false;
+    const dx = T.hoop.x-this.x;
+    if(dx < -25 || Math.hypot(dx,this.z*1.2)>T.dunk.range || Math.abs(this.z)>T.dunk.lane) return false;
+    if(this.stamina<T.dunk.cost || (g.needsClear && !g.cleared)) return false;
+    const d = g.opp(this);
+    // A beaten or grounded defender does not keep an invisible wall in the lane.
+    if(d.act==='fall' || d.act==='stagger' || d.act==='recover') return true;
+    if(d.x < this.x-T.dunk.clearLead) return true;
+    if(d.x > T.hoop.x+25) return true;
+    const along=clamp((d.x-this.x)/Math.max(1,dx),0,1);
+    const laneZ=this.z*(1-along);
+    const gap=d.x-this.x;
+    const inLane=gap>=-4 && Math.abs(d.z-laneZ)<T.dunk.defenderLane;
+    // Only close, active contact (or a nearby airborne blocker) stops takeoff.
+    // Others can still jump and contest the dunk after takeoff.
+    const closeContact=d.I?.checkHeld && gap<25;
+    const closeBlock=d.act==='block' && gap<42;
+    return !(inLane && (closeContact || closeBlock));
+
+  }
+
   startDunk(g: GameScene): boolean {
-    if (!this.hasBall) return false;
-    const dx = T.hoop.x - this.x;
-    if (dx < 8 || Math.hypot(dx, this.z * 1.8) > T.dunk.range || Math.abs(this.z) > 42) return false;
-    if (this.stamina < 14 || (dx > 90 && this.vx < 105)) return false;
-    if (g.needsClear && !g.cleared) return false;
+    if (!this.canDunk(g)) return false;
     this.setAct('dunk', T.dunk.airtime);
     this.dunkFrom = { x: this.x, z: this.z };
     this.dunkHit = false;
     this.dunkSlam = false;
     this.dunkSlamAt = 0;
     this.trickDunk = this.comboN >= 2 && g.gt - this.comboT < 1.4;
-    this.stamina = Math.max(0, this.stamina - 14);
+    this.stamina = Math.max(0, this.stamina - T.dunk.cost);
     g.fx.dust(this.x, this.sy, 6, 0);
     return true;
   }
@@ -255,6 +278,8 @@ export class Hooper {
 
   update(dt: number, I: Intent, g: GameScene) {
     this.I = I;
+    this.reboundT=Math.max(0,this.reboundT-dt);
+    if(!this.hasBall && this.act==='block' && this.h>15 && I.a) this.reboundT=.22;
     this.tAlive += dt;
     this.shoveCD = Math.max(0, this.shoveCD - dt);
     this.pickupLock = Math.max(0, this.pickupLock - dt);
@@ -274,14 +299,23 @@ export class Hooper {
     else this.stamina = Math.min(this.staminaMax, this.stamina + (T.stamina.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
 
     for (const k of BUFFERED) this.buf[k] = I[k] ? T.input.buffer : Math.max(0, this.buf[k] - dt);
-    if (!I.shootHeld) this.buf.shootDown = 0;
+    if (!I.shootHeld && !I.shootDown) this.buf.shootDown = 0;
     const canAct = this.act === 'free' || (this.act === 'juke' && this.actT > this.actDur * 0.4);
     if (canAct) {
       if (this.hasBall) {
         if (this.buf.shootDown > 0) { this.buf.shootDown = 0; this.startShoot(g); }
+        else if ((this.buf.c>0 || I.cHeld) && this.canDunk(g)) {this.buf.c=0;this.startDunk(g);}
         else if (this.buf.a > 0) { this.buf.a = 0; this.startMove('cross', g); }
         else if (this.buf.b > 0) { this.buf.b = 0; this.startMove('spin', g); }
-        else if (this.buf.c > 0) { this.buf.c = 0; if (!this.startDunk(g)) this.startMove('btb', g); }
+        else if (this.buf.c > 0) {
+          this.buf.c=0;
+          if(Math.hypot(T.hoop.x-this.x,this.z)<260) {
+            const outside=Math.hypot(T.hoop.x-this.x,this.z*1.2)>T.dunk.range||Math.abs(this.z)>T.dunk.lane;
+            const reason=g.needsClear&&!g.cleared?'CLEAR THE ARC':this.stamina<T.dunk.cost?'LOW STAMINA':outside?'GET CLOSER':'BEAT THE GUARD';
+            g.popupAt(this,reason,'#ffe45e',18);
+          }
+          this.startMove('btb',g);
+        }
       } else if (this.act === 'free') {
         if (this.buf.shootDown > 0) { this.buf.shootDown = 0; this.startBlock(); }
         else if (this.buf.a > 0) { this.buf.a = 0; this.startSwipe(); }

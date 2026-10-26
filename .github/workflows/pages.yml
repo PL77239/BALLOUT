@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, cursor/pixel-art-overhaul-24cd]
   pull_request:
-    branches: [main, cursor/pixel-art-overhaul-24cd]
+    branches: [main, cursor/pixel-art-overhaul-24cd, codex/character-redesign]
   workflow_dispatch:
 
 permissions:
@@ -26,6 +26,14 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Check gameplay and held dunk input
+        run: |
+          node scripts/check-gameplay.cjs
+          node scripts/check-progression-rebounds.cjs
+      - name: Check online input and state protocol
+        run: node scripts/check-network.cjs
+      - name: Index court music folders
+        run: node scripts/audio-manifest.mjs --scan-only
       - name: Build for the repository subdirectory
         run: npm run build
         env:

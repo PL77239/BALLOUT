@@ -6,11 +6,13 @@ import { ART } from './court_art';
 import { BOOM_X } from './court_common';
 import { music } from './music';
 import { Crowd } from './crowd';
+import { addCourtEvents } from './court_events';
 
-export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'chiraq' | 'warsaw' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la' | 'fairmount';
+export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'chiraq' | 'warsaw' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la' | 'fairmount' | 'marseille';
 
 export interface CourtInfo { id: CourtId; name: string; sub: string; region: RegionId; night: boolean }
 export const COURTS: CourtInfo[] = [
+  {id:'marseille',name:'MASSILIA',sub:'MARSEILLE  //  VIEUX-PORT, DUSK',region:'marseille',night:false},
   { id: 'brooklyn', name: 'THE CAGE', sub: 'BED-STUY, BROOKLYN  //  NIGHT', region: 'bk', night: true },
   { id: 'queens', name: 'THE BRIDGE', sub: 'QUEENSBRIDGE, QUEENS  //  NIGHT', region: 'queens', night: true },
   { id: 'philly', name: 'BROAD & ERIE', sub: 'NORTH PHILLY  //  RAIN, NIGHT', region: 'philly', night: true },
@@ -20,7 +22,7 @@ export const COURTS: CourtInfo[] = [
   { id: 'fairmount', name: 'THE WOODS', sub: 'FAIRMOUNT PARK, PHILLY  //  NIGHT', region: 'philly', night: true },
   { id: 'chicago', name: 'SOUTH SIDE', sub: 'CHICAGO  //  GOLDEN HOUR', region: 'chi', night: false },
   { id: 'chiraq', name: 'CHIRAQ', sub: 'SOUTH SIDE, CHICAGO  //  NIGHT', region: 'chiraq', night: true },
-  { id: 'warsaw', name: 'MOKOTÓW', sub: 'WARSAW  //  OVERCAST', region: 'warsaw', night: false },
+  { id: 'warsaw', name: 'CENTRUM', sub: 'WARSAW  //  CITY SKYLINE', region: 'warsaw', night: false },
   { id: 'harlem', name: 'THE PARK', sub: 'HARLEM, NEW YORK  //  DUSK', region: 'harlem', night: false },
 ];
 export const courtInfo = (id: CourtId) => COURTS.find((c) => c.id === id)!;
@@ -183,6 +185,7 @@ export function buildCourt(scene: Phaser.Scene, id: CourtId): CourtScene {
     void i;
   });
   art.live?.(L, c);
+  addCourtEvents(L,id);
 
   const bx = BOOM_X[id] ?? 190;
   const bg = L.gfx(FY * PX - 2, Phaser.BlendModes.ADD);

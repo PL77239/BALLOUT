@@ -1,5 +1,5 @@
 import { Col, GW, Pix, mix, shade } from './pixel';
-import { FY, FloorStyle, Scene2D, brick, car, halo, paintFloor, paintHoop, windows } from './courtkit';
+import { FY, FloorStyle, Scene2D, brick, halo, paintFloor, paintHoop, windows } from './courtkit';
 import type { Ambient } from './courtkit';
 import type { Live } from './courts';
 import type { RegionId } from './loadout';
@@ -16,7 +16,7 @@ export interface CourtArt {
 
 /** Where each court's boombox stands on the fence line (art px, left edge of the sprite). The music is positioned here. */
 export const BOOM_X: Record<string, number> = {
-  brooklyn: 168, queens: 70, harlem: 200, philly: 90, fairmount: 190, detroit: 192, atl: 140, la: 220, chicago: 190, chiraq: 200, warsaw: 180,
+  brooklyn: 168, queens: 70, harlem: 200, philly: 90, fairmount: 190, detroit: 192, atl: 140, la: 220, chicago: 190, chiraq: 200, warsaw: 180, marseille: 190,
 };
 
 export interface HoopStyle { board?: Col; pole?: Col; rim?: Col }
@@ -32,19 +32,6 @@ export function crop(src: Pix, x: number, y: number, w: number, h: number): Pix 
   const o = new Pix(w, h);
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const v = src.get(x + i, y + j); if (v >= 0) o.set(i, j, v); }
   return o;
-}
-
-/** Car silhouette sprite for traffic: dark body, lit windows optional, head/tail lights. */
-export function carSprite(L: Live, col: Col, o: { kind?: 'sedan' | 'taxi' | 'low' | 'van'; flip?: boolean; lit?: boolean } = {}): string {
-  return L.tex(46, 18, (p) => {
-    const t = new Scene2D(1);
-    car(t, 2, 15, col, { kind: o.kind, flip: o.flip });
-    const s = crop(t.base, 0, 0, 46, 18);
-    p.blit(s, 0, 0);
-    const fx = o.flip ? 3 : 40, rx = o.flip ? 40 : 3;
-    for (let i = 0; i < 2; i++) { p.set(fx + i, 11, 0xfff2b0); p.set(fx + i, 12, 0xfff2b0); p.set(rx + i, 11, 0xff3a2a); }
-    if (o.lit) halo(p, o.flip ? 1 : 44, 12, 6, 0xffe9a0, 0.6, 3);
-  });
 }
 
 export interface BuildOpts { cols?: number; rows?: number; lit?: number; litC?: Col; cornice?: boolean; ox?: number; oy?: number; win?: Partial<Parameters<typeof windows>[5]>; trim?: Col }

@@ -15,4 +15,5 @@ for (const src of modules) {
   await access(path);
 }
 await access(resolve(root, 'audio/bgm/manifest.json'));
+for(const clip of ['bounce-1','bounce-2','bounce-3','rim-1','rim-2','net-1','net-2','squeak-1','squeak-2']) await access(resolve(root,`audio/sfx/${clip}.wav`));
 console.log(`Pages build verified: ${modules.join(', ')} and audio manifest`);

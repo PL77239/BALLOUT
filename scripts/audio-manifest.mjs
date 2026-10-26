@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
@@ -9,10 +10,11 @@ import { join, relative } from 'node:path';
 // per-track gain at playback so every track lands at the same loudness. Re-run after adding or replacing tracks.
 
 const run = promisify(execFile);
-const ROOT = new URL('../public/audio/bgm/', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('../public/audio/bgm/', import.meta.url));
 const OUT = join(ROOT, 'manifest.json');
 const TARGET = -16;
 const MIN_GAIN = -14, MAX_GAIN = 9;
+const scanOnly=process.argv.includes('--scan-only');
 const force = process.argv.includes('--force');
 
 const old = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : { lists: {} };
@@ -34,8 +36,8 @@ for (const [key, dir] of dirs) {
     const full = join(abs, file), f = relative(ROOT, full).split('\\').join('/');
     const size = statSync(full).size;
     const prev = known.get(f);
-    const entry = prev && prev.size === size && !force ? prev : null;
-    const slot = { f, size };
+    const entry = prev && prev.size === size && !force && (scanOnly || typeof prev.lufs==='number') ? prev : null;
+    const slot = { f, size, gain: 0 };
     lists[key].push(slot);
     if (entry) Object.assign(slot, entry);
     else jobs.push({ slot, full });
@@ -43,6 +45,7 @@ for (const [key, dir] of dirs) {
 }
 
 async function measure(job) {
+  if(scanOnly)return;
   const { stderr } = await run('ffmpeg', ['-hide_banner', '-nostats', '-i', job.full, '-af', `loudnorm=I=${TARGET}:TP=-1.5:LRA=11:print_format=json`, '-f', 'null', '-'], { maxBuffer: 1 << 26 });
   const j = JSON.parse(stderr.slice(stderr.lastIndexOf('{')));
   const { stdout } = await run('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', job.full]);
@@ -57,4 +60,4 @@ await Promise.all(Array.from({ length: 4 }, async () => { for (let j = queue.shi
 
 writeFileSync(OUT, JSON.stringify({ target: TARGET, lists }, null, 1) + '\n');
 const n = Object.values(lists).reduce((s, l) => s + l.length, 0);
-console.log(`manifest: ${n} tracks (${jobs.length} measured) -> ${relative(process.cwd(), OUT)}`);
+console.log(`manifest: ${n} tracks (${jobs.length} ${scanOnly ? 'new entries indexed' : 'measured'}) -> ${relative(process.cwd(), OUT)}`);

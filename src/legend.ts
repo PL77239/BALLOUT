@@ -3,15 +3,17 @@ import { PX } from './pixel';
 import { label, textWidth } from './font';
 import { fixedAt, fixedOrigin } from './viewport';
 
-export type LegendCtx = 'offense' | 'defense';
+export type LegendCtx = 'offense' | 'defense' | 'rebound';
 type Row = [string, string][];
 
 const KEYS: Record<LegendCtx, Row> = {
   offense: [['WASD', 'MOVE'], ['SHIFT', 'SPRINT'], ['SPACE', 'SHOOT'], ['J', 'CROSS'], ['K', 'SPIN'], ['L', 'DUNK'], ['ESC', 'PAUSE']],
+  rebound: [['WASD','MOVE'],['SPACE','JUMP'],['J','AIR CATCH'],['SHIFT','SPRINT']],
   defense: [['WASD', 'MOVE'], ['SHIFT', 'SPRINT'], ['J', 'STEAL'], ['SPACE', 'BLOCK'], ['E', 'SHOVE'], ['R', 'CHECK'], ['ESC', 'PAUSE']],
 };
 const PAD: Record<LegendCtx, Row> = {
   offense: [['STICK', 'MOVE'], ['R1', 'SPRINT'], ['X', 'SHOOT'], ['SQUARE', 'CROSS'], ['O', 'SPIN'], ['TRI', 'DUNK'], ['OPT', 'PAUSE']],
+  rebound: [['STICK','MOVE'],['X','JUMP'],['SQUARE','AIR CATCH'],['R1','SPRINT']],
   defense: [['STICK', 'MOVE'], ['R1', 'SPRINT'], ['SQUARE', 'STEAL'], ['X', 'BLOCK'], ['L1', 'SHOVE'], ['L2', 'CHECK'], ['OPT', 'PAUSE']],
 };
 

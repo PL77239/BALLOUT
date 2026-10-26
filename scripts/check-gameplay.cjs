@@ -1,37 +1,26 @@
-// Headless logic checks; Phaser rendering is deliberately replaced with a minimal scene.
-const ts = require('typescript');
-const fs = require('node:fs');
-const path = require('node:path');
 const assert = require('node:assert/strict');
-const cache = {};
-const noop = () => {};
-const clamp = (v,a,b) => Math.min(b,Math.max(a,v));
-const sfx = new Proxy({}, {get: () => noop});
-function load(name) {
-  if (cache[name]) return cache[name];
-  const code = ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src',name+'.ts'),'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  const exp = {}; cache[name] = exp;
-  const req = id => {
-    if (id === 'phaser') return {default: {Scene: class {}}};
-    if (id === './sfx') return {sfx};
-    const n=id.replace('./','');
-    if (['tuning','hooper','game','ai','loadout','pixel','puppet'].includes(n)) return load(n);
-    if (n==='input') return {emptyIntent:()=>({mx:0,mz:0,sprint:false}),MenuNav:class{}};
-    if (n==='bosses') return {PLAYER_STATS:{speed:50,accuracy:50,stamina:50,defense:50}};
-    if (n==='music') return {music:{}};
-    return {};
-  };
-  new Function('exports','require',code)(exp,req); return exp;
-}
+const {load, noop} = require('./headless-art.cjs');
 const {T}=load('tuning'), {Hooper}=load('hooper'), {GameScene}=load('game'), {Brain}=load('ai');
-const player = Object.assign(Object.create(Hooper.prototype),{hasBall:true,x:T.hoop.x-120,z:0,vx:160,stamina:100,comboN:0,comboT:0,stats:{speed:50,defense:50},facing:1});
-const stub={needsClear:false,cleared:true,gt:10,fx:{dust:noop}};
-assert.equal(player.startDunk(stub),true,'close running dunk');
-for (const [dx,z,vx,stamina] of [[250,0,160,100],[120,60,160,100],[120,0,0,100],[60,0,0,5],[-20,0,0,100]]) {
- Object.assign(player,{x:T.hoop.x-dx,z,vx,stamina}); assert.equal(player.startDunk(stub),false,`reject dunk ${[dx,z,vx,stamina]}`);
+const player = Object.assign(Object.create(Hooper.prototype),{hasBall:true,act:'free',h:0,x:T.hoop.x-160,z:0,vx:0,stamina:100,comboN:0,comboT:0,stats:{speed:50,defense:50},facing:1});
+const guard={x:T.hoop.x-240,z:0,act:'free',I:{checkHeld:true}};
+const stub={needsClear:false,cleared:true,gt:10,fx:{dust:noop},opp:()=>guard};
+assert.equal(player.canDunk(stub),true,'standing takeoff inside close range, defender beaten');
+assert.equal(player.startDunk(stub),true,'valid takeoff starts the meter');
+assert.equal(player.stamina,92,'takeoff costs ten stamina');
+for (const [dx,z,stamina] of [[260,0,100],[120,100,100],[60,0,5],[-30,0,100]]) {
+ Object.assign(player,{x:T.hoop.x-dx,z,stamina,act:'free'});assert.equal(player.startDunk(stub),false,`reject dunk ${[dx,z,stamina]}`);
 }
-Object.assign(player,{x:T.hoop.x-60,z:0,vx:0,stamina:100});assert.equal(player.startDunk(stub),true,'standing close dunk');
-stub.needsClear=true;stub.cleared=false;assert.equal(player.startDunk(stub),false,'clear before dunk');
+Object.assign(player,{x:T.hoop.x-150,z:0,stamina:100,act:'free'});
+guard.x=player.x+20;assert.equal(player.canDunk(stub),false,'close active defender in takeoff lane');
+guard.x=player.x+45;assert.equal(player.canDunk(stub),true,'guard at distance does not veto takeoff');
+guard.x=player.x-10;assert.equal(player.canDunk(stub),true,'small clear lead is enough to beat defender');
+guard.x=player.x-25;assert.equal(player.canDunk(stub),true,'clear lead over defender unlocks dunk');
+guard.x=player.x+20;guard.z=55;assert.equal(player.canDunk(stub),true,'defender out of path does not block');
+guard.z=0;guard.I.checkHeld=false;assert.equal(player.canDunk(stub),true,'nearby passive defender does not prevent takeoff');guard.act='block';assert.equal(player.canDunk(stub),false,'jumping blocker stops takeoff');
+guard.act='fall';assert.equal(player.canDunk(stub),true,'grounded defender is beaten');
+stub.needsClear=true;stub.cleared=false;assert.equal(player.canDunk(stub),false,'clear before dunk');
+stub.needsClear=false;player.act='fall';assert.equal(player.canDunk(stub),false,'cannot dunk while falling');
+player.act='free';player.h=30;assert.equal(player.canDunk(stub),false,'cannot start dunk in midair');player.h=0;
 const g=new GameScene();g.time_=10;let falls=0,rolls=0;
 const d={x:120,z:0,sy:500,h:0,act:'free',immuneT:0,vz:0,vx:0,stamina:100,facing:-1,stats:{defense:50},knock(){falls++;}};
 Object.assign(player,{x:100,z:0,hasBall:true,comboN:4,dash:{x:1,z:1},moveKind:'cross',gainHeat:noop});
@@ -49,13 +38,19 @@ for (const level of ['rookie','hooper','legend']) {
  console.log(`${level}: containment ${(checks/36).toFixed(1)}%, openings ${(lapses/36).toFixed(1)}%`);
 }
 console.log('Gameplay checks passed');
-// Export an actual CPU-rendered character contact sheet when requested.
-if(process.env.SPRITE_QA){
- global.ImageData=class{constructor(w,h){this.data=new Uint8ClampedArray(w*h*4);}};
- const {Puppet}=load('puppet'),{buildLoadout,STARTER_EQUIP}=load('loadout');
- const scene={textures:{exists:()=>false,createCanvas:()=>({getContext:()=>({putImageData:noop}),refresh:noop})},add:{image:()=>({setOrigin(){return this;},setScale(){return this;}})}};
- const l=buildLoadout({...STARTER_EQUIP},'YOU');
- let i=0;for(const top of ['tank','jersey','tee','bigTee','hoodie','flannel','longsleeve','puffer']){
-  const p=new Puppet(scene,{...l,top});p.paint();fs.writeFileSync(`/tmp/ballout-sprite-${i++}.rgba`,Buffer.from(p.pix.px.buffer));
- }
+
+// Passive CPU pressure should be lighter than identical human defense.
+const shooter=Object.assign(Object.create(Hooper.prototype),{x:100,z:0,facing:1});
+const defender={x:150,z:0,h:0,act:'free',isCpu:false};
+const cgame={opp:()=>defender};const human=shooter.contestOf(cgame);
+defender.isCpu=true;assert(Math.abs(shooter.contestOf(cgame)-human*.72)<1e-9,'only CPU contest is softened');
+defender.x=60;defender.act='block';defender.h=60;
+const behind=shooter.contestOf(cgame);defender.x=140;const inFront=shooter.contestOf(cgame);assert(behind<inFront*.6,'CPU jumping behind applies less pressure than from the front');
+// A dunk triggers one decision, not a fresh random chance on each sim tick.
+for(const [roll,shouldJump] of [[.4,false],[0,true]]){
+ const brain=new Brain('rookie'),me={x:160,z:0,act:'free',stamina:100,shoveCD:10,stats:{defense:50}},opp={x:100,z:0,vz:0,act:'dunk',actT:0,hasBall:true,protectT:0};
+ const ctx={rand:()=>roll,ball:{mode:'held'}};let jumped=false;
+ for(let t=0;t<21;t++){opp.actT=t/60;if(brain.think(me,opp,ctx,1/60).shootDown)jumped=true;}
+ assert.equal(jumped,shouldJump,'dunk contest decision is rolled once and a chosen contest still works');
 }
+console.log('CPU shot pressure and one-roll dunk defense checks passed');
