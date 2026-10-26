@@ -20,6 +20,7 @@ export interface Rig {
   fHx: number; fHy: number; bHx: number; bHy: number;
   bodyX: number;
   turn: number;
+  spin: number;
   emo: number;
   mouth: number;
 }
@@ -28,7 +29,7 @@ export const restRig = (): Rig => ({
   hipY: 88, lean: 0.04, head: 0,
   fFx: 17, fFy: 0, bFx: -17, bFy: 0, fAnk: 0, bAnk: 0,
   fHx: 14, fHy: 86 + 50 - 62, bHx: -6, bHy: 86 + 50 - 62,
-  bodyX: 0, turn: 1, emo: 0, mouth: 0,
+  bodyX: 0, turn: 1, spin: 0, emo: 0, mouth: 0,
 });
 
 export function ik(l1: number, l2: number, dx: number, dy: number, bend: number): [number, number] {
@@ -50,7 +51,7 @@ const GROUPS: { keys: RigKey[]; w: number; z: number }[] = [
   { keys: ['fHx', 'fHy', 'bHx', 'bHy'], w: 30, z: 0.58 },
   { keys: ['head'], w: 18, z: 0.5 },
 ];
-const DIRECT: RigKey[] = ['turn', 'emo', 'mouth'];
+const DIRECT: RigKey[] = ['turn', 'spin', 'emo', 'mouth'];
 
 /** Scratch mask used to rasterise one body piece, then composite it with cel shading and inner outlines. */
 class Brush {
@@ -99,7 +100,7 @@ class Brush {
   /** Predicate evaluated in a local frame (x forward, y down, in art px / u). */
   frame(ox: number, oy: number, th: number, sx: number, u: number, ext: number, pred: (lx: number, ly: number) => boolean) {
     const c = Math.cos(th), s = Math.sin(th), e = ext * u + 1;
-    const ws = (sx < 0 ? -1 : 1) * Math.max(Math.abs(sx), 0.62);
+    const ws = (sx < 0 ? -1 : 1) * Math.max(Math.abs(sx), 0.9);
     const [x0, y0, x1, y1] = this.box(ox - e, oy - e, ox + e, oy + e);
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
@@ -302,6 +303,19 @@ export class Puppet {
     };
 
     const legB = leg(true), legF = leg(false), armB = arm(true), armF = arm(false);
+    // Facing the camera separates left/right limbs in depth instead of collapsing
+    // every joint onto the same vertical line as a horizontally scaled sprite.
+    const open = (1-Math.abs(r.turn))*u*this.facing;
+    for(const [L,side] of [[legB,-1],[legF,1]] as const) for(const point of [L.hp,L.kn,L.an]) point[0]+=side*3.5*open;
+    for(const [A,side] of [[armB,-1],[armF,1]] as const) for(const point of [A.sh,A.el,A.wr]) point[0]+=side*5*open;
+    if(r.spin>0 && r.spin<1) {
+      // Broken, low-contrast pixel arcs follow the pivot rather than hiding play.
+      for(const row of [0,1]) for(let i=0;i<16;i++) {
+        const a=i*.21+r.spin*Math.PI*2+row*Math.PI;
+        const x=hx+Math.cos(a)*(14+row*3)*u, y=hy-8*u+Math.sin(a)*4*u;
+        if(i%5!==0) p.set(Math.round(x),Math.round(y),row?0x566875:0x839495);
+      }
+    }
 
     const headTh = r.lean * 0.5 + r.head;
     const hcW = [neckW[0] + Math.sin(headTh) * 19, neckW[1] + Math.cos(headTh) * 19];
@@ -622,7 +636,7 @@ export class Puppet {
 
   private chainPiece(b: Brush, h: number[], n: number[], l: Loadout, u: number, lean: number, sx: number) {
     const kind = l.chain;
-    if (kind === 'none') return;
+    if (kind === 'none' || this.cur.turn < -.28) return;
     const gold = kind === 'gold' || kind === 'cuban' || kind === 'rope' || kind === 'cross';
     const col = gold ? 0xf0c040 : kind === 'rosary' ? 0x8a1c24 : 0xdfe6ee, dk = gold ? 0xb88820 : kind === 'rosary' ? 0x4a0e14 : 0x8d99a8;
     const ang = lean;
@@ -730,7 +744,7 @@ export class Puppet {
     }
     const hc = l.hairColor;
     const hairOn = (x: number, y: number) => skull(x, y) && (y < -2.4 || (x < -2.6 && y < 1.2) || (x < -4.2 && y < 2.4));
-    if (l.hair === 'fade' || l.hair === 'braids' || l.hair === 'locs' || l.hair === 'twists' || l.hair === 'waves') {
+    if (l.hair === 'fade' || l.hair === 'braids' || l.hair === 'locs' || l.hair === 'twists' || l.hair === 'waves' || ['crop','cornrows','shortlocs','flattop','mohawk','bun'].includes(l.hair)) {
       F(10, (x, y) => hairOn(x, y) || (x >= -1.6 && x <= -0.2 && y >= -2.6 && y <= 1.4 && skull(x, y))).commit(hc, { line: null });
       F(10, (x, y) => skull(x, y) && !hairOn(x, y) && x < -3 && y < 3.4 && y >= 1.2).commit(shade(skin, 0.7), { flat: true, line: null });
       if (l.hair === 'waves') for (let y = -5; y <= -2; y += 1) for (let x = -4; x <= 3; x++) { if (((x + y * 2) & 3) === 0) { const [qx, qy] = this.loc(hd, sx, u, x, y); if (this.pix.alpha(qx, qy)) this.pix.set(qx, qy, shade(hc, 1.7)); } }
@@ -756,11 +770,9 @@ export class Puppet {
     const px = (lx: number, ly: number, c: Col) => { const [qx, qy] = this.loc(hd, sx, u, lx, ly); this.pix.set(qx, qy, c); };
     const blinking = this.blink > 0 || r.emo < -0.5;
     const shadesOn = l.face === 'shades';
-    const grill = l.face === 'grillz';
     if (front) {
       for (const ex of [-2, 2]) { if (!shadesOn) { px(ex, -0.5, 0xffffff); px(ex + 1, -0.5, OUT); } px(ex, -1.9, shade(l.hairColor, 0.8)); }
       px(0, 1.5, shade(skin, 0.75));
-      for (const mx of [-1, 0, 1]) px(mx, 4, r.mouth > 0.4 ? 0x5a1a22 : grill ? 0xf2c648 : shade(skin, 0.6));
       return;
     }
     if (!shadesOn && l.face !== 'glasses') {
@@ -769,11 +781,6 @@ export class Puppet {
       px(2.2, -2.3 - bro * 0.4, shade(hc, 0.9)); px(3.3, -2.3 + bro, shade(hc, 0.9)); px(4.4, -2.3 + bro * 1.4, shade(hc, 0.9));
     } else if (l.face === 'glasses') { px(2.6, -0.6, 0xffffff); px(3.6, -0.6, OUT); }
     px(-1.2, 0.8, shade(skin, 0.72)); px(-1.2, 1.8, shade(skin, 0.72));
-    const mc = grill ? 0xf2c648 : l.face === 'beard' || l.face === 'goatee' ? shade(skin, 0.6) : shade(skin, 0.55);
-    if (r.mouth > 0.4) { px(3.4, 3.4, grill ? 0xf2c648 : 0x5a1a22); px(4.4, 3.4, grill ? 0xf2c648 : 0x5a1a22); px(3.4, 4.4, 0x7a2a32); px(4.4, 4.4, 0x5a1a22); }
-    else if (r.emo > 0.4) { px(3.0, 3.6, mc); px(4.0, 3.9, mc); px(5.0, 3.6, mc); px(5.6, 3.1, mc); }
-    else if (r.emo < -0.4) { px(3.4, 4.1, mc); px(4.4, 3.6, mc); px(5.2, 4.1, mc); }
-    else { px(3.6, 3.6, mc); px(4.6, 3.6, mc); }
     void mir;
   }
 
@@ -787,6 +794,19 @@ export class Puppet {
       F(12, (x, y) => (x >= -5 && x <= 3.6 && y >= -10 && y <= -2.4) || hairOn(x, y)).commit(hc, { hi: shade(hc, 1.6) });
     } else if (l.hair === 'afro') {
       F(11, (x, y) => skull(x, y) && y < -3.6).commit(hc, { line: null, hi: shade(hc, 1.4) });
+    }
+    if(l.hair==='crop') F(12,(x,y)=>x>-5 && x<4.5 && y>-7-(Math.floor(x+5)%3===0?1:0) && y< -2.5).commit(hc,{hi:shade(hc,1.5)});
+    if(l.hair==='flattop') F(14,(x,y)=>x>-5.5 && x<4.5 && y> -11 && y< -3).commit(hc,{hi:shade(hc,1.5)});
+    if(l.hair==='mohawk') F(14,(x,y)=>x>-3.5 && x<2.2 && y> -11+Math.abs(x)*.5 && y< -2).commit(hc,{hi:shade(hc,1.6)});
+    if(l.hair==='cornrows') {
+      F(10,(x,y)=>skull(x,y)&&y< -2).commit(shade(SKIN_TONES[l.skin],.75),{line:null});
+      F(10,(x,y)=>skull(x,y)&&y< -2 && Math.floor((x+y*.5+20)/1.6)%2===0).commit(hc,{line:null});
+    }
+    if(l.hair==='shortlocs') for(let i=0;i<6;i++) F(14,(x,y)=>Math.abs(x-(-5+i*1.7))<1 && y> -8-(i%2)*2 && y< -1+(i%3)).commit(hc,{hi:shade(hc,1.5)});
+    if(l.hair==='bun') {
+      F(12,(x,y)=>hairOn(x,y)).commit(hc,{line:null});
+      F(15,(x,y)=>((x+4)**2)/16+((y+8)**2)/14<1).commit(hc,{hi:shade(hc,1.6)});
+      F(15,(x,y)=>x>-5 && x< -2 && y> -6 && y< -5).commit(shade(hc,2),{line:null});
     }
     const hd0 = l.headColor, ht = l.headTrim;
     const crown = (x: number, y: number, ry: number) => ((x + 0.2) ** 2) / 38 + ((y + 0.9) ** 2) / (ry * ry) <= 1;

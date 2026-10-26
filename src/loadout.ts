@@ -2,7 +2,7 @@ import type { Col } from './pixel';
 import type { TopGraphic } from './wardrobe';
 
 export type RegionId = 'bk' | 'chi' | 'chiraq' | 'warsaw' | 'harlem' | 'queens' | 'philly' | 'detroit' | 'atl' | 'la';
-export type HairKind = 'bald' | 'fade' | 'hightop' | 'waves' | 'afro' | 'braids' | 'locs' | 'twists';
+export type HairKind = 'bald' | 'fade' | 'hightop' | 'waves' | 'afro' | 'braids' | 'locs' | 'twists' | 'crop' | 'cornrows' | 'shortlocs' | 'flattop' | 'mohawk' | 'bun';
 export type HeadKind = 'none' | 'fullcap' | 'backcap' | 'fitted' | 'beanie' | 'headband' | 'durag' | 'bucket' | 'bandana';
 export type FaceKind = 'none' | 'shades' | 'beard' | 'goatee' | 'glasses' | 'stache' | 'grillz';
 export type TopKind = 'tank' | 'tee' | 'hoodie' | 'jersey' | 'longsleeve' | 'bigTee' | 'flannel' | 'puffer';
@@ -33,7 +33,7 @@ export interface Loadout {
 /** Render bulky hair tucked under a covering hat without changing equipped/saved hair. */
 export function hairUnderHeadwear(hair: HairKind, head: HeadKind): HairKind {
   const covers = head==='fullcap' || head==='backcap' || head==='fitted' || head==='beanie' || head==='bucket' || head==='durag';
-  return covers && (hair==='afro' || hair==='hightop') ? 'fade' : hair;
+  return covers && (['afro','hightop','shortlocs','flattop','mohawk','bun'].includes(hair)) ? 'fade' : hair;
 }
 
 /** Item previews must clear item-specific details just like equipping a fresh loadout. */
@@ -128,7 +128,7 @@ export const SLOTS: Slot[] = ['hair', 'head', 'face', 'top', 'bottom', 'shoes', 
 export const SLOT_NAMES: Record<Slot, string> = { hair: 'HAIR', head: 'HEADWEAR', face: 'FACE', top: 'TOP', bottom: 'BOTTOM', shoes: 'SHOES', socks: 'SOCKS', chain: 'CHAIN', wrist: 'WRIST' };
 
 const KIND_NAMES: Record<string, string> = {
-  bald: 'SHAVED', fade: 'FADE', hightop: 'HI-TOP', waves: 'WAVES', afro: 'AFRO', braids: 'BRAIDS', locs: 'LOCS', twists: 'TWISTS',
+  bald: 'SHAVED', fade: 'FADE', hightop: 'HI-TOP', waves: 'WAVES', afro: 'AFRO', braids: 'BRAIDS', locs: 'LOCS', twists: 'TWISTS', crop: 'TEXTURED CROP', cornrows: 'CORNROWS', shortlocs: 'SHORT LOCS', flattop: 'FLAT TOP', mohawk: 'BURST MOHAWK', bun: 'LOC BUN',
   none: 'NONE', fullcap: 'FULL CAP', backcap: 'BACKWARDS CAP', beanie: 'BEANIE', headband: 'HEADBAND', durag: 'DURAG', bucket: 'BUCKET HAT', bandana: 'BANDANA', fitted: 'FITTED CAP',
   shades: 'SHADES', beard: 'BEARD', goatee: 'GOATEE', glasses: 'ROUND SPECS', stache: 'MUSTACHE', grillz: 'GRILLZ',
   tank: 'TANK', tee: 'TEE', hoodie: 'HOODIE', jersey: 'JERSEY', longsleeve: 'LONGSLEEVE', bigTee: 'BIG TEE', flannel: 'FLANNEL', puffer: 'PUFFER',
@@ -150,7 +150,7 @@ function buildCatalog() {
 
   add('hair', 'hair.fade.black', 'FADE', 0, 'any', { hair: 'fade', hairColor: 0x15110e });
   add('hair', 'hair.bald', 'SHAVED', 0, 'any', { hair: 'bald' });
-  const hairBase: [string, number][] = [['fade', 40], ['hightop', 90], ['waves', 80], ['afro', 120], ['braids', 140], ['locs', 160], ['twists', 150]];
+  const hairBase: [string, number][] = [['fade', 40], ['hightop', 90], ['waves', 80], ['afro', 120], ['braids', 140], ['locs', 160], ['twists', 150], ['crop', 85], ['cornrows', 150], ['shortlocs', 145], ['flattop', 115], ['mohawk', 135], ['bun', 165]];
   for (const [k, p] of hairBase) {
     HAIR_COLORS.forEach(([cn, cc], i) => {
       if (k === 'fade' && i === 0) return;
@@ -268,7 +268,6 @@ function buildCatalog() {
   add('head', 'head.fitted.queens', 'QUEENS FITTED', 105, 'queens', { head: 'fitted', headColor: 0x1c2f66, headTrim: 0xf4f4f0 });
 
   add('face', 'face.stache', 'MUSTACHE', 70, 'la', { face: 'stache', faceColor: 0x15110e });
-  add('face', 'face.grillz', 'GOLD GRILLZ', 260, 'atl', { face: 'grillz', faceColor: 0xf0c040 });
 
   add('top', 'top.bigtee.white', 'WHITE BIG TEE', 60, 'any', { top: 'bigTee', topColor: WHITE, topTrim: 0x2a2a30 });
   add('top', 'top.bigtee.black', 'BLACK BIG TEE', 65, 'any', { top: 'bigTee', topColor: BLACK, topTrim: 0x4a4a54 });
@@ -333,8 +332,8 @@ function buildCatalog() {
     ['queens', 'QUEENS WORKWEAR', ['head.fitted.queens', 'top.puffer.tan', 'bottom.khakis.navy', 'shoes.boot.wheat', 'chain.cross']],
     ['philly', 'BROAD STREET', ['head.fitted.red', 'top.puffer.philly', 'bottom.jeans.dark', 'shoes.boot.black', 'chain.ice']],
     ['chi', 'SOUTH SIDE CREASE', ['head.fullcap.navy', 'top.bigtee.black', 'bottom.khakis.tan', 'shoes.classic.black', 'chain.cross']],
-    ['atl', 'UNDER THE PASS', ['head.backcap.white', 'top.bigtee.atl', 'bottom.jorts.wash', 'socks.stripe.gold', 'shoes.slides.white', 'chain.rope', 'face.grillz']],
-    ['atl', 'TRAP SUMMER', ['head.bandana.red', 'top.bigtee.black', 'bottom.jorts.dark', 'socks.stripe.black', 'shoes.classic.black', 'chain.ice', 'face.grillz']],
+    ['atl', 'UNDER THE PASS', ['head.backcap.white', 'top.bigtee.atl', 'bottom.jorts.wash', 'socks.stripe.gold', 'shoes.slides.white', 'chain.rope']],
+    ['atl', 'TRAP SUMMER', ['head.bandana.red', 'top.bigtee.black', 'bottom.jorts.dark', 'socks.stripe.black', 'shoes.classic.black', 'chain.ice']],
   ];
   const wardrobe = new Map<RegionId, number>();
   for (const [reg, name, ids] of curated) {

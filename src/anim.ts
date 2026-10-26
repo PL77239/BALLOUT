@@ -240,7 +240,15 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
     default: break;
   }
 
-  if (h.moveKind === 'spin' && h.act === 'juke') r.turn = Math.cos(p * TAU);
+  if (h.moveKind === 'spin' && h.act === 'juke') {
+    r.spin = p;
+    // Anticipation and a fast pivot, with body dip and head lag.
+    const pivot = smooth(clamp((p-.08)/.84,0,1));
+    r.turn = Math.cos(pivot * TAU);
+    r.hipY -= Math.sin(p*Math.PI)*4;
+    r.lean += Math.sin(pivot*TAU)*.13;
+    r.head -= Math.sin(pivot*TAU)*.12;
+  }
   if (h.mood === 'down' && h.act === 'free' && g.phase !== 'live') r.emo = -0.8;
   A.air = air;
   return { rig: r, pinF, pinB };
