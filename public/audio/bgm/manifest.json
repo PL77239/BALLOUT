@@ -170,7 +170,24 @@
     "dur": 345
    }
   ],
-  "marseille": [],
+  "marseille": [
+   {
+    "f": "courts/marseille/IAM - Cest Donc ça Nos Vies.mp3",
+    "size": 7572419,
+    "gain": -3.2,
+    "lufs": -12.8,
+    "tp": 0.4,
+    "dur": 315
+   },
+   {
+    "f": "courts/marseille/[Rap2Fr] 15. Carré Rouge - Vie Infecte.mp3",
+    "size": 8119528,
+    "gain": -6.5,
+    "lufs": -9.5,
+    "tp": 0.5,
+    "dur": 338
+   }
+  ],
   "philly": [
    {
     "f": "courts/philly/Cant Stop, Wont Stop.mp3",
