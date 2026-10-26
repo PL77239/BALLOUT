@@ -214,16 +214,18 @@ export class Hooper {
   canDunk(g: GameScene): boolean {
     if (!this.hasBall || (this.act!=='free' && this.act!=='juke') || this.h>8) return false;
     const dx = T.hoop.x-this.x;
-    if(dx < -8 || Math.hypot(dx,this.z*1.4)>T.dunk.range || Math.abs(this.z)>T.dunk.lane) return false;
+    if(dx < -18 || Math.hypot(dx,this.z*1.4)>T.dunk.range || Math.abs(this.z)>T.dunk.lane) return false;
     if(this.stamina<T.dunk.cost || (g.needsClear && !g.cleared)) return false;
     const d = g.opp(this);
     // A beaten or grounded defender does not keep an invisible wall in the lane.
     if(d.act==='fall' || d.act==='stagger' || d.act==='recover') return true;
     if(d.x < this.x-T.dunk.clearLead) return true;
     if(d.x > T.hoop.x+25) return true;
-    const along = clamp((d.x-this.x)/Math.max(1,dx),0,1);
-    const laneZ = this.z*(1-along);
-    return Math.abs(d.z-laneZ)>T.dunk.defenderLane;
+    const along=clamp((d.x-this.x)/Math.max(1,dx),0,1);
+    const laneZ=this.z*(1-along);
+    const activelyGuarding=d.act==='block'||d.h>25||d.I?.checkHeld;
+    return !(activelyGuarding && d.x>=this.x-8 && d.x-this.x<85 && Math.abs(d.z-laneZ)<T.dunk.defenderLane);
+
   }
 
   startDunk(g: GameScene): boolean {
@@ -294,9 +296,18 @@ export class Hooper {
     if (canAct) {
       if (this.hasBall) {
         if (this.buf.shootDown > 0) { this.buf.shootDown = 0; this.startShoot(g); }
+        else if ((this.buf.c>0 || I.cHeld) && this.canDunk(g)) {this.buf.c=0;this.startDunk(g);}
         else if (this.buf.a > 0) { this.buf.a = 0; this.startMove('cross', g); }
         else if (this.buf.b > 0) { this.buf.b = 0; this.startMove('spin', g); }
-        else if (this.buf.c > 0) { this.buf.c = 0; if (!this.startDunk(g)) this.startMove('btb', g); }
+        else if (this.buf.c > 0) {
+          this.buf.c=0;
+          if(Math.hypot(T.hoop.x-this.x,this.z)<260) {
+            const outside=Math.hypot(T.hoop.x-this.x,this.z*1.4)>T.dunk.range||Math.abs(this.z)>T.dunk.lane;
+            const reason=g.needsClear&&!g.cleared?'CLEAR THE ARC':this.stamina<T.dunk.cost?'LOW STAMINA':outside?'GET CLOSER':'BEAT THE GUARD';
+            g.popupAt(this,reason,'#ffe45e',18);
+          }
+          this.startMove('btb',g);
+        }
       } else if (this.act === 'free') {
         if (this.buf.shootDown > 0) { this.buf.shootDown = 0; this.startBlock(); }
         else if (this.buf.a > 0) { this.buf.a = 0; this.startSwipe(); }

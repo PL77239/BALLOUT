@@ -1,7 +1,7 @@
 import type { Col } from './pixel';
 import type { TopGraphic } from './wardrobe';
 
-export type RegionId = 'bk' | 'chi' | 'chiraq' | 'warsaw' | 'harlem' | 'queens' | 'philly' | 'detroit' | 'atl' | 'la';
+export type RegionId = 'bk' | 'chi' | 'chiraq' | 'warsaw' | 'marseille' | 'harlem' | 'queens' | 'philly' | 'detroit' | 'atl' | 'la';
 export type HairKind = 'bald' | 'fade' | 'hightop' | 'waves' | 'afro' | 'braids' | 'locs' | 'twists' | 'crop' | 'cornrows' | 'shortlocs' | 'flattop' | 'mohawk' | 'bun';
 export type HeadKind = 'none' | 'fullcap' | 'backcap' | 'fitted' | 'beanie' | 'headband' | 'durag' | 'bucket' | 'bandana';
 export type FaceKind = 'none' | 'shades' | 'beard' | 'goatee' | 'glasses' | 'stache' | 'grillz';
@@ -79,6 +79,7 @@ export const REGIONS: Record<RegionId, Region> = {
     tops: ['hoodie', 'jersey', 'bigTee'], bottoms: ['sweats', 'longShorts'], heads: ['durag', 'fullcap', 'beanie'], hairs: ['braids', 'locs', 'fade'], shoes: ['high', 'runner'],
     nicks: ['DRILL', 'L-STOP', 'SIX CORNER', 'O-BLOCK', 'CHI-TOWN', 'COLD', 'SLIDE'],
   },
+  marseille:{id:'marseille',name:'MARSEILLE',city:'VIEUX-PORT',a:0x51b7dc,b:0xecece4,c:0x253e58,tops:['jersey','hoodie','bigTee'],bottoms:['joggers','sweats','longShorts'],heads:['backcap','none','bucket'],hairs:['fade','cornrows','shortlocs'],shoes:['runner','low'],nicks:['MASSILIA','PANIER','LA GARDE','LE PORT','TREIZE']},
   warsaw: {
     id: 'warsaw', name: 'WARSAW', city: 'CENTRUM', a: 0xd22b3a, b: 0xffffff, c: 0x0e8a4a,
     tops: ['hoodie', 'longsleeve', 'tee'], bottoms: ['joggers', 'sweats'], heads: ['beanie', 'fitted', 'none'], hairs: ['fade', 'waves', 'hightop'], shoes: ['runner', 'low'],

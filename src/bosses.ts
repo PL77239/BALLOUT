@@ -47,6 +47,10 @@ const B: Record<CourtId, Boss[]> = {
     { name: 'TRAP', stats: { speed: 63, accuracy: 56, stamina: 50, defense: 46 }, loadout: { head: 'backcap', top: 'tank', bottom: 'jorts', shoes: 'slides', face: 'grillz', chain: 'rope' } },
     { name: 'UNDERPASS', stats: { speed: 65, accuracy: 55, stamina: 48, defense: 44 }, loadout: { head: 'backcap', top: 'tank', bottom: 'jorts', shoes: 'slides', face: 'grillz', chain: 'rope' } },
   ],
+  marseille:[
+    {name:'LE PANIER',stats:{speed:54,accuracy:54,stamina:56,defense:48},loadout:{top:'jersey',topColor:0xe9eee9,topTrim:0x51b7dc,bottom:'joggers',bottomColor:0x253e58,hair:'cornrows',shoes:'runner'}},
+    {name:'LA CASTELLANE',stats:{speed:57,accuracy:56,stamina:57,defense:51},loadout:{top:'hoodie',topColor:0x253e58,topTrim:0x51b7dc,bottom:'sweats',head:'backcap',hair:'fade',shoes:'low'}},
+  ],
   warsaw: [
     {
       name: 'GRUBY', stats: { speed: 48, accuracy: 55, stamina: 62, defense: 58 },
@@ -81,6 +85,7 @@ const TITLES: Record<CourtId,string[]> = {
  detroit:['ASSEMBLY','WOODWARD','PISTON','MOTOR KING'], chicago:['ENGLEWOOD','SOUTHSIDE','WIND CITY','COURT KING'],
  chiraq:['O BLOCK','BLACKTOP','NIGHT SHIFT','SOUTH KING'], atl:['PEACHTREE','ZONE SIX','HOTLANTA','ATL KING'],
  la:['CRENSHAW','SUNSET','WESTSIDE','LA KING'], warsaw:['TRAMWAJ','CENTRUM','PALACE','WAWA KING'],
+ marseille:['LA GARDE','LE PORT','TREIZE','MASSILIA KING'],
  fairmount:['RIDGE','PARKSIDE','CREEKSIDE','PARK KING'],
 };
 export function bossesFor(court: CourtId): Boss[] {

@@ -118,3 +118,10 @@ Each court has occasional background cameos (BMX, courier, skater, dancer or par
 
 ### Playing with a friend
 `2 PLAYERS` is local versus: keyboard + one controller, or two controllers. It does not connect separate browser sessions. For a quick remote playtest, a Windows host can run the game and share it through Parsec, with the guest using a controller. GitHub Pages serves the client only; native browser-to-browser multiplayer would require additional networking and session handling. The current match supports two players, so a third friend would take turns or spectate.
+
+### Court music and dunks
+Adding tracks under `public/audio/bgm/courts/<court>/` is indexed automatically on `npm run dev` and `npm run build`. Restart the dev server after adding files. `npm run preview` rebuilds first. Optional `npm run audio` measures loudness with FFmpeg; playback does not require FFmpeg. Warsaw uses its own playlist, and Marseille has `courts/marseille/`.
+
+Press or hold Triangle / L near the hoop to dunk. Holding retries when entering the close area. Possession, enough stamina and clearing the arc after a defensive rebound still apply. A nearby defender only prevents takeoff while actively guarding your lane; airborne blocks can still stop a dunk. Close-range failed attempts display a reason.
+
+Marseille's MASSILIA court is a fictional waterfront blacktop with a dusk Vieux-Port skyline, Fort Saint-Jean and Notre-Dame de la Garde. Landmark references: [Marseille tourism](https://www.marseille-tourisme.com/decouvrez-marseille/culture-et-patrimoine/sites-et-monuments/le-vieux-port/).

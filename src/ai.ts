@@ -110,7 +110,7 @@ export class Brain {
     this.lapseT = Math.max(0, this.lapseT - dt);
     if (this.containT <= 0) {
       this.containT = 0.65 + g.rand() * 0.65;
-      if (g.rand() < 0.42 - this.lvl.aggr * 0.32) this.lapseT = 0.24 + g.rand() * 0.24;
+      if (g.rand() < 0.47 - this.lvl.aggr * 0.30) this.lapseT = 0.28 + g.rand() * 0.26;
     }
     const juking = opp.act === 'juke';
     const lateral = Math.abs(opp.vz) > 95;
@@ -140,7 +140,7 @@ export class Brain {
       if (!this.seenShoot) {
         this.seenShoot = true;
         this.reactT = this.lvl.react*(.65+g.rand()*.55);
-        this.contestShot = g.rand()<clamp(.30+this.lvl.aggr*.42+me.stats.defense/500,.38,.82);
+        this.contestShot = g.rand()<clamp(.26+this.lvl.aggr*.40+me.stats.defense/550,.32,.76);
         this.jumpMeter = .55+this.lvl.aggr*.09+(g.rand()-.5)*.10;
       }
       this.reactT -= dt;

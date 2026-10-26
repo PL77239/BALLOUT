@@ -8,10 +8,11 @@ import { music } from './music';
 import { Crowd } from './crowd';
 import { addCourtEvents } from './court_events';
 
-export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'chiraq' | 'warsaw' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la' | 'fairmount';
+export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'chiraq' | 'warsaw' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la' | 'fairmount' | 'marseille';
 
 export interface CourtInfo { id: CourtId; name: string; sub: string; region: RegionId; night: boolean }
 export const COURTS: CourtInfo[] = [
+  {id:'marseille',name:'MASSILIA',sub:'MARSEILLE  //  VIEUX-PORT, DUSK',region:'marseille',night:false},
   { id: 'brooklyn', name: 'THE CAGE', sub: 'BED-STUY, BROOKLYN  //  NIGHT', region: 'bk', night: true },
   { id: 'queens', name: 'THE BRIDGE', sub: 'QUEENSBRIDGE, QUEENS  //  NIGHT', region: 'queens', night: true },
   { id: 'philly', name: 'BROAD & ERIE', sub: 'NORTH PHILLY  //  RAIN, NIGHT', region: 'philly', night: true },

@@ -13,4 +13,4 @@ for(const [id,options] of Object.entries(COURT_CAMEOS)){
   assert(seen,`${id}: starts`);assert(finished,`${id}: exits and hides in both directions`);
  }
 }
-console.log('Court events passed: 11 maps, both directions, sparse scheduling, visible sprites and cleanup');
+console.log('Court events passed: 12 maps, both directions, sparse scheduling, visible sprites and cleanup');

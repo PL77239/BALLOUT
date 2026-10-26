@@ -14,6 +14,7 @@ export const COURT_CAMEOS: Record<CourtId,Cameo[]> = {
   atl:[{kind:'dance',color:0x793b92,accent:0xebc957}],
   chicago:[{kind:'skate',color:0xb53640,accent:0x211e2b}],
   chiraq:[{kind:'bmx',color:0x252635,accent:0xb13742}],
+  marseille:[{kind:'skate',color:0x52b9dc,accent:0xf0f0df}],
   warsaw:[{kind:'courier',color:0x252b36,accent:0xe4bb32},{kind:'skate',color:0x596242,accent:0xc7c1aa}],
 };
 export function paintCameo(p:Pix,c:Cameo,phase:number) {
