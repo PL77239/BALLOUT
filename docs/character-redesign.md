@@ -36,3 +36,11 @@ The hip bridge now covers the gap between the trouser legs, the waistband stays 
 ![Streetwear expansion](streetwear-catalog.png)
 
 Regression checks additionally inspect covered knees, elbows and the hip area for skin leakage. The showcase generator now produces four sheets.
+
+## Warsaw Centrum court
+
+Warsaw is now labeled CENTRUM, including the region's city label. The low street frontage leaves the Palace of Culture's stepped wings, clock and spire visible, with stylized Varso, Warsaw Spire and Zlota 44 silhouettes beside it. Keeps the existing overcast pixel palette, court surface, hoop, spectator positions and tram animation. The tram now runs below the skyline; the parked car is removed.
+
+![Warsaw static scenery](warsaw-centrum.png)
+
+This is the static scenery preview; the in-game crowd, moving tram and animated net are separate layers. `node scripts/render-warsaw.cjs` exports the three actual 427x240 static RGBA layers to `/tmp` for inspection.

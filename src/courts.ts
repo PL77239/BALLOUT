@@ -20,7 +20,7 @@ export const COURTS: CourtInfo[] = [
   { id: 'fairmount', name: 'THE WOODS', sub: 'FAIRMOUNT PARK, PHILLY  //  NIGHT', region: 'philly', night: true },
   { id: 'chicago', name: 'SOUTH SIDE', sub: 'CHICAGO  //  GOLDEN HOUR', region: 'chi', night: false },
   { id: 'chiraq', name: 'CHIRAQ', sub: 'SOUTH SIDE, CHICAGO  //  NIGHT', region: 'chiraq', night: true },
-  { id: 'warsaw', name: 'MOKOTÓW', sub: 'WARSAW  //  OVERCAST', region: 'warsaw', night: false },
+  { id: 'warsaw', name: 'CENTRUM', sub: 'WARSAW  //  CITY SKYLINE', region: 'warsaw', night: false },
   { id: 'harlem', name: 'THE PARK', sub: 'HARLEM, NEW YORK  //  DUSK', region: 'harlem', night: false },
 ];
 export const courtInfo = (id: CourtId) => COURTS.find((c) => c.id === id)!;
