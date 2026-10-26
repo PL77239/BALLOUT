@@ -3,7 +3,8 @@ import Phaser from 'phaser';
 import { AiLevel } from './tuning';
 import { COURTS, CourtId, CourtScene, buildCourt, courtInfo } from './courts';
 import { MenuNav } from './input';
-import { FITS, ITEMS, Item, Loadout, REGIONS, SKIN_NAMES, SLOTS, SLOT_NAMES, STARTER_EQUIP, Slot, buildLoadout, itemById, itemsFor, rivalFor } from './loadout';
+import { bossAt, bossToLoadout, bossesFor, type Boss } from './bosses';
+import { FITS, ITEMS, Item, Loadout, REGIONS, SKIN_NAMES, SLOTS, SLOT_NAMES, STARTER_EQUIP, Slot, buildLoadout, itemById, itemsFor } from './loadout';
 import { Puppet, Rig, restRig } from './puppet';
 import { GH, GW, PX, mix } from './pixel';
 import { setViewport } from './viewport';
@@ -33,6 +34,8 @@ export class MenuScene extends Phaser.Scene {
   private ui: Phaser.GameObjects.GameObject[] = [];
   private pups: Puppet[] = [];
   private rival!: Loadout;
+  private rivalBoss!: Boss;
+  private rivalIdx = 0;
   private t = 0;
   private tab = 0;
   private shopSel = 0;
@@ -56,13 +59,23 @@ export class MenuScene extends Phaser.Scene {
     this.cfg.target = TARGETS.includes(s.target) ? s.target : 11;
     this.g = this.add.graphics().setDepth(5000);
     music.play('menu');
-    this.rollRival();
+    this.rivalIdx = 0;
+    this.pickRival();
     this.setCourt(this.cfg.court);
     this.makePups();
     this.build();
   }
 
-  private rollRival() { this.rival = rivalFor(courtInfo(this.cfg.court).region); }
+  private pickRival() {
+    this.rivalBoss = bossAt(this.cfg.court, this.rivalIdx);
+    this.rival = bossToLoadout(this.rivalBoss);
+  }
+
+  private cycleRival(d: number) {
+    const n = bossesFor(this.cfg.court).length;
+    this.rivalIdx = (this.rivalIdx + d + n) % n;
+    this.pickRival();
+  }
 
   private setCourt(id: CourtId) {
     if (this.courtId === id && this.court) return;
@@ -188,7 +201,7 @@ export class MenuScene extends Phaser.Scene {
     this.panel(6, 146, 178, 40);
     this.T(14, 152, ci.sub, GOLD);
     this.T(14, 164, c.mode === '1p' ? 'YOU EARN CASH FOR BUCKETS, STYLE AND WINS' : 'LOCAL VERSUS: NO CASH PAYOUT', GREY);
-    this.T(14, 174, 'RIVAL GETS A RANDOM LOOK FROM THIS REGION', DIM);
+    this.T(14, 174, 'COURT BOSS  //  ARROWS CYCLE (A-Z)', DIM);
     this.T(GW - 8, 30, ci.name, WHITE, 2, 1);
     this.T(266, 112, 'YOU', GOLD, 1, 0.5);
     this.T(336, 112, this.rival.name, 0x7fd4ff, 1, 0.5);
@@ -286,7 +299,7 @@ export class MenuScene extends Phaser.Scene {
   private startGame() {
     const s = save();
     s.lastCourt = this.cfg.court; s.level = this.cfg.level; s.target = this.cfg.target; persist();
-    const cfg: GameCfg = { mode: this.cfg.mode, court: this.cfg.court, p1: this.myLook(), p2: this.rival, level: this.cfg.level, target: this.cfg.target };
+    const cfg: GameCfg = { mode: this.cfg.mode, court: this.cfg.court, p1: this.myLook(), p2: this.rival, p2Stats: this.rivalBoss.stats, level: this.cfg.level, target: this.cfg.target };
     this.court?.destroy();
     this.court = undefined;
     this.courtId = undefined;
@@ -320,17 +333,17 @@ export class MenuScene extends Phaser.Scene {
     if (n.dx) {
       const d = n.dx;
       switch (PLAY_ROWS[this.sel]) {
-        case 'COURT': c.court = COURTS[(COURTS.findIndex((x) => x.id === c.court) + d + COURTS.length) % COURTS.length].id; this.setCourt(c.court); this.rollRival(); this.makePups(); break;
+        case 'COURT': c.court = COURTS[(COURTS.findIndex((x) => x.id === c.court) + d + COURTS.length) % COURTS.length].id; this.setCourt(c.court); this.rivalIdx = 0; this.pickRival(); this.makePups(); break;
         case 'MODE': c.mode = this.cycle(MODES, c.mode, d); break;
         case 'CPU LEVEL': c.level = this.cycle(LEVELS, c.level, d); break;
         case 'FIRST TO': c.target = this.cycle(TARGETS, c.target, d); break;
-        case 'RIVAL': this.rollRival(); this.pups[1]?.dress(this.rival); break;
+        case 'RIVAL': this.cycleRival(d); this.pups[1]?.dress(this.rival); break;
         default: break;
       }
     }
     if (n.ok) {
       if (PLAY_ROWS[this.sel] === 'START') this.startGame();
-      else if (PLAY_ROWS[this.sel] === 'RIVAL') { this.rollRival(); this.pups[1]?.dress(this.rival); }
+      else if (PLAY_ROWS[this.sel] === 'RIVAL') { this.cycleRival(1); this.pups[1]?.dress(this.rival); }
       else this.sel = PLAY_ROWS.length - 1;
     }
     this.build();

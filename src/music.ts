@@ -216,6 +216,24 @@ class Music {
 
   duck(on: boolean) { this.ducked = on; }
 
+  /** Short satisfying ping on perfect timing. */
+  chime() {
+    this.build();
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(880, t);
+    o.frequency.exponentialRampToValueAtTime(1320, t + 0.08);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22 * (this.muted ? 0 : this.vol), t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g); g.connect(this.master);
+    o.start(t); o.stop(t + 0.24);
+  }
+
   /** Call every frame with the camera centre and the middle of the action, in world units. */
   update(dt: number, camX: number, focusX: number) {
     this.pos.cam = camX; this.pos.focus = focusX;

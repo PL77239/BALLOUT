@@ -9,7 +9,8 @@ import { Hooper } from './hooper';
 import { Brain } from './ai';
 import { FX, shadowEllipse } from './fx';
 import { Controller, MenuNav, emptyIntent, makeControllers, Intent } from './input';
-import { Loadout, rivalFor } from './loadout';
+import { BossStats, PLAYER_STATS, bossAt, bossToLoadout } from './bosses';
+import { Loadout } from './loadout';
 import { GW, PX, clamp, mix, rng } from './pixel';
 import { VH, VIEW_TOP, VW, fixedAt, fixedOrigin, setViewport } from './viewport';
 import { Legend, LEGEND_H } from './legend';
@@ -21,6 +22,7 @@ export interface GameCfg {
   court: CourtId;
   p1: Loadout;
   p2?: Loadout;
+  p2Stats?: BossStats;
   level: AiLevel;
   target: number;
   seed?: number;
@@ -84,7 +86,10 @@ export class GameScene extends Phaser.Scene {
   private overT = 0;
   private pointCountdown = 0;
   private pointCountShown = -1;
+  private introCountShown = -1;
   result: MatchResult | null = null;
+
+  private static PERFECT_TAGS = ['PERFECT', 'GREEN', 'MONEY', 'SWISH', 'SPLASH', 'CASH', 'BUCKET'];
 
   constructor() { super('game'); }
 
@@ -122,8 +127,9 @@ export class GameScene extends Phaser.Scene {
       onWall: () => { this.cameras.main.shake(60, 0.002); },
     });
 
-    const rival = cfg.p2 ?? rivalFor(courtInfo(cfg.court).region);
-    this.hoopers = [new Hooper(this, 0, cfg.p1), new Hooper(this, 1, rival)];
+    const rival = cfg.p2 ?? bossToLoadout(bossAt(cfg.court, 0));
+    const rStats = cfg.p2Stats ?? bossAt(cfg.court, 0).stats;
+    this.hoopers = [new Hooper(this, 0, cfg.p1, PLAYER_STATS), new Hooper(this, 1, rival, rStats)];
     this.hoopers.forEach((h) => { h.onIgnite = () => this.onIgnite(h); });
     const [c1, c2] = makeControllers(cfg.mode === '2p');
     this.ctrls = [cfg.mode === 'sim' ? null : c1, cfg.mode === '2p' ? c2 : null];
@@ -133,8 +139,8 @@ export class GameScene extends Phaser.Scene {
     this.buildHud();
     this.resetPositions(0);
     this.snapCamera();
-    this.phase = 'intro'; this.phaseT = 1.9;
-    this.showBanner('CHECK BALL', `FIRST TO ${cfg.target}  //  ARC = 2  INSIDE = 1  DUNK = 2`, 1.7);
+    this.phase = 'intro'; this.phaseT = 3.15; this.introCountShown = -1;
+    this.showBanner('CHECK BALL', `FIRST TO ${cfg.target}  //  TAP SHOOT IN GREEN`, 1.4);
     (window as unknown as { __g: GameScene }).__g = this;
   }
 
@@ -214,7 +220,7 @@ export class GameScene extends Phaser.Scene {
     b.launch(vx, vz, vh, info);
     h.hasBall = false; b.lastOwner = h;
     h.pickupLock = 0.4;
-    if (q.perfect) this.popupAt(h, h.meterInfo.contest > 0.3 ? 'PERFECT  (CONTESTED)' : 'PERFECT', '#4dff88', 22);
+    if (q.perfect) this.perfectMoment(h, h.meterInfo.contest > 0.3);
     else this.popupAt(h, q.e < 0 ? 'EARLY' : 'LATE', '#ff6a5a', 20);
   }
 
@@ -247,7 +253,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.phase = 'point';
-    this.pointCountdown = 2;
+    this.pointCountdown = 3;
     this.pointCountShown = -1;
     this.nextOffense = T.rules.makeItTakeIt ? scorer.id : 1 - scorer.id;
   }
@@ -311,7 +317,16 @@ export class GameScene extends Phaser.Scene {
     h.mood = 'down'; h.moodT = 1.2;
   }
 
-  dunkHit(h: Hooper) {
+  private perfectMoment(h: Hooper, contested = false) {
+    const tag = GameScene.PERFECT_TAGS[Math.floor(this.rand() * GameScene.PERFECT_TAGS.length)];
+    const text = contested ? `${tag}!  (CONTESTED)` : `${tag}!`;
+    this.popupAt(h, text, '#4dff88', 44);
+    music.chime();
+    this.hitstop(0.05);
+    this.slowmo(0.55, 0.18);
+  }
+
+  dunkHit(h: Hooper, perfect = true) {
     const o = this.opp(h);
     const hp = T.hoop;
     const blocked = (o.act === 'block' && o.h > 35 && Math.abs(o.x - (h.x + h.facing * 20)) < 80 && Math.abs(o.z - h.z) < 42);
@@ -334,7 +349,8 @@ export class GameScene extends Phaser.Scene {
     b.setHeld(hp.x, 0, hp.rimH - 4);
     b.mode = 'loose'; b.owner = null; b.lastOwner = h; b.noRim = 0.5;
     b.vx = 20; b.vh = -520; b.vz = 0;
-    const info: ShotInfo = { shooter: h, perfect: true, pts: T.rules.dunkPts, age: 0, scored: true, dunk: true, green: 0, touchedRim: false };
+    if (perfect) this.perfectMoment(h);
+    const info: ShotInfo = { shooter: h, perfect, pts: T.rules.dunkPts, age: 0, scored: true, dunk: true, green: 0, touchedRim: false };
     b.info = info; b.netKick = 1.3;
     h.gainHeat(24 + (h.trickDunk ? 12 : 0));
     this.fx.dust(hp.x - 40, T.court.floorY, 6, 0);
@@ -355,8 +371,9 @@ export class GameScene extends Phaser.Scene {
     const dx = (o.x - h.x) * h.facing;
     if (dx < 6 || dx > T.steal.range || Math.abs(o.z - h.z) > T.steal.zRange) return false;
     if (o.protectT > 0 || o.act === 'shoot' || o.act === 'dunk') return false;
-    let p = T.steal.base;
-    if (Math.abs(o.vx) > T.move.sprintFloor) p += T.steal.sprintBonus;
+    let p = T.steal.base + h.stats.defense / 220;
+    if (Math.abs(o.vx) > T.move.sprintFloor || o.sprintT > 0.05) p += T.steal.sprintBonus;
+    if (o.act === 'juke' && o.actT > 0.05 && o.actT < 0.24) p += T.steal.jukeBonus;
     if (o.stamina < T.stamina.lowAt) p += T.steal.lowStaminaBonus;
     if (o.act === 'recover' || o.act === 'stagger') p += 0.25;
     if (this.rand() > clamp(p, 0.1, 0.9)) {
@@ -554,7 +571,7 @@ export class GameScene extends Phaser.Scene {
     if (this.hitT > 0) { this.hitT -= SIM_DT; return; }
     if (this.slowT > 0) { this.slowT -= SIM_DT; if (this.slowT <= 0) this.slowT = 0; }
     else this.timeScale += (1 - this.timeScale) * Math.min(1, SIM_DT * 6);
-    const dt = SIM_DT * this.timeScale;
+    const dt = SIM_DT * this.timeScale * T.pace;
     this.tick++;
     this.time_ += dt;
 
@@ -569,7 +586,15 @@ export class GameScene extends Phaser.Scene {
       if (this.ctrls[i] && this.phase === 'live') this.logIntent(i, ints[i]);
     }
 
-    if (this.phase === 'intro') { this.phaseT -= SIM_DT; if (this.phaseT <= 0) this.phase = 'live'; }
+    if (this.phase === 'intro') {
+      this.phaseT -= SIM_DT;
+      const n = Math.ceil(this.phaseT);
+      if (n > 0 && n <= 3 && n !== this.introCountShown) {
+        this.introCountShown = n;
+        this.showBanner(String(n), '', 0.85);
+      }
+      if (this.phaseT <= 0) { this.phase = 'live'; this.showBanner('CHECK', '', 0.55); }
+    }
     if (this.phase === 'point') {
       this.pointCountdown -= SIM_DT;
       const n = Math.ceil(this.pointCountdown);
@@ -694,7 +719,9 @@ export class GameScene extends Phaser.Scene {
     const R = (x: number, y: number, w: number, h: number, c: number, a = 1) => { g.fillStyle(c, a); g.fillRect(Math.round(x) * PX, Math.round(y) * PX, Math.round(w) * PX, Math.round(h) * PX); };
     for (const h of this.hoopers) {
       if (h.act === 'shoot') {
-        const w = 44, bx = Math.round(h.x / PX - w / 2), by = Math.round(h.sy / PX + 7);
+        const w = 44, bx = Math.round(h.x / PX - w / 2);
+        let by = Math.round((h.sy - h.h) / PX - 14);
+        by = clamp(by, VIEW_TOP + 52, VH - 14);
         const range = 1.1, S = T.shot.sweet;
         const { green, contest } = h.meterInfo;
         R(bx - 2, by - 2, w + 4, 8, 0x08080c, 0.9);
@@ -709,8 +736,10 @@ export class GameScene extends Phaser.Scene {
         R(mx - 1, by - 2, 2, 8, 0xffffff);
         if (contest > 0.25) R(bx, by + 6, w * contest, 1, 0xff3a3a);
       } else if (h.act === 'dunk' && !h.dunkHit) {
-        const d = T.dunk, w = 40, bx = Math.round(h.x / PX - w / 2), by = Math.round(h.sy / PX - h.h / PX - 18);
-        const sweet = d.hitAt / d.airtime, green = d.greenHalf;
+        const d = T.dunk, w = 40, bx = Math.round(h.x / PX - w / 2);
+        let by = Math.round((h.sy - h.h) / PX - 20);
+        by = clamp(by, VIEW_TOP + 48, VH - 14);
+        const sweet = d.hitAt / d.airtime, green = (h.dunkWindowSec(this) / d.airtime) * 0.55;
         const m = clamp(h.actT / d.airtime, 0, 1);
         R(bx - 2, by - 2, w + 4, 8, 0x08080c, 0.9);
         R(bx, by, w, 4, 0x24363a);
@@ -748,7 +777,7 @@ export class GameScene extends Phaser.Scene {
       const hw = Math.round(w * hf);
       R(right ? x0 + w - hw : x0, 13, hw, 5, h.fireOn ? 0xffc24a : 0xff6a1a);
       R(right ? x0 + w - hw : x0, 13, hw, 1, 0xffffff, 0.35);
-      const sf = h.stamina / T.stamina.max, sw = Math.round(w * sf);
+      const sf = h.stamina / h.staminaMax, sw = Math.round(w * sf);
       R(right ? x0 + w - sw : x0, 19, sw, 4, sf < 0.25 ? 0xff4a4a : 0x4dd0ff);
       R(right ? x0 + w - sw : x0, 19, sw, 1, 0xffffff, 0.35);
     };

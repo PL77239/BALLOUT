@@ -53,7 +53,7 @@ export const chiraq: CourtArt = {
       }
     });
     L.mover(train, 150, 94, 32, -1040, 420);
-    L.mover(carSprite(L, 0x1a2030, { lit: true }), 46, 132, 26, -995, 280);
+    L.mover(carSprite(L, 0x1a2030, { lit: true }), 46, 148, 22, -995, 320);
   },
 };
 
@@ -98,6 +98,7 @@ export const warsaw: CourtArt = {
     c.base.rect(180, 148, 24, 10, 0xd22b3a); c.base.rect(180, 148, 8, 10, 0xffffff);
     graffiti(c, 238, 118, 'WAWA', 0xf4f0e8, { scale: 3, outline: 0x2a2030, shadow: 0xd22b3a });
     graffiti(c, 246, 136, 'MOKOTÓW', 0xe8e8f0, { scale: 1, outline: 0x2a2030, shadow: 0x0e8a4a });
+    sign(c, 52, 108, 'ZŁOTY', 0xffe8c0, { scale: 1 });
     chainFence(c, 0, 100, GW, 159, 0x9aa0a8, 0.32);
     lamp(c, 148, 158, 56, { dir: 1, col: 0xffe8c0, k: 0.55 });
     lamp(c, 328, 158, 56, { dir: -1, col: 0xffe8c0, k: 0.5 });
@@ -118,8 +119,8 @@ export const warsaw: CourtArt = {
       for (let k = 4; k < 114; k += 14) { p.rect(k, 8, 10, 6, 0x88b0d8); p.hline(k, k + 9, 8, 0xe8ecf4); }
       p.rect(2, 18, 8, 3, 0x20202a); p.rect(108, 18, 8, 3, 0x20202a);
     });
-    L.mover(tram, 120, 128, -18, -1020, 400, { flip: true });
-    L.mover(carSprite(L, 0x3a4858, { lit: false }), 46, 134, 14, -990, 320);
+    L.mover(tram, 120, 118, -14, -1020, 520, { flip: true });
+    L.mover(carSprite(L, 0x3a4858, { lit: false }), 46, 148, 12, -990, 360);
   },
 };
 

@@ -40,8 +40,8 @@ export class Brain {
     }
     if (me.act === 'release') return;
     if (me.act === 'dunk') {
-      const sweet = T.dunk.hitAt, w = T.dunk.greenHalf * T.dunk.airtime * (0.85 + this.lvl.shoot * 0.3);
-      if (me.actT >= sweet - w * 0.4 && me.actT < sweet + w) I.shootDown = true;
+      const sweet = T.dunk.hitAt, w = me.dunkWindowSec(g) * (0.9 + this.lvl.shoot * 0.25);
+      if (me.actT >= sweet - w * 0.55 && me.actT < sweet + w * 0.35) I.shootUp = true;
       return;
     }
     const dist = g.distToHoop(me.x, me.z);

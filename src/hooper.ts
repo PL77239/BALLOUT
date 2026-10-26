@@ -5,6 +5,8 @@ import { Loadout } from './loadout';
 import { Intent, emptyIntent } from './input';
 import { T } from './tuning';
 import { clamp, lerp, smooth } from './pixel';
+import type { BossStats } from './bosses';
+import { PLAYER_STATS } from './bosses';
 import type { GameScene } from './game';
 
 export type Act = 'free' | 'shoot' | 'release' | 'juke' | 'dunk' | 'swipe' | 'block' | 'shove' | 'stagger' | 'fall' | 'recover';
@@ -70,11 +72,27 @@ export class Hooper {
   warnCD = 0;
   immuneT = 0;
   sprintT = 0;
+  stats: BossStats = PLAYER_STATS;
+  staminaMax = T.stamina.max;
   private buf: Record<Buffered, number> = { shootDown: 0, a: 0, b: 0, c: 0, shove: 0 };
 
-  constructor(scene: Phaser.Scene, public id: number, public loadout: Loadout) {
+  constructor(scene: Phaser.Scene, public id: number, public loadout: Loadout, stats: BossStats = PLAYER_STATS) {
+    this.stats = stats;
+    this.staminaMax = T.stamina.max * (0.78 + stats.stamina / 130);
+    this.stamina = this.staminaMax;
     this.puppet = new Puppet(scene, loadout);
     this.puppet.snap(restRig());
+  }
+
+  /** Wider green when fresh and skilled; tight when gassed. */
+  private timingScale(_g: GameScene): number {
+    const st = this.stamina / this.staminaMax;
+    const acc = this.stats.accuracy / 99;
+    return (0.62 + 0.55 * st) * (0.78 + 0.44 * acc);
+  }
+
+  dunkWindowSec(g: GameScene): number {
+    return (T.dunk.windowSec + this.stats.accuracy * 0.00035) * this.timingScale(g);
   }
 
   setLoadout(l: Loadout) { this.loadout = l; this.puppet.dress(l); }
@@ -83,7 +101,7 @@ export class Hooper {
     this.x = x; this.z = z; this.vx = this.vz = 0; this.h = this.vh = 0;
     this.act = 'free'; this.actT = 0; this.hasBall = hasBall;
     this.meter = 0; this.comboN = 0; this.protectT = 0; this.pickupLock = 0; this.mood = ''; this.moodT = 0;
-    this.shoved = false; this.sprintT = 0;
+    this.shoved = false; this.sprintT = 0; this.stamina = this.staminaMax;
     for (const k of BUFFERED) this.buf[k] = 0;
   }
 
@@ -115,10 +133,9 @@ export class Hooper {
     const dist = g.distToHoop(this.x, this.z);
     const f = dist < 250 ? lerp(1.8, 1, dist / 250) : lerp(1, 0.6, clamp((dist - 250) / (T.arcR - 250), 0, 1));
     const c = this.contestOf(g);
-    let w = T.shot.greenHalf * Math.max(0.55, f) * (1 - T.shot.contestPenalty * c);
+    let w = T.shot.greenHalf * Math.max(0.55, f) * (1 - T.shot.contestPenalty * c) * this.timingScale(g);
     if (this.fade) w *= T.shot.fadePenalty;
     if (this.fade) w *= 1 + T.shot.fadeContest * 0.3;
-    if (this.stamina < T.stamina.lowAt) w *= 0.85;
     if (this.fireOn) w *= T.shot.fireBonus;
     if (this.shoved) w *= T.shot.shovedPenalty;
     this.meterInfo = { green: w, contest: c };
@@ -244,7 +261,7 @@ export class Hooper {
     const sprinting = I.sprint && moving && this.stamina > 3 && (this.act === 'free');
     this.sprintT = sprinting ? this.sprintT + dt : 0;
     if (sprinting) this.stamina = Math.max(0, this.stamina - T.stamina.sprintDrain * dt);
-    else this.stamina = Math.min(T.stamina.max, this.stamina + (T.stamina.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
+    else this.stamina = Math.min(this.staminaMax, this.stamina + (T.stamina.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
 
     for (const k of BUFFERED) this.buf[k] = I[k] ? T.input.buffer : Math.max(0, this.buf[k] - dt);
     if (!I.shootHeld) this.buf.shootDown = 0;
@@ -316,11 +333,16 @@ export class Hooper {
 
   private locomote(dt: number, I: Intent, sprint: boolean, mul: number, g: GameScene) {
     const m = T.move;
-    let spd = sprint ? m.sprint : m.walk;
+    let spd = (sprint ? m.sprint : m.walk) * (0.78 + this.stats.speed / 115);
     if (this.hasBall) spd *= m.ballMult;
     if (this.stamina < T.stamina.lowAt) spd *= 0.86;
-    if (this.fireOn) spd *= 1.08;
+    if (this.fireOn) spd *= 1.06;
     const o = g.opp(this);
+    if (!this.hasBall && o.hasBall) {
+      const stick = 0.55 + this.stats.defense / 130;
+      const their = 0.55 + o.stats.speed / 130;
+      spd *= clamp(stick / their, 0.72, 1.08);
+    }
     if (o.I.checkHeld && !o.hasBall && this.hasBall && Math.abs(o.x - this.x) < 100 && Math.abs(o.z - this.z) < 40) {
       spd *= 0.72; this.stamina = Math.max(0, this.stamina - 6 * dt);
     }
@@ -379,12 +401,13 @@ export class Hooper {
     const u = clamp(this.actT / d.airtime, 0, 1);
     this.h = d.height * 4 * u * (1 - u);
     this.vh = 0;
-    if (!this.dunkSlam && I.shootDown) { this.dunkSlam = true; this.dunkSlamAt = this.actT; }
+    if (!this.dunkSlam && (I.shootDown || I.shootUp)) { this.dunkSlam = true; this.dunkSlamAt = this.actT; }
     if (!this.dunkHit && this.actT >= d.hitAt) {
       this.dunkHit = true;
-      const sweet = d.hitAt, window = d.greenHalf * d.airtime;
-      const t = this.dunkSlam ? this.dunkSlamAt : d.airtime * 2;
-      if (Math.abs(t - sweet) <= window) g.dunkHit(this);
+      const sweet = d.hitAt, window = this.dunkWindowSec(g);
+      const t = this.dunkSlam ? this.dunkSlamAt : sweet;
+      const perfect = this.dunkSlam && Math.abs(t - sweet) <= window;
+      if (!this.dunkSlam || Math.abs(t - sweet) <= window * 1.08) g.dunkHit(this, perfect);
       else g.dunkMiss(this);
     }
     if (this.actT >= d.airtime) { this.h = 0; this.setAct('recover', 0.2); g.fx.dust(this.x, this.sy, 8, 0); }
