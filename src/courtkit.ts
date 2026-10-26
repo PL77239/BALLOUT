@@ -247,25 +247,6 @@ export function palm(c: Scene2D, x: number, base: number, h: number, lean: numbe
   P.circle(tx, ty + 1, 2, shade(trunk, 0.8));
 }
 
-export function car(c: Scene2D, x: number, y: number, col: Col, o: { kind?: 'sedan' | 'taxi' | 'low' | 'van'; flip?: boolean } = {}) {
-  const P = c.base, k = o.kind ?? 'sedan', f = o.flip ? -1 : 1;
-  const X = (dx: number) => (o.flip ? x + 40 - dx : x + dx);
-  const body = k === 'van' ? 18 : 12;
-  P.poly([X(1), y - 3, X(3), y - 8, X(38), y - 8, X(40), y - 3, X(40), y, X(1), y], col);
-  const roof = k === 'low' ? 5 : k === 'van' ? 12 : 8;
-  P.poly([X(9), y - 8, X(13), y - body + 1 - (k === 'van' ? 0 : 0) + (k === 'low' ? 3 : 0) - 0, X(27), y - body + (k === 'low' ? 3 : 0), X(33), y - 8], shade(col, 1.08));
-  const win = k === 'taxi' ? 0x2a3a50 : 0x1c2838;
-  P.poly([X(12), y - 8, X(15), y - body + 2 + (k === 'low' ? 3 : 0), X(26), y - body + 2 + (k === 'low' ? 3 : 0), X(30), y - 8], win);
-  P.vline(X(20), y - body + 2, y - 8, shade(col, 0.7));
-  P.hline(X(1), X(40), y - 5, shade(col, 0.72));
-  P.hline(X(3), X(37), y - 8, shade(col, 1.35));
-  for (const wx of [9, 31]) { P.circle(X(wx), y, 3.4, 0x0c0c10); P.circle(X(wx), y, 1.6, 0x7a808c); }
-  P.rect(X(f > 0 ? 38 : 1), y - 5, 2, 2, 0xffe08a);
-  P.rect(X(f > 0 ? 1 : 38), y - 5, 2, 2, 0xc02828);
-  if (k === 'taxi') { P.rect(X(17), y - body - 1, 6, 2, 0xf4e8a0); P.hline(X(3), X(37), y - 4, 0x20202a); }
-  void roof;
-}
-
 export function dumpster(c: Scene2D, x: number, y: number, col = 0x2c5a3a) {
   const P = c.base;
   P.rect(x, y - 11, 22, 11, col); P.rect(x - 1, y - 13, 24, 3, shade(col, 0.7)); P.hline(x - 1, x + 22, y - 13, shade(col, 1.3));
