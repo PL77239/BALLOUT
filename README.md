@@ -23,7 +23,9 @@ After the workflow in `.github/workflows/pages.yml` runs on `main`, the game is 
 
 **https://pl77239.github.io/BALLOUT/**
 
-One-time repo setup: **Settings → Pages → Build and deployment → Source: Deploy from a branch**, branch **`gh-pages`**, folder **`/` (root)**. Pushes to `main` run the workflow in `.github/workflows/pages.yml`, which builds with `VITE_BASE=/BALLOUT/` and publishes the Vite `dist/` output to `gh-pages` (browsers cannot run the raw TypeScript in `src/`). Audio and save data load in the browser; you need a click/keypress once so music can start (browser autoplay rules).
+One-time repo setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**. The workflow builds Vite with `VITE_BASE=/BALLOUT/`, verifies the compiled entry point, and deploys only `dist/`. It runs on pushes to `main` and `cursor/pixel-art-overhaul-24cd`; pull requests build and validate without deploying. Do not select the source-code branch as a static folder: browsers cannot execute `/src/main.ts` or resolve the unbundled Phaser import. If the `github-pages` environment limits deployment branches, allow the branch you actually deploy.
+
+A successful legacy “Build with Jekyll” run does not prove the Vite game was built. The intended run has **Build for the repository subdirectory**, **Check the published entry point and assets**, and **Deploy the compiled game** steps. When viewing the page's HTML, the module must point to `/BALLOUT/assets/*.js`, not `/src/main.ts`. Audio requires one click/keypress because of browser autoplay rules.
 
 Local preview of the Pages build:
 
