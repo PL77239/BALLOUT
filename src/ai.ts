@@ -139,15 +139,16 @@ export class Brain {
     if (opp.act === 'shoot') {
       if (!this.seenShoot) {
         this.seenShoot = true;
-        this.reactT = this.lvl.react*(.35+g.rand()*.35);
-        this.contestShot = g.rand()<clamp(.42+this.lvl.aggr*.45+me.stats.defense/450,.5,.95);
-        this.jumpMeter = .48+this.lvl.aggr*.10+(g.rand()-.5)*.08;
+        this.reactT = this.lvl.react*(.65+g.rand()*.55);
+        this.contestShot = g.rand()<clamp(.30+this.lvl.aggr*.42+me.stats.defense/500,.38,.82);
+        this.jumpMeter = .55+this.lvl.aggr*.09+(g.rand()-.5)*.10;
       }
       this.reactT -= dt;
-      if (this.reactT <= 0 && opp.meter >= this.jumpMeter && this.contestShot && adx < 165 && adz < 52 && me.act === 'free' && this.lastJump <= 0 ) {
+      if (this.reactT <= 0 && opp.meter >= this.jumpMeter && this.contestShot && adx < 140 && adz < 44 && me.act === 'free' && this.lastJump <= 0 ) {
         I.shootDown = true; I.shootHeld=true; this.lastJump = 1.2;
       }
-      I.mx = clamp((opp.x + 40 - me.x) / 30, -1, 1);
+      if(this.reactT<=0 && this.contestShot && this.lapseT<=0) I.mx=clamp((opp.x+48-me.x)/55,-.7,.7);
+      else I.mx*=.6;
     } else this.seenShoot = false;
 
     if (me.act === 'free' && (opp.act === 'free' || opp.act === 'juke')) {
