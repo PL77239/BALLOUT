@@ -59,7 +59,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
   const breathe = Math.sin(t * 2.3) * (1 - S);
 
   /* ---------- baseline: locomotion + idle ---------- */
-  const dip = gait(r, h.ph, speed, 9, 0);
+  const dip = gait(r, h.ph, speed, 13, 0);
   r.hipY = 86 - dip - Math.max(0, -breathe) * 1.4 + breathe * 0.8;
   r.lean = 0.05 + 0.2 * S + clamp(A.acc * 0.00005, -0.14, 0.2);
   if (along < -30) r.lean = -0.04 + clamp(A.acc * 0.00004, -0.06, 0.1);
@@ -99,7 +99,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
     }
     if (speed < 40 && h.act === 'free') {
       const sway = Math.sin(t * 1.9);
-      r.fFx = 11 + sway * 1.5; r.bFx = -11 - sway * 1.5;
+      r.fFx = 18 + sway * 2; r.bFx = -16 - sway * 2;
       r.bodyX = sway * 1.2;
     }
   } else if (defending && h.act === 'free') {

@@ -1,28 +1,5 @@
-// Headless logic checks; Phaser rendering is deliberately replaced with a minimal scene.
-const ts = require('typescript');
-const fs = require('node:fs');
-const path = require('node:path');
 const assert = require('node:assert/strict');
-const cache = {};
-const noop = () => {};
-const clamp = (v,a,b) => Math.min(b,Math.max(a,v));
-const sfx = new Proxy({}, {get: () => noop});
-function load(name) {
-  if (cache[name]) return cache[name];
-  const code = ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src',name+'.ts'),'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  const exp = {}; cache[name] = exp;
-  const req = id => {
-    if (id === 'phaser') return {default: {Scene: class {}}};
-    if (id === './sfx') return {sfx};
-    const n=id.replace('./','');
-    if (['tuning','hooper','game','ai','loadout','pixel','puppet'].includes(n)) return load(n);
-    if (n==='input') return {emptyIntent:()=>({mx:0,mz:0,sprint:false}),MenuNav:class{}};
-    if (n==='bosses') return {PLAYER_STATS:{speed:50,accuracy:50,stamina:50,defense:50}};
-    if (n==='music') return {music:{}};
-    return {};
-  };
-  new Function('exports','require',code)(exp,req); return exp;
-}
+const {load, noop} = require('./headless-art.cjs');
 const {T}=load('tuning'), {Hooper}=load('hooper'), {GameScene}=load('game'), {Brain}=load('ai');
 const player = Object.assign(Object.create(Hooper.prototype),{hasBall:true,x:T.hoop.x-120,z:0,vx:160,stamina:100,comboN:0,comboT:0,stats:{speed:50,defense:50},facing:1});
 const stub={needsClear:false,cleared:true,gt:10,fx:{dust:noop}};
@@ -49,13 +26,3 @@ for (const level of ['rookie','hooper','legend']) {
  console.log(`${level}: containment ${(checks/36).toFixed(1)}%, openings ${(lapses/36).toFixed(1)}%`);
 }
 console.log('Gameplay checks passed');
-// Export an actual CPU-rendered character contact sheet when requested.
-if(process.env.SPRITE_QA){
- global.ImageData=class{constructor(w,h){this.data=new Uint8ClampedArray(w*h*4);}};
- const {Puppet}=load('puppet'),{buildLoadout,STARTER_EQUIP}=load('loadout');
- const scene={textures:{exists:()=>false,createCanvas:()=>({getContext:()=>({putImageData:noop}),refresh:noop})},add:{image:()=>({setOrigin(){return this;},setScale(){return this;}})}};
- const l=buildLoadout({...STARTER_EQUIP},'YOU');
- let i=0;for(const top of ['tank','jersey','tee','bigTee','hoodie','flannel','longsleeve','puffer']){
-  const p=new Puppet(scene,{...l,top});p.paint();fs.writeFileSync(`/tmp/ballout-sprite-${i++}.rgba`,Buffer.from(p.pix.px.buffer));
- }
-}

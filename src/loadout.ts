@@ -1,4 +1,5 @@
 import type { Col } from './pixel';
+import type { TopGraphic } from './wardrobe';
 
 export type RegionId = 'bk' | 'chi' | 'chiraq' | 'warsaw' | 'harlem' | 'queens' | 'philly' | 'detroit' | 'atl' | 'la';
 export type HairKind = 'bald' | 'fade' | 'hightop' | 'waves' | 'afro' | 'braids' | 'locs' | 'twists';
@@ -19,6 +20,8 @@ export interface Loadout {
   head: HeadKind; headColor: Col; headTrim: Col;
   face: FaceKind; faceColor: Col;
   top: TopKind; topColor: Col; topTrim: Col;
+  /** Optional item-level details; old saves and rivals remain compatible. */
+  topGraphic?: TopGraphic; jerseyNumber?: number;
   bottom: BottomKind; bottomColor: Col; bottomTrim: Col;
   shoes: ShoeKind; shoeColor: Col; shoeSole: Col; shoeTrim: Col;
   socks: SockKind; sockColor: Col; sockTrim: Col;
@@ -163,6 +166,9 @@ function buildCatalog() {
 
   add('top', 'top.tee.white', 'WHITE TEE', 0, 'any', { top: 'tee', topColor: 0xf0f0ea, topTrim: 0x222222 });
   add('top', 'top.tank.black', 'BLACK TANK', 0, 'any', { top: 'tank', topColor: 0x1d1d22, topTrim: 0xf0f0ea });
+  add('top', 'top.tee.court', 'COURT LOGO TEE', 95, 'any', { top: 'tee', topColor: 0x222630, topTrim: 0xf0c55a, topGraphic: 'box' });
+  add('top', 'top.jersey.23', 'VARSITY 23', 150, 'any', { top: 'jersey', topColor: 0x9e2937, topTrim: 0xffe6b1, topGraphic: 'number', jerseyNumber: 23 });
+  add('top', 'top.bigtee.diagonal', 'DIAGONAL OVERSIZE', 135, 'any', { top: 'bigTee', topColor: 0x263c55, topTrim: 0x78d7ce, topGraphic: 'diagonal' });
   add('top', 'top.tee.black', 'BLACK TEE', 40, 'any', { top: 'tee', topColor: 0x1d1d22, topTrim: 0x4a4a54 });
   add('top', 'top.tank.white', 'WHITE TANK', 40, 'any', { top: 'tank', topColor: 0xf0f0ea, topTrim: 0x222222 });
   add('top', 'top.hoodie.grey', 'GREY HOODIE', 85, 'any', { top: 'hoodie', topColor: 0x8d949e, topTrim: 0x22262c });
