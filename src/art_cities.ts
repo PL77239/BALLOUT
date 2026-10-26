@@ -1,6 +1,6 @@
 import { GW, Pix, mix, shade } from './pixel';
-import { FY, Scene2D, antenna, awning, bench, boombox, brick, chainFence, dumpster, graffiti, halo, hydrant, lamp, powerLine, sign, skyline, sky, slab, stars, tree, trashCan, car, cart } from './courtkit';
-import { BOOM_X, CourtArt, building, carSprite, finish, spots, truss } from './court_common';
+import { FY, Scene2D, antenna, awning, bench, boombox, brick, chainFence, dumpster, graffiti, halo, hydrant, lamp, powerLine, sign, skyline, sky, slab, stars, tree, trashCan, cart } from './courtkit';
+import { BOOM_X, CourtArt, building, finish, spots, truss } from './court_common';
 
 /* ------------------------------------------------------------------ CHIRAQ (South Side night — grittier cousin to golden-hour Chicago) */
 
@@ -41,7 +41,6 @@ export const chiraq: CourtArt = {
     finish(c, { base: 0x3a3e48, edge: 0x4a4a54, key: 0x8a1c24, lines: 0xe8e4d8, seed: 9, crack: 24, sidewalk: 0x5a5a64, speckle: 1.15 }, { board: 0xe6eaf0 }, () => {
       bench(c, 142, 160, 20); trashCan(c, 18, 160); hydrant(c, 300, 159);
       boombox(c, BOOM_X.chiraq, 160);
-      car(c, 248, 160, 0x2a3040);
     });
   },
   live(L) {
