@@ -65,10 +65,6 @@ export const brooklyn: CourtArt = {
     }
     L.blink(160, 36, 0xff3a3a, 1.6, -985);
     L.blink(300, 36, 0xff3a3a, 1.6, -985, 0.8);
-    const cab = carSprite(L, 0x20203a, { lit: true });
-    L.mover(cab, 46, 81, 18, -1040, 260);
-    const cab2 = carSprite(L, 0x38203a, { flip: true, lit: true });
-    L.mover(cab2, 46, 81, -22, -1040, 340, { x0: 120 });
     void c;
   },
 };
@@ -118,10 +114,6 @@ export const queens: CourtArt = {
     const plane = L.tex(9, 3, (p) => { p.rect(0, 1, 8, 1, 0x30303a); p.set(3, 0, 0x30303a); });
     L.mover(plane, 9, 18, 9, -1090, 380);
     L.blink(40, 17, 0xff3a3a, 1.2, -985);
-    const tr = carSprite(L, 0x22223a, { kind: 'van', lit: true });
-    L.mover(tr, 46, 83, 24, -1040, 280);
-    const tr2 = carSprite(L, 0x3a2a2a, { flip: true, lit: true });
-    L.mover(tr2, 46, 83, -30, -1040, 200, { x0: 200 });
   },
 };
 
@@ -172,9 +164,6 @@ export const harlem: CourtArt = {
     });
   },
   live(L) {
-    const taxi = carSprite(L, 0xe8b820, { kind: 'taxi' });
-    L.mover(taxi, 46, 138, 30, -995, 260);
-    L.mover(carSprite(L, 0x3a3a50, { flip: true }), 46, 138, -36, -995, 340, { x0: 140 });
   },
 };
 

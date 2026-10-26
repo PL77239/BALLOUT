@@ -5,8 +5,8 @@ import { Loadout, SKIN_TONES } from './loadout';
 export const THIGH = 44;
 export const SHIN = 42;
 export const ANKLE = 7;
-export const TORSO = 60;
-export const SHOULDER = 52;
+export const TORSO = 66;
+export const SHOULDER = 57;
 const UPPER = 36;
 const FORE = 33;
 const OUT = 0x16111f;
@@ -279,7 +279,7 @@ export class Puppet {
     const nx = X(neckW[0]), ny = Y(neckW[1]);
 
     const leg = (far: boolean) => {
-      const ox = far ? -4 : 4;
+      const ox = far ? -7 : 7;
       const fx = far ? r.bFx : r.fFx, fy = far ? r.bFy : r.fFy, ank = far ? r.bAnk : r.fAnk;
       const [a1, a2] = ik(THIGH, SHIN, bx + fx - (hipW[0] + ox), hipW[1] - (fy + ANKLE), 1);
       const hp = [hipW[0] + ox, hipW[1]];
@@ -309,8 +309,8 @@ export class Puppet {
     /* ---- far limbs, torso, near leg ---- */
     b.part = 1; this.legPiece(b, legB, l, skin, u, sx);
     b.part = 2; this.armPiece(b, armB, l, skin, u, true);
-    b.part = 3; this.torsoPiece(b, [hx, hy], [nx, ny], l, skin, u, r.lean, sx, mir);
     b.part = 4; this.legPiece(b, legF, l, skin, u, sx);
+    b.part = 3; this.torsoPiece(b, [hx, hy], [nx, ny], l, skin, u, r.lean, sx, mir);
     if (l.top === 'bigTee') { b.part = 6; this.bigTeeHem(b, [hx, hy], [nx, ny], l, u); }
     if (l.top === 'hoodie') {
       b.part = 9;
@@ -457,7 +457,7 @@ export class Puppet {
     const wv = (kind: 'plaid' | 'baffle', a: number[], z: number[]) => this.weave(b, a, z, u, kind, tc, tt);
     if (t === 'tee' || t === 'jersey' || t === 'bigTee') {
       if (t === 'tee') { sleeveUp(tc, 0, 0.58, 0.5); b.begin().cap(sx0, sy0, ex, ey, 2.85 * u, 2.65 * u, 0.48, 0.6, false, false).commit(tt, { flat: true, line: null }); }
-      if (t === 'jersey') { sleeveUp(tc, 0, 0.52, 0.48); b.begin().cap(sx0, sy0, ex, ey, 2.75 * u, 2.55 * u, 0.48, 0.56, false, false).commit(tt, { flat: true, line: null }); }
+      if (t === 'jersey') { /* Sleeveless: leave the upper arm visible. */ }
       if (t === 'bigTee') { sleeveUp(tc, 0, 0.72, 0.95); b.begin().cap(sx0, sy0, ex, ey, 3.05 * u, 2.85 * u, 0.68, 0.76, false, false).commit(shade(tc, 0.88), { flat: true, line: null }); }
     } else if (t === 'hoodie' || t === 'longsleeve' || t === 'flannel' || t === 'puffer') {
       const rr = t === 'hoodie' ? 0.8 : t === 'puffer' ? 1.3 : t === 'flannel' ? 0.5 : 0.3;
@@ -509,7 +509,10 @@ export class Puppet {
 
   private torsoPiece(b: Brush, h: number[], n: number[], l: Loadout, skin: Col, u: number, lean: number, sx: number, mir: number) {
     const [hx, hy] = h, [nx, ny] = n;
-    b.begin().cap(hx, hy, nx, ny, 4.7 * u, 6.2 * u).commit(skin);
+    // The shoulder line ends below the neck; a capsule extending past the
+    // neck made every shirt look like a padded tube around the face.
+    b.begin().cap(hx, hy, nx, ny, 4.7 * u, 6.2 * u, 0, 0.88, true, false).commit(skin);
+    b.begin().cap(hx, hy, nx, ny, 2.1 * u, 2.1 * u, 0.82, 1.08, false, false).commit(skin);
     const tp = l.top;
     const longTop = tp === 'bigTee' || tp === 'hoodie' || tp === 'longsleeve' || tp === 'flannel' || tp === 'puffer' || tp === 'jersey';
     const bw = COVERED.has(l.bottom) ? 0.45 : 0.62;
@@ -522,9 +525,9 @@ export class Puppet {
     }
     const hood = tp === 'hoodie';
     const extra = topExtra(tp);
-    const t0 = tp === 'puffer' ? 0.14 : tp === 'bigTee' ? 0.05 : tp === 'flannel' ? 0.18 : 0.27;
+    const t0 = tp === 'puffer' ? 0.10 : tp === 'bigTee' ? -0.10 : tp === 'flannel' ? 0.08 : tp === 'jersey' ? 0.06 : 0.14;
     const sleeveless = tp === 'tank' || tp === 'jersey';
-    b.begin().cap(hx, hy, nx, ny, (4.8 + extra) * u, (6.2 + extra) * u, t0, 1, false, true).commit(l.topColor);
+    b.begin().cap(hx, hy, nx, ny, (5.3 + extra) * u, (7.0 + extra) * u, t0, 0.89, false, false).commit(l.topColor);
     if (tp === 'flannel') this.weave(b, [hx, hy], [nx, ny], u, 'plaid', l.topColor, l.topTrim);
     if (tp === 'puffer') this.weave(b, [hx, hy], [nx, ny], u, 'baffle', l.topColor, l.topTrim);
     b.begin().cap(hx, hy, nx, ny, (5.15 + extra) * u, (6.55 + extra * 0.45) * u, 0.24, 0.34, false, false).commit(shade(l.topColor, 0.93), { flat: true, line: null });

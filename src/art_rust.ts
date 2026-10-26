@@ -50,7 +50,6 @@ export const philly: CourtArt = {
   },
   live(L) {
     L.rain(110, 5000);
-    L.mover(carSprite(L, 0x2a3048, { lit: true }), 46, 138, 22, -995, 300);
   },
 };
 

@@ -19,6 +19,8 @@ export class Brain {
   private wantThree = false;
   private shotRoll = 0;
   private lastJump = 0;
+  private containT = 0;
+  private lapseT = 0;
 
   constructor(level: AiLevel) { this.lvl = T.ai[level]; }
 
@@ -100,6 +102,12 @@ export class Brain {
 
   private defense(I: Intent, me: Hooper, opp: Hooper, g: GameScene, dt: number) {
     if (!Number.isFinite(this.tgtX)) { this.tgtX = me.x; this.tgtZ = me.z; }
+    this.containT -= dt;
+    this.lapseT = Math.max(0, this.lapseT - dt);
+    if (this.containT <= 0) {
+      this.containT = 0.65 + g.rand() * 0.65;
+      if (g.rand() < 0.42 - this.lvl.aggr * 0.32) this.lapseT = 0.24 + g.rand() * 0.24;
+    }
     const juking = opp.act === 'juke';
     const lateral = Math.abs(opp.vz) > 95;
     const zSmooth = this.lvl.react * (juking ? 2.2 : 1.35) + (juking ? 0.14 : 0.06);
@@ -121,7 +129,8 @@ export class Brain {
     I.mz = mz;
     I.sprint = !juking && Math.abs(this.tgtX - me.x) > 110 && me.stamina > 20;
     const adx = Math.abs(opp.x - me.x), adz = Math.abs(opp.z - me.z);
-    if (adx < 100 && adz < 50) I.checkHeld = true;
+    if (adx < 90 && adz < 38 && this.lapseT <= 0 && !juking) I.checkHeld = true;
+    if (this.lapseT > 0) { I.mx *= 0.28; I.mz *= 0.25; I.sprint = false; }
 
     if (opp.act === 'shoot') {
       if (!this.seenShoot) {
@@ -135,7 +144,7 @@ export class Brain {
       I.mx = clamp((opp.x + 40 - me.x) / 30, -1, 1);
     } else this.seenShoot = false;
 
-    if (me.act === 'free' && opp.act === 'free' || opp.act === 'juke') {
+    if (me.act === 'free' && (opp.act === 'free' || opp.act === 'juke')) {
       if (this.stealCD <= 0 && adx > 28 && adx < T.steal.range - 14 && adz < 28 && opp.protectT <= 0 && g.rand() < dt * (0.06 + this.lvl.aggr * 0.48)) {
         I.a = true; this.stealCD = 1.1 + g.rand() * 1;
       }

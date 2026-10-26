@@ -1,5 +1,6 @@
 import { music } from './music';
 import Phaser from 'phaser';
+import { sfx } from './sfx';
 import { T, AiLevel } from './tuning';
 import { buildCourt, courtInfo, CourtId, CourtScene } from './courts';
 
@@ -122,9 +123,9 @@ export class GameScene extends Phaser.Scene {
 
     this.ball = new Ball(this, {
       onScore: (info, clean) => this.onScore(info, clean),
-      onRim: (sp) => { if (sp > 120) { this.fx.sparks(this.ball.x, this.ball.sy, 4, 0xffb060, 160); } },
-      onBoard: (sp) => { if (sp > 120) this.fx.ring(this.ball.x, this.ball.sy, 0xffffff, 8, 120, 0.2); },
-      onFloor: (sp) => { if (sp > 300) this.fx.dust(this.ball.x, T.court.floorY + this.ball.z, 2, 0, 0.5); },
+      onRim: (sp) => { if (sp > 120) { sfx.rim(); this.fx.sparks(this.ball.x, this.ball.sy, 4, 0xffb060, 160); } },
+      onBoard: (sp) => { if (sp > 120) { sfx.board(); this.fx.ring(this.ball.x, this.ball.sy, 0xffffff, 8, 120, 0.2); } },
+      onFloor: (sp) => { if (sp > 80) sfx.bounce(sp / 700); if (sp > 300) this.fx.dust(this.ball.x, T.court.floorY + this.ball.z, 2, 0, 0.5); },
       onWall: () => { this.cameras.main.shake(60, 0.002); },
     });
 
@@ -234,8 +235,9 @@ export class GameScene extends Phaser.Scene {
     h.gainHeat(14 + (info.perfect ? 10 : 0));
     if (o.fireOn) { o.fireT = 0; o.heat = 0; this.popupAt(o, 'COOLED OFF', '#9fe8ff', 22); }
     const sx = T.hoop.x, sy = T.court.floorY - T.hoop.rimH;
-    this.fx.sparks(sx, sy + 10, 18, info.perfect ? 0x7dffb0 : 0xffd060, 380);
-    this.fx.ring(sx, sy + 14, 0xffffff, 14, 300, 0.4);
+    this.fx.sparks(sx, sy + 10, info.perfect ? 14 : 6, info.perfect ? 0x7dffb0 : 0xe8e0ce, info.perfect ? 290 : 150);
+    this.fx.ring(sx, sy + 14, info.perfect ? 0x7dffb0 : 0xffffff, 10, info.perfect ? 180 : 100, 0.24);
+    sfx.net();
     const lab = info.dunk ? 'SLAM' : clean ? (info.perfect ? 'SWISH' : 'NOTHING BUT NET') : info.touchedRim ? 'RATTLES IN' : 'BUCKET';
     this.fx.popup(sx - 40, sy - 60, `${lab}  +${info.pts}`, info.pts > 1 ? '#ffd24a' : '#ffffff', 40, 60);
     for (const [re, pay] of STYLE_PAY) if (re.test(lab)) { this.style[h.id] += pay; break; }
@@ -340,11 +342,13 @@ export class GameScene extends Phaser.Scene {
       h.pickupLock = 0.5;
       this.fx.ring(h.x + h.facing * 30, h.sy - h.h - 200, 0xffffff, 12, 380, 0.3);
       this.fx.sparks(h.x + h.facing * 30, h.sy - h.h - 200, 16, 0xffffff, 420);
+      sfx.board();
       this.popupAt(o, 'DENIED AT THE RIM', '#ff5a3a', 34);
       this.shake(220, 0.014); this.hitstop(0.09); this.slowmo(0.45, 0.25);
       o.gainHeat(22);
       return;
     }
+    sfx.dunk();
     const posterized = Math.abs(o.x - h.x) < 120 && Math.abs(o.z - h.z) < 50 && o.act !== 'fall';
     h.hasBall = false;
     const b = this.ball;
@@ -413,14 +417,21 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  ankleCheck(h: Hooper) {
+  private ankleAttempts = new WeakMap<Hooper, number>();
+
+  ankleCheck(h: Hooper, runningCut = false) {
     const d = this.opp(h);
     const dx = d.x - h.x, dz = d.z - h.z;
     if (Math.abs(dx) > T.moves.ankleRange || Math.abs(dz) > T.moves.ankleZ) return;
     if (d.act === 'fall' || d.act === 'dunk' || d.h > 30 || d.immuneT > 0) return;
+    if (this.gt - (this.ankleAttempts.get(h) ?? -10) < 0.85 || !h.hasBall) return;
+    this.ankleAttempts.set(h, this.gt);
     const wrongWay = d.vz * h.dash.z < -40 || (h.moveKind !== 'cross' && d.vx * Math.sign(h.dash.x || 1) < -120);
     const committed = d.act === 'swipe' || d.act === 'shove' || d.act === 'recover' || d.act === 'stagger';
-    if ((wrongWay || committed || h.comboN >= 4 || d.stamina < 12) && this.rand() < 0.1) {
+    const skill = (h.stats.speed - d.stats.defense) / 500;
+    const chance = clamp(0.10 + skill + (wrongWay ? 0.14 : 0) + (committed ? 0.16 : 0) + (runningCut ? 0.10 : 0) + Math.min(h.comboN, 3) * 0.025 + (d.stamina < 22 ? 0.10 : 0), 0.07, 0.48);
+    if (this.rand() < chance) {
+      sfx.ankle();
       d.knock('fall', -d.facing, 170); d.immuneT = 2.4;
       d.vz = h.dash.z * 0.3;
       this.popupAt(h, h.comboN >= 4 ? 'ANKLES GONE!' : 'ANKLE BREAKER!', '#ff4fa0', 40);

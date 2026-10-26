@@ -86,3 +86,14 @@ They use the system Chrome through `playwright-core`. Start `npm run dev` first.
 - `scripts/perf.mjs <court>` per-frame CPU cost of the simulation and rendering
 
 Debug URLs: `/?auto=chicago&mode=sim&seed=1234` (CPU vs CPU, optional seed), `/?auto=harlem&mode=1p`, `/?lab=1&pose=run` (sprite lab; `top=tank,tee,...` previews garment kinds), `/?lab=1&court=fairmount` (court viewer), `/?lab=1&fit=16` (sprite lab showing six fits starting at that index of `FITS`).
+
+### Court polish and gameplay balance
+
+- Background car traffic removed; court scenery, fog and rail traffic remain.
+- Player silhouettes use clearer shoulders/neck, wider torsos, separated legs and corrected clothing layers. Jerseys are sleeveless.
+- Dunks require a takeoff within 155 world units of the basket, a central lane position, stamina and forward momentum outside the immediate rim area.
+- Ankle breakers are probabilistic (7–48% per eligible attempt), based on defensive commitment, movement, fatigue and skill. Attempts have a 0.85-second cooldown, and fallen defenders retain immunity. Quick sprint direction changes can also trigger an attempt.
+- All three AI levels are slightly stronger offensively. Defensive containment has short, difficulty-dependent lapses and applies less movement slowdown.
+- Original Web Audio Foley adds varied ball bounces, sneaker squeaks, rim/board impacts, net sounds and slam accents. Audio starts after a keyboard or pointer gesture, as required by browsers. These are synthesized effects, not recordings from NBA Street.
+
+Run `node scripts/check-gameplay.cjs` for headless dunk, ankle-breaker and AI containment regression checks. `npm run build` also checks TypeScript before bundling.
