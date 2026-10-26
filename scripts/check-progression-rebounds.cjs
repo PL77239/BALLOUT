@@ -58,9 +58,19 @@ console.log('Actual win/loss advancement and responsive reversal/braking passed'
 
 // Holding Triangle before entering range must start a dunk without another edge.
 const dunker=make(),defender=make();
-Object.assign(dunker,{x:load('tuning').T.hoop.x-225,z:0,hasBall:true,stamina:100});
+Object.assign(dunker,{x:load('tuning').T.hoop.x-245,z:0,hasBall:true,stamina:100});
 Object.assign(defender,{x:dunker.x-50,z:0,hasBall:false,act:'free'});
 const dg={...g,opp:()=>defender,gt:0,needsClear:false,cleared:true,fx:{dust:noop},dunkHit:noop,dunkMiss:noop};
 dunker.update(1/240,{...blank(),cHeld:true},dg);assert.equal(dunker.act,'free');
-dunker.x=load('tuning').T.hoop.x-205;dunker.update(1/240,{...blank(),cHeld:true},dg);assert.equal(dunker.act,'dunk','held Triangle retries takeoff on entry');
+dunker.x=load('tuning').T.hoop.x-225;dunker.update(1/240,{...blank(),cHeld:true},dg);assert.equal(dunker.act,'dunk','held Triangle retries takeoff on entry');
 console.log('Held dunk input enters the expanded close range');
+// A real press outside range starts the existing dribble, then a held button
+// must still trigger the dunk as the player drives into range.
+const drive=make(),guard2=make();
+Object.assign(drive,{x:load('tuning').T.hoop.x-245,z:0,hasBall:true,stamina:100});
+Object.assign(guard2,{x:drive.x-70,z:0,hasBall:false,act:'free'});
+const driveGame={...dg,opp:()=>guard2,ankleCheck:noop};
+drive.update(1/240,{...blank(),c:true,cHeld:true},driveGame);
+assert.equal(drive.act,'juke','an outside-range press retains the dribble');
+for(let i=0;i<120&&drive.act!=='dunk';i++)drive.update(1/240,{...blank(),cHeld:true},driveGame);
+assert.equal(drive.act,'dunk','holding after the initial press starts a dunk during the drive');

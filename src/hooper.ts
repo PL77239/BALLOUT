@@ -127,8 +127,11 @@ export class Hooper {
     const dx = d.x - this.x, dz = d.z - this.z;
     const dist = Math.hypot(dx * 0.9, dz * 2.2);
     let c = Math.max(0, 1 - dist / T.shot.contestRange);
-    if (dx * this.facing < -24) c *= 0.4;
-    if ((d.act === 'block' || d.h > 25) && dist < T.shot.contestRange * 1.25) c = Math.min(1, c + 0.35);
+    const behind=dx*this.facing < -24;
+    if (behind) c *= 0.4;
+    if ((d.act === 'block' || d.h > 25) && dist < T.shot.contestRange * 1.25)
+      c = Math.min(1, c + (d.isCpu && behind ? 0.14 : 0.35));
+    if (d.isCpu) c *= 0.72;
     if (d.act === 'fall' || d.act === 'stagger') c *= 0.2;
     return c;
   }
@@ -214,7 +217,7 @@ export class Hooper {
   canDunk(g: GameScene): boolean {
     if (!this.hasBall || (this.act!=='free' && this.act!=='juke') || this.h>8) return false;
     const dx = T.hoop.x-this.x;
-    if(dx < -18 || Math.hypot(dx,this.z*1.4)>T.dunk.range || Math.abs(this.z)>T.dunk.lane) return false;
+    if(dx < -25 || Math.hypot(dx,this.z*1.2)>T.dunk.range || Math.abs(this.z)>T.dunk.lane) return false;
     if(this.stamina<T.dunk.cost || (g.needsClear && !g.cleared)) return false;
     const d = g.opp(this);
     // A beaten or grounded defender does not keep an invisible wall in the lane.
@@ -223,8 +226,13 @@ export class Hooper {
     if(d.x > T.hoop.x+25) return true;
     const along=clamp((d.x-this.x)/Math.max(1,dx),0,1);
     const laneZ=this.z*(1-along);
-    const activelyGuarding=d.act==='block'||d.h>25||d.I?.checkHeld;
-    return !(activelyGuarding && d.x>=this.x-8 && d.x-this.x<85 && Math.abs(d.z-laneZ)<T.dunk.defenderLane);
+    const gap=d.x-this.x;
+    const inLane=gap>=-4 && Math.abs(d.z-laneZ)<T.dunk.defenderLane;
+    // Only close, active contact (or a nearby airborne blocker) stops takeoff.
+    // Others can still jump and contest the dunk after takeoff.
+    const closeContact=d.I?.checkHeld && gap<25;
+    const closeBlock=d.act==='block' && gap<42;
+    return !(inLane && (closeContact || closeBlock));
 
   }
 
@@ -302,7 +310,7 @@ export class Hooper {
         else if (this.buf.c > 0) {
           this.buf.c=0;
           if(Math.hypot(T.hoop.x-this.x,this.z)<260) {
-            const outside=Math.hypot(T.hoop.x-this.x,this.z*1.4)>T.dunk.range||Math.abs(this.z)>T.dunk.lane;
+            const outside=Math.hypot(T.hoop.x-this.x,this.z*1.2)>T.dunk.range||Math.abs(this.z)>T.dunk.lane;
             const reason=g.needsClear&&!g.cleared?'CLEAR THE ARC':this.stamina<T.dunk.cost?'LOW STAMINA':outside?'GET CLOSER':'BEAT THE GUARD';
             g.popupAt(this,reason,'#ffe45e',18);
           }

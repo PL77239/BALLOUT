@@ -351,7 +351,9 @@ export class GameScene extends Phaser.Scene {
   dunkHit(h: Hooper, perfect = true, _grade: TimingGrade = 'green') {
     const o = this.opp(h);
     const hp = T.hoop;
-    const blocked = (o.act === 'block' && o.h > 35 && Math.abs(o.x - (h.x + h.facing * 20)) < 80 && Math.abs(o.z - h.z) < 42);
+    const inFront = (o.x-h.x)*h.facing >= -8;
+    const blocked = o.act==='block' && o.h>35 &&
+      Math.abs(o.x-(h.x+h.facing*20)) < (o.isCpu?58:80) && Math.abs(o.z-h.z) < (o.isCpu?30:42) && (!o.isCpu || inFront);
     if (blocked) {
       this.ball.release(h); h.hasBall = false;
       this.ball.setHeld(h.x + h.facing * 30, h.z, h.h + 200);
@@ -509,7 +511,7 @@ export class GameScene extends Phaser.Scene {
     const d = this.opp(b.info.shooter);
     if (d.act !== 'block') return;
     const hx = d.x + d.facing * 24, hh = d.h + 228;
-    if (Math.hypot(b.x - hx, b.h - hh) < 48 && Math.abs(b.z - d.z) < 42) {
+    if (Math.hypot(b.x - hx, b.h - hh) < (d.isCpu?37:48) && Math.abs(b.z - d.z) < (d.isCpu?34:42)) {
       const s = b.info.shooter;
       b.info = null; b.mode = 'loose';
       b.vx = d.facing * (240 + this.rand() * 140); b.vh = 120 + this.rand() * 120; b.vz = (this.rand() - 0.5) * 200;

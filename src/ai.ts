@@ -13,6 +13,9 @@ export class Brain {
   private stealCD = 0.8;
   private reactT = -1;
   private seenShoot = false;
+  private seenDunk = false;
+  private contestDunk = false;
+  private dunkReactT = 0;
   private contestShot = false;
   private jumpMeter = .55;
   private tgtZ = 0;
@@ -110,7 +113,7 @@ export class Brain {
     this.lapseT = Math.max(0, this.lapseT - dt);
     if (this.containT <= 0) {
       this.containT = 0.65 + g.rand() * 0.65;
-      if (g.rand() < 0.47 - this.lvl.aggr * 0.30) this.lapseT = 0.28 + g.rand() * 0.26;
+      if (g.rand() < 0.56 - this.lvl.aggr * 0.30) this.lapseT = 0.34 + g.rand() * 0.30;
     }
     const juking = opp.act === 'juke';
     const lateral = Math.abs(opp.vz) > 95;
@@ -133,7 +136,7 @@ export class Brain {
     I.mz = mz;
     I.sprint = !juking && Math.abs(this.tgtX - me.x) > 110 && me.stamina > 20;
     const adx = Math.abs(opp.x - me.x), adz = Math.abs(opp.z - me.z);
-    if (adx < 90 && adz < 38 && this.lapseT <= 0 && !juking) I.checkHeld = true;
+    if (adx < 75 && adz < 34 && this.lapseT <= 0 && !juking) I.checkHeld = true;
     if (this.lapseT > 0) { I.mx *= 0.28; I.mz *= 0.25; I.sprint = false; }
 
     if (opp.act === 'shoot') {
@@ -158,9 +161,16 @@ export class Brain {
       if (me.shoveCD <= 0 && adx < T.shove.range - 6 && adz < 28 && g.rand() < dt * this.lvl.aggr * 0.28) I.shove = true;
     }
     if (g.ball.mode === 'held' && opp.act === 'dunk') {
-      const t = opp.actT;
-      if (t < 0.18 && adx < 220 && me.act === 'free' && this.lastJump <= 0 && g.rand() < 0.5 + this.lvl.aggr * 0.5) { I.shootDown = true; I.shootHeld=true; this.lastJump = 1.2; }
-    }
+      if (!this.seenDunk) {
+        this.seenDunk=true;
+        this.contestDunk=g.rand()<.18+this.lvl.aggr*.38;
+        this.dunkReactT=.06+this.lvl.react*.35+g.rand()*.08;
+      }
+      this.dunkReactT-=dt;
+      if (this.contestDunk && this.dunkReactT<=0 && opp.actT<.36 && adx<150 && adz<40 && me.act==='free' && this.lastJump<=0) {
+        I.shootDown=true; I.shootHeld=true; this.lastJump=1.2;
+      }
+    } else this.seenDunk=false;
   }
 
   private chase(I: Intent, me: Hooper, g: GameScene) {
