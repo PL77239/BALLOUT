@@ -30,6 +30,12 @@ export interface Loadout {
   wrist: WristKind; wristColor: Col;
 }
 
+/** Render bulky hair tucked under a covering hat without changing equipped/saved hair. */
+export function hairUnderHeadwear(hair: HairKind, head: HeadKind): HairKind {
+  const covers = head==='fullcap' || head==='backcap' || head==='fitted' || head==='beanie' || head==='bucket' || head==='durag';
+  return covers && (hair==='afro' || hair==='hightop') ? 'fade' : hair;
+}
+
 export const SKIN_TONES: Col[] = [0xf2cfa8, 0xd9a273, 0xb87a4b, 0x8a5634, 0x5e3a24, 0x3f2618];
 export const SKIN_NAMES = ['LIGHT', 'TAN', 'CARAMEL', 'BROWN', 'DEEP', 'EBONY'];
 
@@ -157,6 +163,12 @@ function buildCatalog() {
   add('head', 'head.durag.white', 'WHITE DURAG', 70, 'any', { head: 'durag', headColor: 0xeeeeea, headTrim: 0xeeeeea });
   add('head', 'head.bucket.tan', 'TAN BUCKET', 90, 'any', { head: 'bucket', headColor: 0xc9a46a, headTrim: 0x7a5a30 });
   add('head', 'head.bandana.red', 'RED BANDANA', 55, 'any', { head: 'bandana', headColor: 0xc0201e, headTrim: 0xf4f4f0 });
+  for(const [id,name,body,trim] of [
+    ['black','BLACK SILVER',0x181a22,0xd7dbe3],['navy','NAVY CREAM',0x223453,0xe8ddbd],
+    ['red','RED WHITE',0x9f283c,0xf3ece0],['forest','FOREST GOLD',0x254b3b,0xd5b65b],
+    ['purple','PURPLE GOLD',0x613c87,0xe4bd54],['cream','CREAM BURGUNDY',0xddcfad,0x752838],
+    ['sky','SKY BLACK',0x80b6c8,0x222b37],['washed','WASHED CHARCOAL',0x5d6268,0xd8d2bd],
+  ] as const) add('head',`head.backcap.${id}`,`${name} BACKCAP`,95,'any',{head:'backcap',headColor:body,headTrim:trim});
   add('head', 'head.backcap.white', 'WHITE BACKCAP', 75, 'any', { head: 'backcap', headColor: 0xeeeeea, headTrim: 0x222222 });
 
   add('face', 'face.none', 'NONE', 0, 'any', { face: 'none' });

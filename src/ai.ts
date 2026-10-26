@@ -70,8 +70,7 @@ export class Brain {
     if (this.wantThree && dist < T.arcR + 55) { I.mx = 0; I.sprint = false; I.mz *= 0.3; }
     this.shotRoll += dt;
 
-    const closeDunk = (T.hoop.x - me.x) < T.dunk.range && (T.hoop.x - me.x) > 20;
-    if (!this.wantThree && closeDunk && (!near || stunned) && Math.abs(me.vx) > 60 && g.rand() < dt * (0.5 + this.lvl.aggr * 0.8)) { I.c = true; return; }
+    if (!this.wantThree && me.canDunk(g) && g.rand() < dt * (0.65 + this.lvl.aggr * 0.8)) { I.c = true; return; }
     if (near && this.jukeCD <= 0 && me.act === 'free' && g.rand() < 0.25 + this.lvl.aggr * 0.65) {
       this.jukeCD = 0.35 + g.rand() * 0.5;
       const r = g.rand();

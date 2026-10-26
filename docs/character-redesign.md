@@ -1,6 +1,6 @@
 # Character redesign
 
-This visual-only iteration is isolated on `codex/character-redesign`, based on the merged court/gameplay/SFX improvements. Movement rules, shot timing, prices of existing items and saved item IDs are unchanged.
+This redesign and its follow-up fixes are isolated on `codex/character-redesign`, based on the merged court/gameplay/SFX improvements. Existing shop prices and saved item IDs are preserved. Follow-up takeoff rules are documented below.
 
 ![Outfit examples](character-redesign.png)
 
@@ -44,3 +44,14 @@ Warsaw is now labeled CENTRUM, including the region's city label. The low street
 ![Warsaw static scenery](warsaw-centrum.png)
 
 This is the static scenery preview; the in-game crowd, moving tram and animated net are separate layers. `node scripts/render-warsaw.cjs` exports the three actual 427x240 static RGBA layers to `/tmp` for inspection.
+
+
+## Headwear and dunk availability
+
+Eight new backward caps are in the store. Afro/hi-top hair uses a tucked rendering under fullcap, backcap, fitted cap, beanie, bucket and durag. This never changes the equipped hairstyle or save; removing the hat restores the original hair. Headbands retain the full hairstyle.
+
+![Backward caps (afro equipped beneath each)](backcaps.png)
+
+`Hooper.canDunk` is shared by controls, AI and the DUNK READY hint. Takeoff requires possession, a free/juke grounded state, at least 10 stamina, the ball cleared when necessary, and a close central position (190 world-unit weighted radius, lane offset at most 50). There is no minimum running speed. Active defenders within 34 depth units of the approach lane prevent takeoff until the attacker has a clear 24-unit lead; falling, staggered or recovering defenders count as beaten. A defender outside the approach lane does not block takeoff. Starting with L/V or Triangle shows the existing timing meter. A defender may still attempt a block after takeoff.
+
+The tests cover standing takeoff, distance/lane/stamina limits, passing versus an active guard, an off-lane defender, a jumping guard, grounded defenders, clearance and invalid player states. Headwear tests compare tucked afro/hi-top renders to short hair and verify that the equipped hairstyle is not mutated.

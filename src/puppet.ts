@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GARMENT_CUTS } from './wardrobe';
 import { Col, PX, Pix, clamp, lerp, mix, pixTexture, shade } from './pixel';
-import { Loadout, SKIN_TONES } from './loadout';
+import { Loadout, SKIN_TONES, hairUnderHeadwear } from './loadout';
 
 export const THIGH = 44;
 export const SHIN = 42;
@@ -260,7 +260,10 @@ export class Puppet {
   /* ------------------------------------------------------------------ painting */
 
   paint() {
-    const p = this.pix, b = this.brush, l = this.loadout, r = this.cur, u = this.u;
+    const equipped = this.loadout;
+    const hair = hairUnderHeadwear(equipped.hair,equipped.head);
+    const l = hair === equipped.hair ? equipped : {...equipped,hair};
+    const p = this.pix, b = this.brush, r = this.cur, u = this.u;
     p.clear(); b.reset();
     const sx = this.facing * r.turn;
     const mir = this.facing < 0 ? -1 : 1;

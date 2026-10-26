@@ -93,7 +93,7 @@ Debug URLs: `/?auto=chicago&mode=sim&seed=1234` (CPU vs CPU, optional seed), `/?
 
 - Background car traffic removed; court scenery, fog and rail traffic remain.
 - Player silhouettes use clearer shoulders/neck, wider torsos, separated legs and corrected clothing layers. Jerseys are sleeveless.
-- Dunks require a takeoff within 155 world units of the basket, a central lane position, stamina and forward momentum outside the immediate rim area.
+- Dunks require a takeoff within 190 world units of the basket, a central lane position and 10 stamina. There is no velocity threshold. An active defender in the takeoff lane must be passed or moved out of the path; a grounded/staggered defender is beaten. DUNK READY appears before takeoff when eligible. Press L/V or Triangle to start; the timing meter appears during the dunk.
 - Ankle breakers are probabilistic (7–48% per eligible attempt), based on defensive commitment, movement, fatigue and skill. Attempts have a 0.85-second cooldown, and fallen defenders retain immunity. Quick sprint direction changes can also trigger an attempt.
 - All three AI levels are slightly stronger offensively. Defensive containment has short, difficulty-dependent lapses and applies less movement slowdown.
 - Original Web Audio Foley adds varied ball bounces, sneaker squeaks, rim/board impacts, net sounds and slam accents. Audio starts after a keyboard or pointer gesture, as required by browsers. These are synthesized effects, not recordings from NBA Street.

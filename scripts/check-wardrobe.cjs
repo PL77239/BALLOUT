@@ -50,6 +50,16 @@ for(const top of tops){
  p.torsoPiece(p.brush,[64,80],[65,58],p.loadout,skin,1,0,1,1);
  for(let x=57;x<=71;x++)for(let y=81;y<=87;y++)noSkinAt(p,x,y);
 }
+const {hairUnderHeadwear}=load('loadout');
+for(const head of ['fullcap','backcap','fitted','beanie','bucket','durag'])for(const hair of ['afro','hightop']){
+ assert.equal(hairUnderHeadwear(hair,head),'fade');
+ const equipped={...base,head,hair};const p=new Puppet(scene,equipped);p.paint();
+ const tucked=new Puppet(scene,{...equipped,hair:'fade'});tucked.paint();
+ assert.deepEqual(p.pix.px,tucked.pix.px,`${hair} must tuck under ${head} in all render layers`);
+ assert.equal(p.loadout.hair,hair,'equipped hairstyle is preserved');
+}
+assert.equal(hairUnderHeadwear('afro','none'),'afro');
+assert.equal(hairUnderHeadwear('afro','headband'),'afro');
 const idSet=new Set();for(const item of ITEMS){assert(!idSet.has(item.id),'unique store item ID');idSet.add(item.id);}
 for(const item of ITEMS.filter(i=>i.slot==='top')){
  const outfit=buildLoadout({...STARTER_EQUIP,top:item.id});assert.equal(outfit.top,item.patch.top);
@@ -94,6 +104,10 @@ if(process.env.SPRITE_QA){
   const outfit=buildLoadout({...STARTER_EQUIP,top,bottom,shoes:'shoes.high.cream',head:i%2?'head.fitted.star':'head.none'});
   const p=new Puppet(scene,outfit);p.paint();
   fs.writeFileSync(`/tmp/ballout-redesign/${20+i}.rgba`,Buffer.from(p.pix.px.buffer));manifest.push({name,w:p.pix.w,h:p.pix.h});
+ }
+ for(const [i,id] of ['black','navy','red','forest','purple','cream','sky','washed'].entries()){
+  const l=buildLoadout({...STARTER_EQUIP,head:`head.backcap.${id}`});l.hair='afro';
+  const p=new Puppet(scene,l);p.paint();fs.writeFileSync(`/tmp/ballout-redesign/${28+i}.rgba`,Buffer.from(p.pix.px.buffer));manifest.push({name:`${id} backcap`,w:p.pix.w,h:p.pix.h});
  }
  fs.writeFileSync('/tmp/ballout-redesign/manifest.json',JSON.stringify(manifest));
 }

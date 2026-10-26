@@ -209,19 +209,31 @@ export class Hooper {
     this.dribbleMoves = 0;
   }
 
+  /** Shared by controls, AI and the readiness hint; no hidden velocity threshold. */
+  canDunk(g: GameScene): boolean {
+    if (!this.hasBall || (this.act!=='free' && this.act!=='juke') || this.h>8) return false;
+    const dx = T.hoop.x-this.x;
+    if(dx < -8 || Math.hypot(dx,this.z*1.4)>T.dunk.range || Math.abs(this.z)>T.dunk.lane) return false;
+    if(this.stamina<T.dunk.cost || (g.needsClear && !g.cleared)) return false;
+    const d = g.opp(this);
+    // A beaten or grounded defender does not keep an invisible wall in the lane.
+    if(d.act==='fall' || d.act==='stagger' || d.act==='recover') return true;
+    if(d.x < this.x-T.dunk.clearLead) return true;
+    if(d.x > T.hoop.x+25) return true;
+    const along = clamp((d.x-this.x)/Math.max(1,dx),0,1);
+    const laneZ = this.z*(1-along);
+    return Math.abs(d.z-laneZ)>T.dunk.defenderLane;
+  }
+
   startDunk(g: GameScene): boolean {
-    if (!this.hasBall) return false;
-    const dx = T.hoop.x - this.x;
-    if (dx < 8 || Math.hypot(dx, this.z * 1.8) > T.dunk.range || Math.abs(this.z) > 42) return false;
-    if (this.stamina < 14 || (dx > 90 && this.vx < 105)) return false;
-    if (g.needsClear && !g.cleared) return false;
+    if (!this.canDunk(g)) return false;
     this.setAct('dunk', T.dunk.airtime);
     this.dunkFrom = { x: this.x, z: this.z };
     this.dunkHit = false;
     this.dunkSlam = false;
     this.dunkSlamAt = 0;
     this.trickDunk = this.comboN >= 2 && g.gt - this.comboT < 1.4;
-    this.stamina = Math.max(0, this.stamina - 14);
+    this.stamina = Math.max(0, this.stamina - T.dunk.cost);
     g.fx.dust(this.x, this.sy, 6, 0);
     return true;
   }

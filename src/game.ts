@@ -58,6 +58,7 @@ export class GameScene extends Phaser.Scene {
   private ctrls: (Controller | null)[] = [null, null];
   private brains: (Brain | null)[] = [null, null];
   private shadows!: Phaser.GameObjects.Graphics;
+  private dunkHints: Txt[] = [];
   private meterG!: Phaser.GameObjects.Graphics;
   private hudG!: Phaser.GameObjects.Graphics;
   private hud: Record<string, Txt> = {};
@@ -104,7 +105,7 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     const cfg = this.cfg;
-    this.hoopers = []; this.hud = {}; this.legend = null; this.pauseUi = []; this.overUi = [];
+    this.hoopers = []; this.dunkHints = []; this.hud = {}; this.legend = null; this.pauseUi = []; this.overUi = [];
     this.time_ = 0; this.realT = 0; this.paused = false; this.winner = null; this.timeScale = 1; this.slowT = 0; this.hitT = 0; this.overT = 0;
     this.style = [0, 0]; this.buckets = [0, 0]; this.result = null;
     this.pointCountdown = 0; this.pointCountShown = -1;
@@ -132,6 +133,7 @@ export class GameScene extends Phaser.Scene {
     const rival = cfg.p2 ?? bossToLoadout(bossAt(cfg.court, 0));
     const rStats = cfg.p2Stats ?? bossAt(cfg.court, 0).stats;
     this.hoopers = [new Hooper(this, 0, cfg.p1, PLAYER_STATS), new Hooper(this, 1, rival, rStats)];
+    this.dunkHints = this.hoopers.map(() => label(this,0,0,'DUNK READY',0x8dffb4,{ox:0.5,depth:3001}).setVisible(false));
     this.hoopers.forEach((h) => { h.onIgnite = () => this.onIgnite(h); });
     const [c1, c2] = makeControllers(cfg.mode === '2p');
     this.ctrls = [cfg.mode === 'sim' ? null : c1, cfg.mode === '2p' ? c2 : null];
@@ -731,6 +733,9 @@ export class GameScene extends Phaser.Scene {
     g.clear();
     const R = (x: number, y: number, w: number, h: number, c: number, a = 1) => { g.fillStyle(c, a); g.fillRect(Math.round(x) * PX, Math.round(y) * PX, Math.round(w) * PX, Math.round(h) * PX); };
     for (const h of this.hoopers) {
+      const ready = this.phase==='live' && this.cfg.mode!=='sim' && (h.id===0 || this.cfg.mode==='2p') && h.canDunk(this);
+      this.dunkHints[h.id]?.setVisible(ready).setPosition(h.x,h.sy-h.h-212);
+
       if (h.act === 'shoot') {
         const w = 44, bx = Math.round(h.x / PX - w / 2);
         let by = Math.round((h.sy - h.h) / PX - 14);
