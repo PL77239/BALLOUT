@@ -24,3 +24,15 @@ Three purchasable examples are included: COURT LOGO TEE, VARSITY 23 and DIAGONAL
 - `python scripts/render-wardrobe.py` (Pillow; regenerates these three sheets)
 
 The wardrobe check compares silhouettes in the same colors, renders 288 poses across actions and both facings, checks texture borders, and exercises top purchases and print reset. Sheets are actual CPU-rendered game sprites, enlarged without smoothing. Full browser playtesting remains necessary to assess motion and performance in a match.
+
+## Clothing seam fixes and streetwear expansion
+
+The hip bridge now covers the gap between the trouser legs, the waistband stays at hip level, and the bare torso no longer extends below it. Fabric joint patches close the outer knee and elbow wedges when limbs bend. Sleeve starts and shoulder widths have been adjusted to remove the projecting shoulder blocks.
+
+16 additional store items include gothic-cross tees/hoodies, star patches, stacked graphics, racing stripes, two numbered basketball jerseys, a cream puffer, flap-stitch/cross-patch/distressed denim, track sweats, varsity shorts, a fitted cap and cream high-tops. The designs use original graphics inspired by basketball and rap streetwear.
+
+`topGraphic` additionally supports `cross`, `stars`, and `stacked`. Optional `bottomDetail` supports `stitched`, `crosses`, `ripped`, and `stripe`. Both remain item-level options, so equipping a plain item clears the details. Distressed denim uses dark backing and light fraying rather than accidental exposed joints.
+
+![Streetwear expansion](streetwear-catalog.png)
+
+Regression checks additionally inspect covered knees, elbows and the hip area for skin leakage. The showcase generator now produces four sheets.

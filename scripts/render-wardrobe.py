@@ -18,6 +18,7 @@ for filename, indices, cols in [
     ('character-redesign.png', range(8, 14), 6),
     ('garment-cuts.png', range(8), 4),
     ('character-poses.png', range(14, 20), 6),
+    ('streetwear-catalog.png', range(20, 28), 4),
 ]:
     rows = (len(indices) + cols - 1) // cols
     image = Image.new('RGB', (cols * 200, rows * 270 + 100), '#222630')
