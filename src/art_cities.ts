@@ -71,7 +71,17 @@ export const warsaw: CourtArt = {
     c.base.rect(px - 6, 36, 14, 96, 0x6a6878); c.base.rect(px - 3, 24, 8, 14, 0x6a6878);
     c.base.poly([px - 4, 24, px, 8, px + 4, 24], 0x7a7888);
     for (let y = 40; y < 128; y += 6) c.base.hline(px - 5, px + 6, y, 0x5a5868);
-    skyline(c, 120, 0, 360, 18, 64, 0x5a5a68, { win: 0xffe8c0, wmin: 6, wmax: 12 });
+    c.glow.rect(px - 1, 10, 3, 6, 0xffe8c0);
+    // Varso / modern tower cluster
+    c.base.rect(318, 72, 10, 58, 0x7a8898); c.base.rect(321, 58, 4, 16, 0x8a98a8);
+    c.base.rect(332, 80, 8, 50, 0x6a7888); c.base.rect(334, 66, 4, 16, 0x7a8898);
+    // National Stadium bowl
+    c.base.ellipse(288, 128, 34, 12, 0x5a6878);
+    c.base.ellipse(288, 126, 30, 9, 0x8898a8);
+    c.base.rect(268, 128, 40, 4, 0x4a5868);
+    // Old town mast / K-R towers
+    c.base.rect(248, 88, 6, 42, 0x5a5868); c.base.poly([245, 88, 251, 88, 248, 78], 0x6a6878);
+    skyline(c, 120, 0, 310, 18, 64, 0x5a5a68, { win: 0xffe8c0, wmin: 6, wmax: 12 });
     // Panel blocks (wielka płyta)
     const block = (x: number, w: number, y: number, col: number, rows: number) => {
       c.base.rect(x, y, w, 158 - y, col);

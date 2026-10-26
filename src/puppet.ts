@@ -335,8 +335,10 @@ export class Puppet {
     const far = L.far, k = far ? 0.74 : 1;
     const sk = shade(skin, k), bc = shade(l.bottomColor, k), bt = shade(l.bottomTrim, k);
     const [hx, hy] = L.hp, [kx, ky] = L.kn, [ax, ay] = L.an;
-    b.begin().cap(hx, hy, kx, ky, 3.3 * u, 2.6 * u).commit(sk);
-    b.begin().cap(kx, ky, ax, ay, 2.5 * u, 1.8 * u).commit(sk);
+    b.begin().cap(hx, hy, kx, ky, 3.6 * u, 2.5 * u).commit(sk);
+    b.begin().disc(kx, ky, 2.05 * u).commit(shade(sk, 0.88), { line: null, flat: true });
+    b.begin().cap(kx, ky, ax, ay, 2.35 * u, 1.55 * u).commit(sk);
+    b.begin().disc(Math.round(kx + (ax - kx) * 0.08), Math.round(ky + (ay - ky) * 0.08), 1.35 * u).commit(shade(sk, 1.12), { line: null, flat: true });
     const covered = COVERED.has(l.bottom);
     if (l.socks !== 'none' && !covered && l.shoes !== 'boot') {
       const t0 = l.socks === 'stripe' ? 0.12 : l.socks === 'long' ? 0.34 : 0.62;
@@ -364,6 +366,11 @@ export class Puppet {
     if (bot === 'shorts') {
       b.begin().cap(hx, hy, kx, ky, 4.2 * u, 4.9 * u, 0, 0.58, true, false).commit(bc);
       b.begin().cap(hx, hy, kx, ky, 4.3 * u, 5 * u, 0.5, 0.6, false, false).commit(bt, { flat: true, line: null });
+      if (l.bottomTrim !== l.bottomColor) {
+        for (const o of [0.18, 0.28, 0.38]) {
+          b.begin().cap(hx, hy, kx, ky, 4.35 * u, 5.05 * u, o, o + 0.055, false, false).commit(bt, { flat: true, line: null });
+        }
+      }
     } else if (bot === 'longShorts') {
       const ex = kx + (kx - hx) * 0.12, ey = ky + (ky - hy) * 0.12;
       b.begin().cap(hx, hy, ex, ey, 4.3 * u, 5.4 * u, 0, 1, true, false).commit(bc);
@@ -441,8 +448,10 @@ export class Puppet {
     const k = far ? 0.74 : 1;
     const sk = shade(skin, k), tc = shade(l.topColor, k), tt = shade(l.topTrim, k);
     const [sx0, sy0] = A.sh, [ex, ey] = A.el, [wx, wy] = A.wr;
-    b.begin().cap(sx0, sy0, ex, ey, 1.95 * u, 1.75 * u).commit(sk);
-    b.begin().cap(ex, ey, wx, wy, 1.65 * u, 1.4 * u).commit(sk);
+    b.begin().cap(sx0, sy0, ex, ey, 2.35 * u, 1.45 * u).commit(sk);
+    b.begin().disc(ex, ey, 1.85 * u).commit(shade(sk, 0.88), { line: null, flat: true });
+    b.begin().cap(ex, ey, wx, wy, 1.55 * u, 1.25 * u).commit(sk);
+    b.begin().disc(Math.round(ex + (wx - ex) * 0.12), Math.round(ey + (wy - ey) * 0.12), 1.15 * u).commit(shade(sk, 1.08), { line: null, flat: true });
     const sleeveUp = (c: Col, a: number, bb: number, rr: number) => b.begin().cap(sx0, sy0, ex, ey, (2.2 + rr) * u, (2 + rr) * u, a, bb, true, false).commit(c);
     const t = l.top;
     const wv = (kind: 'plaid' | 'baffle', a: number[], z: number[]) => this.weave(b, a, z, u, kind, tc, tt);

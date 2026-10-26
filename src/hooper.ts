@@ -8,6 +8,7 @@ import { clamp, lerp, smooth } from './pixel';
 import type { BossStats } from './bosses';
 import { PLAYER_STATS } from './bosses';
 import type { GameScene } from './game';
+import { MAKE_ODDS, gradeDunk, gradeRelease } from './timing';
 
 export type Act = 'free' | 'shoot' | 'release' | 'juke' | 'dunk' | 'swipe' | 'block' | 'shove' | 'stagger' | 'fall' | 'recover';
 export type MoveKind = 'cross' | 'spin' | 'btb';
@@ -72,6 +73,7 @@ export class Hooper {
   warnCD = 0;
   immuneT = 0;
   sprintT = 0;
+  dribbleMoves = 0;
   stats: BossStats = PLAYER_STATS;
   staminaMax = T.stamina.max;
   private buf: Record<Buffered, number> = { shootDown: 0, a: 0, b: 0, c: 0, shove: 0 };
@@ -101,7 +103,7 @@ export class Hooper {
     this.x = x; this.z = z; this.vx = this.vz = 0; this.h = this.vh = 0;
     this.act = 'free'; this.actT = 0; this.hasBall = hasBall;
     this.meter = 0; this.comboN = 0; this.protectT = 0; this.pickupLock = 0; this.mood = ''; this.moodT = 0;
-    this.shoved = false; this.sprintT = 0; this.stamina = this.staminaMax;
+    this.shoved = false; this.sprintT = 0; this.dribbleMoves = 0; this.stamina = this.staminaMax;
     for (const k of BUFFERED) this.buf[k] = 0;
   }
 
@@ -156,7 +158,9 @@ export class Hooper {
     this.setAct('juke', MOVE_DUR[kind]);
     this.protectT = T.moves.protect + (kind === 'spin' ? 0.1 : 0);
     this.ankleChecked = false;
-    this.stamina = Math.max(0, this.stamina - 5);
+    this.dribbleMoves++;
+    this.stamina = Math.max(0, this.stamina - (11 + this.dribbleMoves * 6));
+    if (this.dribbleMoves >= 3) this.stamina = Math.min(this.stamina, 5);
     const sp = (kind === 'btb' ? 1.15 : kind === 'spin' ? 0.95 : 1) * (this.comboN > 1 && kind === prev ? 0.8 : 1) * T.moves.dash;
     this.dash = kind === 'btb'
       ? { x: (dirX || 1) * 330 * sp, z: dirZ * 90 }
@@ -193,11 +197,14 @@ export class Hooper {
     const S = T.shot.sweet;
     const green = this.greenHalf(g);
     const e = this.meter - S;
-    const perfect = Math.abs(e) <= green;
-    const err = perfect ? 0 : Math.sign(e) * (9 + (Math.abs(e) - green) * T.shot.missK) + (g.rand() - 0.5) * 8;
-    g.launchShot(this, { perfect, err, green, m: this.meter, e });
+    const grade = gradeRelease(e, green);
+    const willMake = g.rand() < MAKE_ODDS[grade];
+    const perfect = grade === 'green' && willMake;
+    const err = willMake ? (perfect ? 0 : (g.rand() - 0.5) * 14) : Math.sign(e) * (9 + (Math.abs(e) - green) * T.shot.missK) + (g.rand() - 0.5) * 8;
+    g.launchShot(this, { perfect, err, green, m: this.meter, e, grade, willMake });
     this.setAct('release', 0.42);
     this.vh = 0;
+    this.dribbleMoves = 0;
   }
 
   startDunk(g: GameScene): boolean {
@@ -406,9 +413,11 @@ export class Hooper {
       this.dunkHit = true;
       const sweet = d.hitAt, window = this.dunkWindowSec(g);
       const t = this.dunkSlam ? this.dunkSlamAt : sweet;
-      const perfect = this.dunkSlam && Math.abs(t - sweet) <= window;
-      if (!this.dunkSlam || Math.abs(t - sweet) <= window * 1.08) g.dunkHit(this, perfect);
-      else g.dunkMiss(this);
+      const grade = gradeDunk(t - sweet, window);
+      const willMake = g.rand() < MAKE_ODDS[grade];
+      const perfect = grade === 'green' && willMake;
+      if (willMake) g.dunkHit(this, perfect, grade);
+      else g.dunkMiss(this, grade);
     }
     if (this.actT >= d.airtime) { this.h = 0; this.setAct('recover', 0.2); g.fx.dust(this.x, this.sy, 8, 0); }
     void dt;

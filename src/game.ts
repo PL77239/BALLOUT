@@ -16,6 +16,7 @@ import { VH, VIEW_TOP, VW, fixedAt, fixedOrigin, setViewport } from './viewport'
 import { Legend, LEGEND_H } from './legend';
 import { label, textWidth } from './font';
 import { addCash, persist, save } from './save';
+import { type TimingGrade, timingLabel } from './timing';
 
 export interface GameCfg {
   mode: '1p' | '2p' | 'sim';
@@ -207,7 +208,7 @@ export class GameScene extends Phaser.Scene {
 
   nameOf(h: Hooper) { return h.isCpu && this.cfg.mode !== 'sim' ? 'CPU' : `P${h.id + 1}`; }
 
-  launchShot(h: Hooper, q: { perfect: boolean; err: number; green: number; m: number; e: number }) {
+  launchShot(h: Hooper, q: { perfect: boolean; err: number; green: number; m: number; e: number; grade: TimingGrade; willMake: boolean }) {
     const b = this.ball, hp = T.hoop;
     const x0 = h.x + h.facing * 8, z0 = h.z, h0 = h.h + h.puppet.cur.fHy + 10;
     b.setHeld(x0, z0, h0);
@@ -215,13 +216,14 @@ export class GameScene extends Phaser.Scene {
     const tt = 0.55 + dist / 1500;
     const vx = (hp.x + q.err - x0) / tt, vz = (0 - z0) / tt, vh = (hp.rimH - h0) / tt + 0.5 * T.ball.g * tt;
     const pts = this.distToHoop(h.x, h.z) >= T.arcR ? T.rules.arcPts : T.rules.insidePts;
-    const info: ShotInfo = { shooter: h, perfect: q.perfect, pts, age: 0, scored: false, dunk: false, green: q.green, touchedRim: false };
+    const info: ShotInfo = { shooter: h, perfect: q.perfect, pts, age: 0, scored: false, dunk: false, green: q.green, touchedRim: false, willMake: q.willMake };
     b.fire = h.fireOn;
     b.launch(vx, vz, vh, info);
     h.hasBall = false; b.lastOwner = h;
     h.pickupLock = 0.4;
     if (q.perfect) this.perfectMoment(h, h.meterInfo.contest > 0.3);
-    else this.popupAt(h, q.e < 0 ? 'EARLY' : 'LATE', '#ff6a5a', 20);
+    else if (q.willMake && q.grade === 'good') this.popupAt(h, 'GOOD!', '#9dffc4', 28);
+    else if (!q.willMake) this.popupAt(h, timingLabel(q.grade), q.grade.startsWith('very') ? '#ff4a4a' : '#ff8a5a', 22);
   }
 
   private onScore(info: ShotInfo, clean: boolean) {
@@ -303,7 +305,7 @@ export class GameScene extends Phaser.Scene {
     t(px + pw / 2, py + ph - 12, 'ENTER REMATCH     BACKSPACE MENU', 0x8a8aa0, 1);
   }
 
-  dunkMiss(h: Hooper) {
+  dunkMiss(h: Hooper, grade: TimingGrade = 'bad') {
     const hp = T.hoop;
     h.hasBall = false;
     const b = this.ball;
@@ -311,7 +313,7 @@ export class GameScene extends Phaser.Scene {
     b.mode = 'loose'; b.owner = null; b.lastOwner = h; b.info = null;
     b.vx = 60 + this.rand() * 80; b.vh = -280 - this.rand() * 120; b.vz = (this.rand() - 0.5) * 80;
     h.pickupLock = 0.45;
-    this.popupAt(h, 'RIM!', '#ff6a5a', 34);
+    this.popupAt(h, grade === 'bad' ? 'RIM!' : timingLabel(grade), '#ff6a5a', 34);
     this.fx.ring(hp.x, T.court.floorY - hp.rimH, 0xffffff, 10, 280, 0.25);
     this.shake(120, 0.006);
     h.mood = 'down'; h.moodT = 1.2;
@@ -326,7 +328,7 @@ export class GameScene extends Phaser.Scene {
     this.slowmo(0.55, 0.18);
   }
 
-  dunkHit(h: Hooper, perfect = true) {
+  dunkHit(h: Hooper, perfect = true, _grade: TimingGrade = 'green') {
     const o = this.opp(h);
     const hp = T.hoop;
     const blocked = (o.act === 'block' && o.h > 35 && Math.abs(o.x - (h.x + h.facing * 20)) < 80 && Math.abs(o.z - h.z) < 42);
@@ -350,7 +352,7 @@ export class GameScene extends Phaser.Scene {
     b.mode = 'loose'; b.owner = null; b.lastOwner = h; b.noRim = 0.5;
     b.vx = 20; b.vh = -520; b.vz = 0;
     if (perfect) this.perfectMoment(h);
-    const info: ShotInfo = { shooter: h, perfect, pts: T.rules.dunkPts, age: 0, scored: true, dunk: true, green: 0, touchedRim: false };
+    const info: ShotInfo = { shooter: h, perfect, pts: T.rules.dunkPts, age: 0, scored: true, dunk: true, green: 0, touchedRim: false, willMake: true };
     b.info = info; b.netKick = 1.3;
     h.gainHeat(24 + (h.trickDunk ? 12 : 0));
     this.fx.dust(hp.x - 40, T.court.floorY, 6, 0);
@@ -418,7 +420,7 @@ export class GameScene extends Phaser.Scene {
     if (d.act === 'fall' || d.act === 'dunk' || d.h > 30 || d.immuneT > 0) return;
     const wrongWay = d.vz * h.dash.z < -40 || (h.moveKind !== 'cross' && d.vx * Math.sign(h.dash.x || 1) < -120);
     const committed = d.act === 'swipe' || d.act === 'shove' || d.act === 'recover' || d.act === 'stagger';
-    if (wrongWay || committed || h.comboN >= 4 || d.stamina < 12) {
+    if ((wrongWay || committed || h.comboN >= 4 || d.stamina < 12) && this.rand() < 0.1) {
       d.knock('fall', -d.facing, 170); d.immuneT = 2.4;
       d.vz = h.dash.z * 0.3;
       this.popupAt(h, h.comboN >= 4 ? 'ANKLES GONE!' : 'ANKLE BREAKER!', '#ff4fa0', 40);

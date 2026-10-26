@@ -16,6 +16,8 @@ export interface ShotInfo {
   dunk: boolean;
   green: number;
   touchedRim: boolean;
+  /** Set at release: RNG says this attempt goes in when the ball drops through. */
+  willMake: boolean;
 }
 
 export interface BallEvents {
@@ -166,10 +168,16 @@ export class Ball {
     }
     if (this.info && !this.info.scored && this.prevH >= hp.rimH && this.h < hp.rimH && this.vh < 0
       && Math.abs(this.x - hp.x) < hp.rimR - 4 && Math.abs(this.z) < 40) {
-      this.info.scored = true;
-      this.netKick = 1;
-      this.vx *= 0.3; this.vz *= 0.3;
-      this.ev.onScore(this.info, !this.info.touchedRim);
+      if (this.info.willMake) {
+        this.info.scored = true;
+        this.netKick = 1;
+        this.vx *= 0.3; this.vz *= 0.3;
+        this.ev.onScore(this.info, !this.info.touchedRim);
+      } else {
+        this.vh = Math.abs(this.vh) * 0.45 + 80;
+        this.vx += (Math.random() - 0.5) * 120;
+        this.info.touchedRim = true;
+      }
     }
   }
 
