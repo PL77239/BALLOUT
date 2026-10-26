@@ -6,6 +6,7 @@ import { ART } from './court_art';
 import { BOOM_X } from './court_common';
 import { music } from './music';
 import { Crowd } from './crowd';
+import { addCourtEvents } from './court_events';
 
 export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'chiraq' | 'warsaw' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la' | 'fairmount';
 
@@ -183,6 +184,7 @@ export function buildCourt(scene: Phaser.Scene, id: CourtId): CourtScene {
     void i;
   });
   art.live?.(L, c);
+  addCourtEvents(L,id);
 
   const bx = BOOM_X[id] ?? 190;
   const bg = L.gfx(FY * PX - 2, Phaser.BlendModes.ADD);

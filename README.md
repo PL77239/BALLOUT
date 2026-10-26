@@ -112,3 +112,9 @@ Movement keeps the existing top speeds, with higher acceleration/braking, quicke
 Chiraq and Warsaw now have independent music folders: `public/audio/bgm/courts/chiraq/` and `public/audio/bgm/courts/warsaw/`. Add MP3/OGG/M4A/WAV files there. Pages builds scan folders automatically (`--scan-only`, no FFmpeg needed). Run `npm run audio` locally with FFmpeg for per-track loudness measurement; newly scanned tracks otherwise use unity gain.
 
 Checks: `node scripts/check-progression-rebounds.cjs`, `node scripts/check-gameplay.cjs`, `node scripts/check-wardrobe.cjs`, `node scripts/check-sfx.mjs`, and `npm run build`.
+
+### Neighbourhood cameos
+Each court has occasional background cameos (BMX, courier, skater, dancer or park dog walker), with locally themed outfits. The first starts after 18–38 seconds; subsequent appearances wait 35–80 seconds after the previous exit. They remain behind the court and have no collision, gameplay effects or extra audio.
+
+### Playing with a friend
+`2 PLAYERS` is local versus: keyboard + one controller, or two controllers. It does not connect separate browser sessions. For a quick remote playtest, a Windows host can run the game and share it through Parsec, with the guest using a controller. GitHub Pages serves the client only; native browser-to-browser multiplayer would require additional networking and session handling. The current match supports two players, so a third friend would take turns or spectate.

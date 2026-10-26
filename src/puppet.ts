@@ -482,13 +482,15 @@ export class Puppet {
     const k = far ? 0.74 : 1;
     const sk = shade(skin, k), tc = shade(l.topColor, k), tt = shade(l.topTrim, k);
     const [sx0, sy0] = A.sh, [ex, ey] = A.el, [wx, wy] = A.wr;
-    b.begin().cap(sx0, sy0, ex, ey, 3.1 * u, 2.25 * u).commit(sk);
+    b.begin().cap(sx0, sy0, ex, ey, 3.1 * u, 2.25 * u,0,1,false,true).commit(sk);
     b.begin().disc(ex, ey, 1.85 * u).commit(shade(sk, 0.88), { line: null, flat: true });
     b.begin().cap(ex, ey, wx, wy, 2.2 * u, 1.7 * u).commit(sk);
     b.begin().disc(Math.round(ex + (wx - ex) * 0.12), Math.round(ey + (wy - ey) * 0.12), 1.15 * u).commit(shade(sk, 1.08), { line: null, flat: true });
-    const sleeveUp = (c: Col, a: number, bb: number, rr: number) => b.begin().cap(sx0, sy0, ex, ey, (2.2 + rr) * u, cut.cuff * u, a, bb, false, false).commit(c);
+    const sleeveUp = (c: Col, a: number, bb: number, rr: number) => b.begin().cap(sx0, sy0, ex, ey, (2.2 + rr) * u, cut.cuff * u, a, bb, true, false).commit(c);
     const t = l.top;
     const cut = GARMENT_CUTS[t];
+    // Cover the rounded skin shoulder beneath every garment with sleeves.
+    if (t !== 'tank' && t !== 'jersey') b.begin().disc(sx0,sy0,(t==='puffer'?4.7:t==='bigTee'?4.5:3.6)*u).commit(tc,{line:null});
     const wv = (kind: 'plaid' | 'baffle', a: number[], z: number[]) => this.weave(b, a, z, u, kind, tc, tt);
     if (t === 'tee' || t === 'jersey' || t === 'bigTee') {
       if (t === 'tee') { sleeveUp(tc, 0, cut.sleeve, 1.3); b.begin().cap(sx0, sy0, ex, ey, 2.85 * u, 2.65 * u, 0.48, 0.6, false, false).commit(tt, { flat: true, line: null }); }
@@ -624,14 +626,15 @@ export class Puppet {
     const gold = kind === 'gold' || kind === 'cuban' || kind === 'rope' || kind === 'cross';
     const col = gold ? 0xf0c040 : kind === 'rosary' ? 0x8a1c24 : 0xdfe6ee, dk = gold ? 0xb88820 : kind === 'rosary' ? 0x4a0e14 : 0x8d99a8;
     const ang = lean;
-    const e = Math.max(0, topExtra(l.top) - 0.85);
-    const fwd = [Math.cos(ang) * sx, Math.sin(ang)];
-    const at = (t: number, off: number) => [h[0] + (n[0] - h[0]) * t + fwd[0] * (off + e) * (.62+.38*(1-Math.abs(this.cur.turn))) * u, h[1] + (n[1] - h[1]) * t + fwd[1] * (off + e) * (.62+.38*(1-Math.abs(this.cur.turn))) * u];
-    const path = kind === 'rope' ? [at(0.98, 4.6), at(0.9, 6.9), at(0.74, 7.4), at(0.6, 7.0), at(0.5, 6.4)]
-      : kind === 'rosary' ? [at(0.98, 4.8), at(0.9, 7.1), at(0.72, 7.7), at(0.54, 7.3), at(0.4, 6.5)]
-      : [at(0.98, 4.6), at(0.9, 6.9), at(0.78, 7.2), at(0.7, 6.6)];
+    // Jewellery hangs inside the chest silhouette, away from bright side seams.
+    const breadth = .78+.22*(1-Math.abs(this.cur.turn));
+    const at = (t: number, off: number) => [h[0]+(n[0]-h[0])*t+Math.cos(ang)*off*breadth*u*(sx<0?-1:1), h[1]+(n[1]-h[1])*t+Math.sin(ang)*off*breadth*u];
+    const low = kind==='rosary'?.43:kind==='rope'?.57:.65;
+    const path = [at(.96,-1.8),at(.83,-2.6),at(low,0),at(.83,2.6),at(.96,1.8)];
     const p = this.pix;
-    const end = path[path.length - 1];
+    const end = path[2];
+    // Dark backing keeps silver readable against white shirts and piping.
+    for(let i=1;i<path.length;i++) for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]) p.line(path[i-1][0]+dx,path[i-1][1]+dy,path[i][0]+dx,path[i][1]+dy,OUT);
     for (let i = 1; i < path.length; i++) {
       const [x0, y0] = path[i - 1], [x1, y1] = path[i];
       if (kind === 'rosary') {
@@ -662,6 +665,7 @@ export class Puppet {
       p.set(px - 1, py + 1, cc); p.set(px + 1, py + 1, cc); p.set(px - 1, py + 2, cd); p.set(px + 1, py + 2, cd);
       p.set(px, py + tall, cd);
     } else if (kind === 'ice') {
+      p.rect(px - 3, py-1, 7, 7, OUT);
       p.rect(px - 2, py, 5, 5, 0xbfe4f4);
       p.rect(px - 1, py + 1, 3, 3, 0xe9f8ff);
       p.set(px - 2, py + 4, 0x7fb8d8); p.set(px + 2, py + 4, 0x7fb8d8); p.set(px + 2, py, 0x9fcfe8);
