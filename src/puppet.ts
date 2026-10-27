@@ -684,17 +684,18 @@ export class Puppet {
     const widthAt = (y: number) => {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
       let w = t < 0.72 ? lerp(cut.waist, cut.chest, smooth(t / 0.72)) : lerp(cut.chest, cut.shoulder, smooth((t - 0.72) / 0.28));
-      // Keep the waist from pinching: oversize tops stay wide at the bottom so they
-      // sit cleanly over the trousers instead of looking tucked in or too narrow.
-      const minWaist = cut.waist * (tp === 'bigTee' ? 1.08 : tp === 'hoodie' ? 1.02 : tp === 'puffer' ? 1.02 : 0.96);
+      // Keep the waist from pinching: the shirt must stay wide enough at the bottom
+      // to sit cleanly over the trousers instead of looking tucked in or too narrow.
+      const minWaist = cut.waist * (tp === 'bigTee' ? 1.12 : tp === 'hoodie' ? 1.06 : tp === 'puffer' ? 1.06 : 1.0);
       w = Math.max(w, minWaist);
       return w * breadth + Math.sin(t * Math.PI) * Math.abs(this.cloth.x) * flex * 0.15;
     };
     const hemAt=(x:number)=>{
       const rear=1-smooth(clamp((x+cut.waist*.3)/(cut.waist*.65),0,1));
       const curved=hemY-.14*flex*x*x/Math.max(1,cut.waist)+Math.sin(x*.42+this.t*4)*.12*flex;
-      const frontOverlap = tp === 'bigTee' ? 4.5 : tp === 'hoodie' ? 4.0 : tp === 'puffer' ? 3.8 : 3.5;
-      return Math.max(curved, rear * 3.5 + (1 - rear) * frontOverlap); // shirt always overlaps the trouser waistband
+      const frontOverlap = tp === 'bigTee' ? 5.0 : tp === 'hoodie' ? 4.5 : tp === 'puffer' ? 4.5 : 4.0;
+      const rearOverlap = tp === 'bigTee' ? 4.0 : tp === 'hoodie' ? 3.6 : tp === 'puffer' ? 3.6 : 3.5;
+      return Math.max(curved, rear * rearOverlap + (1 - rear) * frontOverlap); // shirt always overlaps the trouser waistband
     };
     const cloth = (x: number, y: number) => y >= shoulderY && y <= hemAt(x) && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
       && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
