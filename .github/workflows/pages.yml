@@ -26,10 +26,21 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Check gameplay and held dunk input
+      - name: Check gameplay, skill moves and dunk input
         run: |
           node scripts/check-gameplay.cjs
           node scripts/check-progression-rebounds.cjs
+          node scripts/check-bis.cjs
+          node scripts/check-stamina.cjs
+          node scripts/check-skill-moves.cjs
+          node scripts/check-skill-input.cjs
+          node scripts/check-career.cjs
+          node scripts/check-air-dunks.cjs
+          node scripts/check-hem-drape.cjs
+          node scripts/check-streetwear.cjs
+          node scripts/check-famous.cjs
+          node scripts/check-rim-reward.cjs
+          node scripts/check-court-events.cjs
       - name: Check online input and state protocol
         run: node scripts/check-network.cjs
       - name: Index court music folders

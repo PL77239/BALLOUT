@@ -8,7 +8,7 @@ export const T = {
   hoop: { x: 1108, rimH: 292, rimR: 27, boardH0: 274, boardH1: 402, boardX: 1148 },
   arcR: 430,
   zScale: 3,
-  ball: { r: 15, g: 1800, bounce: 0.68, dribblePeriod: 0.46 },
+  ball: { r: 16.5, g: 1800, bounce: 0.68, dribblePeriod: 0.46 },
   sim: { hz: 240, maxSteps: 24 },
   input: { buffer: 0.09 },
   move: {
@@ -33,7 +33,7 @@ export const T = {
     fireBonus: 1.6,
     missK: 340,
   },
-  moves: { comboWindow: 0.68, ankleCheckAt: 0.12, ankleRange: 140, ankleZ: 56, protect: 0.3, dash: 1.3, dur: { cross: 0.28, spin: 0.38, btb: 0.31 } },
+  moves: { comboWindow: 0.68, neutralHold:0.16,ankleCheckAt: 0.12, ankleRange: 140, ankleZ: 56, protect: 0.3, dash: 1.3, dur: { cross: 0.28, spin: 0.38, btb: 0.31,hesi:.34,stepback:.32 } },
   steal: { range: 112, zRange: 34, base: 0.28, sprintBonus: 0.42, jukeBonus: 0.36, lowStaminaBonus: 0.2, whiffRecover: 0.5, swipe: 0.25 },
   shove: { cooldown: 1.15, cost: 13, knock: 560, fumble: 0.4, range: 66 },
   dunk: { range: 235, lane: 80, cost: 8, clearLead: 8, defenderLane: 18, airtime: 0.8, hitAt: 0.44, height: 150, greenHalf: 0.075, windowSec: 0.12 },

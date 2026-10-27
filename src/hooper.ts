@@ -1,3 +1,4 @@
+import { DunkControls, type DunkStyle } from './dunk_controls';
 import Phaser from 'phaser';
 import { sfx } from './sfx';
 import { Puppet, restRig } from './puppet';
@@ -12,7 +13,7 @@ import type { GameScene } from './game';
 import { MAKE_ODDS, gradeDunk, gradeRelease } from './timing';
 
 export type Act = 'free' | 'shoot' | 'release' | 'juke' | 'dunk' | 'swipe' | 'block' | 'shove' | 'stagger' | 'fall' | 'recover';
-export type MoveKind = 'cross' | 'spin' | 'btb';
+export type MoveKind = 'cross' | 'spin' | 'btb' | 'hesi' | 'stepback';
 
 const MOVE_DUR = T.moves.dur;
 type Buffered = 'shootDown' | 'a' | 'b' | 'c' | 'shove';
@@ -22,6 +23,9 @@ const COMBO_NAMES: Record<string, string> = {
   'cross>cross': 'DOUBLE CROSS', 'cross>spin': 'SHAKE & BAKE', 'spin>cross': 'SPIN CYCLE',
   'spin>btb': 'WHIRLWIND', 'btb>cross': 'BACK BREAKER', 'cross>btb': 'SNEAKY', 'btb>spin': 'TWISTER',
   'btb>btb': 'DOUBLE BTB', 'spin>spin': 'TORNADO',
+  'hesi>cross':'STOP & GO','cross>hesi':'HANG CROSS','hesi>spin':'HESI SPIN',
+  'stepback>cross':'RETREAT & ATTACK','cross>stepback':'SNATCH BACK',
+  'btb>stepback':'BEHIND & BACK','stepback>spin':'RETREAT SPIN','hesi>btb':'HANG & HIDE',
 };
 
 export class Hooper {
@@ -42,6 +46,7 @@ export class Hooper {
   shoved = false;
   comboN = 0;
   comboKind: MoveKind | '' = '';
+  moveHistory: MoveKind[] = [];
   comboT = -9;
   moveKind: MoveKind = 'cross';
   dash = { x: 0, z: 0 };
@@ -54,6 +59,9 @@ export class Hooper {
   ballOx = 32;
   bouncePhase = 0;
   trickDunk = false;
+  dunkStyle: DunkStyle = 0;
+  private dunkControls=new DunkControls();
+  layupStyle: 0|1|2 = 0;
   dunkFrom = { x: 0, z: 0 };
   dunkHit = false;
   dunkSlam = false;
@@ -64,7 +72,7 @@ export class Hooper {
   lastDirZ = 1;
   ph = 0;
   I: Intent = emptyIntent();
-  anim = { prevV: 0, acc: 0, guard: 0, air: false };
+  anim = { prevV: 0, acc: 0, guard: 0, air: false, land: 0 };
   mood: '' | 'hype' | 'down' = '';
   moodT = 0;
   celeb = 0;
@@ -76,8 +84,24 @@ export class Hooper {
   immuneT = 0;
   sprintT = 0;
   dribbleMoves = 0;
+  skillGather=0;
+  private neutralPending=false;
   stats: BossStats = PLAYER_STATS;
   staminaMax = T.stamina.max;
+  careerBonus={green:0,finish:0,moveDiscount:0,regen:0,steal:0};
+  private staminaDelay = 0;
+  private exhausted = false;
+
+  private spendStamina(cost:number,g?:GameScene):boolean {
+    if(this.exhausted || this.stamina+1e-6<cost){
+      this.staminaDelay=Math.max(this.staminaDelay,.4);
+      if(g && this.warnCD<=0){g.popupAt(this,'LOW STAMINA','#ffb56a',20);this.warnCD=.8;}
+      return false;
+    }
+    this.stamina=Math.max(0,this.stamina-cost);this.staminaDelay=.55;
+    if(this.stamina<=.001)this.exhausted=true;
+    return true;
+  }
   private buf: Record<Buffered, number> = { shootDown: 0, a: 0, b: 0, c: 0, shove: 0 };
 
   constructor(scene: Phaser.Scene, public id: number, public loadout: Loadout, stats: BossStats = PLAYER_STATS) {
@@ -96,7 +120,7 @@ export class Hooper {
   }
 
   dunkWindowSec(g: GameScene): number {
-    return (T.dunk.windowSec + this.stats.accuracy * 0.00035) * this.timingScale(g);
+    return (T.dunk.windowSec + this.stats.accuracy * 0.00035 + (this.careerBonus?.finish??0)) * this.timingScale(g);
   }
 
   setLoadout(l: Loadout) { this.loadout = l; this.puppet.dress(l); }
@@ -104,8 +128,10 @@ export class Hooper {
   reset(x: number, z: number, hasBall: boolean) {
     this.x = x; this.z = z; this.vx = this.vz = 0; this.h = this.vh = 0;
     this.act = 'free'; this.actT = 0; this.hasBall = hasBall;
-    this.meter = 0; this.comboN = 0; this.protectT = 0; this.pickupLock = 0; this.mood = ''; this.moodT = 0;
+    this.meter = 0; this.comboN = 0; this.moveHistory = []; this.comboKind = ''; this.layupStyle = 0; this.dunkStyle = 0; this.protectT = 0; this.pickupLock = 0; this.mood = ''; this.moodT = 0;
     this.shoved = false; this.sprintT = 0; this.dribbleMoves = 0; this.stamina = this.staminaMax;
+    this.staminaDelay=0;this.exhausted=false;
+    this.neutralPending=false;this.skillGather=0;
     for (const k of BUFFERED) this.buf[k] = 0;
   }
 
@@ -113,7 +139,7 @@ export class Hooper {
   get airborne() { return this.h > 4; }
   get fireOn() { return this.fireT > 0; }
 
-  private setAct(a: Act, dur = 0) { this.act = a; this.actT = 0; this.actDur = dur; }
+  private setAct(a: Act, dur = 0) { this.act = a; this.actT = 0; this.actDur = dur;this.neutralPending=false;this.skillGather=0; }
 
   gainHeat(v: number) {
     if (this.fireOn) return;
@@ -140,7 +166,7 @@ export class Hooper {
     const dist = g.distToHoop(this.x, this.z);
     const f = dist < 250 ? lerp(1.8, 1, dist / 250) : lerp(1, 0.6, clamp((dist - 250) / (T.arcR - 250), 0, 1));
     const c = this.contestOf(g);
-    let w = T.shot.greenHalf * Math.max(0.55, f) * (1 - T.shot.contestPenalty * c) * this.timingScale(g);
+    let w = (T.shot.greenHalf+this.careerBonus.green+(this.layupStyle?this.careerBonus.finish*.25:0)) * Math.max(0.55, f) * (1 - T.shot.contestPenalty * c) * this.timingScale(g);
     if (this.fade) w *= T.shot.fadePenalty;
     if (this.fade) w *= 1 + T.shot.fadeContest * 0.3;
     if (this.fireOn) w *= T.shot.fireBonus;
@@ -150,12 +176,16 @@ export class Hooper {
   }
 
   startMove(kind: MoveKind, g: GameScene) {
+    this.neutralPending=false;this.skillGather=0;
     if (!this.hasBall) return;
-    const I = this.I;
     const chained = g.gt - this.comboT < T.moves.comboWindow;
+    const nextMoves=chained?this.dribbleMoves+1:1;
+    if(!this.spendStamina(Math.max(11,11+nextMoves*6-this.careerBonus.moveDiscount),g))return;
+    const I = this.I;
     const prev = this.comboKind;
     this.comboN = chained ? Math.min(6, this.comboN + 1) : 1;
     this.comboKind = kind; this.comboT = g.gt;
+    this.moveHistory = chained ? [...(this.moveHistory??[]),kind].slice(-3) : [kind];
     const dirZ = Math.abs(I.mz) > 0.25 ? Math.sign(I.mz) : (this.lastDirZ *= -1);
     this.lastDirZ = dirZ;
     const dirX = Math.abs(I.mx) > 0.25 ? Math.sign(I.mx) : 0;
@@ -164,19 +194,24 @@ export class Hooper {
     sfx.squeak();
     this.protectT = T.moves.protect + (kind === 'spin' ? 0.1 : 0);
     this.ankleChecked = false;
-    this.dribbleMoves++;
-    this.stamina = Math.max(0, this.stamina - (11 + this.dribbleMoves * 6));
-    if (this.dribbleMoves >= 3) this.stamina = Math.min(this.stamina, 5);
+    this.dribbleMoves=nextMoves;
     const sp = (kind === 'btb' ? 1.15 : kind === 'spin' ? 0.95 : 1) * (this.comboN > 1 && kind === prev ? 0.8 : 1) * T.moves.dash;
     this.dash = kind === 'btb'
-      ? { x: (dirX || 1) * 330 * sp, z: dirZ * 90 }
+      ? { x: (dirX || this.facing) * 330 * sp, z: dirZ * 90 }
       : kind === 'spin'
-        ? { x: (dirX || 1) * 250 * sp, z: dirZ * 250 * sp }
-        : { x: dirX * 150 * T.moves.dash + this.facing * 70, z: dirZ * 330 * sp };
+        ? { x: (dirX || this.facing) * 250 * sp, z: dirZ * 250 * sp }
+        : kind==='stepback'?{x:-this.facing*280*T.moves.dash,z:I.mz*90}
+        : kind==='hesi'?{x:0,z:0}
+        : Math.abs(I.mz)>.3?{x:I.mx*150*T.moves.dash+this.facing*70,z:Math.sign(I.mz)*330*sp}
+        : Math.abs(I.mx)>.3?{x:I.mx*285*sp,z:0}
+        : {x:this.facing*70,z:dirZ*330*sp};
     this.handSide = kind === 'cross' || kind === 'btb' ? -this.handSide : this.handSide;
-    let label = kind === 'cross' ? 'CROSSOVER' : kind === 'spin' ? 'SPIN' : 'BEHIND THE BACK';
+    let label = kind === 'cross' ? 'CROSSOVER' : kind === 'spin' ? 'SPIN' : kind==='hesi'?'HESITATION':kind==='stepback'?'STEPBACK':'BEHIND THE BACK';
     if (chained && prev) label = COMBO_NAMES[`${prev}>${kind}`] ?? 'COMBO';
+    const triples:Record<string,string>={'cross>btb>spin':'AROUND THE WORLD','spin>cross>btb':'GHOST STEP','btb>cross>spin':'FULL CIRCLE','cross>spin>cross':'DOUBLE TAKE','hesi>cross>spin':'HANG TIME','cross>stepback>cross':'SNAKE BITE','btb>hesi>cross':'GHOST BURST'};
+    if(this.moveHistory.length===3) label=triples[this.moveHistory.join('>')] ?? label;
     g.popupAt(this, this.comboN > 1 ? `${label} x${this.comboN}` : label, this.comboN > 2 ? '#ff7a1a' : '#ffe45e', this.comboN > 1 ? 30 : 24);
+    if(this.comboN===2)g.recordCombo?.(this);
     if (this.comboN > 1) this.gainHeat(4 * this.comboN);
     g.fx.dust(this.x, this.sy, 5, -Math.sign(this.dash.x));
   }
@@ -187,7 +222,8 @@ export class Hooper {
       if (this.warnCD <= 0) { g.popupAt(this, 'TAKE IT BACK!', '#ff4a4a', 26); this.warnCD = 0.8; }
       return;
     }
-    this.fade = this.I.mx * this.facing < -0.35 && this.act === 'free';
+    this.fade = this.I.mx * this.facing < -0.35 && (this.act === 'free'||this.act==='juke'&&this.moveKind==='stepback');
+    this.layupStyle = !this.fade && g.distToHoop(this.x,this.z)<240 ? (this.I.mz<-.25?2:1) : 0;
     this.shoved = false;
     this.meter = 0;
     this.setAct('shoot');
@@ -218,7 +254,7 @@ export class Hooper {
     if (!this.hasBall || (this.act!=='free' && this.act!=='juke') || this.h>8) return false;
     const dx = T.hoop.x-this.x;
     if(dx < -25 || Math.hypot(dx,this.z*1.2)>T.dunk.range || Math.abs(this.z)>T.dunk.lane) return false;
-    if(this.stamina<T.dunk.cost || (g.needsClear && !g.cleared)) return false;
+    if(this.exhausted || this.stamina<T.dunk.cost || (g.needsClear && !g.cleared)) return false;
     const d = g.opp(this);
     // A beaten or grounded defender does not keep an invisible wall in the lane.
     if(d.act==='fall' || d.act==='stagger' || d.act==='recover') return true;
@@ -238,33 +274,35 @@ export class Hooper {
 
   startDunk(g: GameScene): boolean {
     if (!this.canDunk(g)) return false;
-    this.setAct('dunk', T.dunk.airtime);
+    if(!this.spendStamina(T.dunk.cost,g))return false;
+    this.setAct('dunk', T.dunk.airtime);this.dunkControls=new DunkControls();
     this.dunkFrom = { x: this.x, z: this.z };
     this.dunkHit = false;
     this.dunkSlam = false;
     this.dunkSlamAt = 0;
     this.trickDunk = this.comboN >= 2 && g.gt - this.comboT < 1.4;
-    this.stamina = Math.max(0, this.stamina - T.dunk.cost);
+    const vertical=this.I?.mz ?? 0;
+    this.dunkStyle = this.trickDunk ? 2 : vertical<-.25 ? 1 : vertical>.25 ? 3 : 0;
     g.fx.dust(this.x, this.sy, 6, 0);
     return true;
   }
 
   startSwipe() {
+    if(!this.spendStamina(4))return;
     this.setAct('swipe', T.steal.swipe); this.swipeHit = false;
-    this.stamina = Math.max(0, this.stamina - 4);
   }
 
   startBlock() {
+    if(!this.spendStamina(6))return;
     this.setAct('block');
     this.vh = T.jump.vBlock;
-    this.stamina = Math.max(0, this.stamina - 6);
   }
 
   startShove(g: GameScene) {
     if (this.shoveCD > 0) return;
+    if(!this.spendStamina(T.shove.cost,g))return;
     this.setAct('shove', 0.3); this.shoveHit = false;
     this.shoveCD = T.shove.cooldown;
-    this.stamina = Math.max(0, this.stamina - T.shove.cost);
     void g;
   }
 
@@ -278,6 +316,8 @@ export class Hooper {
 
   update(dt: number, I: Intent, g: GameScene) {
     this.I = I;
+    if(this.neutralPending)this.skillGather+=dt;
+    if(!this.hasBall || !['free','juke'].includes(this.act)){this.neutralPending=false;this.skillGather=0;}
     this.reboundT=Math.max(0,this.reboundT-dt);
     if(!this.hasBall && this.act==='block' && this.h>15 && I.a) this.reboundT=.22;
     this.tAlive += dt;
@@ -293,19 +333,26 @@ export class Hooper {
     this.actT += dt;
 
     const moving = Math.abs(I.mx) + Math.abs(I.mz) > 0.15;
-    const sprinting = I.sprint && moving && this.stamina > 3 && (this.act === 'free');
+    if(this.stamina<=.001)this.exhausted=true;
+    this.staminaDelay=Math.max(0,this.staminaDelay-dt);
+    if(this.exhausted && this.stamina>=18)this.exhausted=false;
+    const sprinting = I.sprint && moving && !this.exhausted && this.stamina > 0 && (this.act === 'free');
     this.sprintT = sprinting ? this.sprintT + dt : 0;
-    if (sprinting) this.stamina = Math.max(0, this.stamina - T.stamina.sprintDrain * dt);
-    else this.stamina = Math.min(this.staminaMax, this.stamina + (T.stamina.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
+    if (sprinting) {this.stamina = Math.max(0, this.stamina - T.stamina.sprintDrain * dt);this.staminaDelay=.55;if(this.stamina===0)this.exhausted=true;}
+    else if(this.staminaDelay===0 && !this.neutralPending && !I.a && !I.aHeld && !I.b && !I.c && !I.cHeld && !I.shove && !(I.sprint&&moving) && (this.act==='free'||this.act==='recover'))this.stamina = Math.min(this.staminaMax, this.stamina + (T.stamina.regen + this.careerBonus.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
 
     for (const k of BUFFERED) this.buf[k] = I[k] ? T.input.buffer : Math.max(0, this.buf[k] - dt);
     if (!I.shootHeld && !I.shootDown) this.buf.shootDown = 0;
     const canAct = this.act === 'free' || (this.act === 'juke' && this.actT > this.actDur * 0.4);
     if (canAct) {
       if (this.hasBall) {
-        if (this.buf.shootDown > 0) { this.buf.shootDown = 0; this.startShoot(g); }
+        if (this.buf.shootDown > 0) { this.buf.shootDown = 0;this.neutralPending=false;this.skillGather=0;this.startShoot(g); }
         else if ((this.buf.c>0 || I.cHeld) && this.canDunk(g)) {this.buf.c=0;this.startDunk(g);}
-        else if (this.buf.a > 0) { this.buf.a = 0; this.startMove('cross', g); }
+        else if (this.buf.a > 0) {
+          this.buf.a=0;
+          if(Math.max(Math.abs(I.mx),Math.abs(I.mz))>.3 || !I.aHeld)this.startMove(I.mx*this.facing<-.5?'stepback':'cross',g);
+          else {this.neutralPending=true;this.skillGather=0;}
+        }
         else if (this.buf.b > 0) { this.buf.b = 0; this.startMove('spin', g); }
         else if (this.buf.c > 0) {
           this.buf.c=0;
@@ -315,6 +362,10 @@ export class Hooper {
             g.popupAt(this,reason,'#ffe45e',18);
           }
           this.startMove('btb',g);
+        }
+        else if(this.neutralPending && (!I.aHeld || this.skillGather>=T.moves.neutralHold || Math.max(Math.abs(I.mx),Math.abs(I.mz))>.3)){
+          const kind=I.mx*this.facing<-.5?'stepback':Math.max(Math.abs(I.mx),Math.abs(I.mz))>.3?'cross':I.aHeld?'hesi':'cross';
+          this.neutralPending=false;this.skillGather=0;this.startMove(kind,g);
         }
       } else if (this.act === 'free') {
         if (this.buf.shootDown > 0) { this.buf.shootDown = 0; this.startBlock(); }
@@ -444,14 +495,25 @@ export class Hooper {
   private tickJuke(dt: number, I: Intent, g: GameScene) {
     const p = clamp(this.actT / this.actDur, 0, 1);
     const k = Math.pow(1 - p, 0.7);
-    const tx = I.mx * T.move.walk * 0.5, tz = I.mz * T.move.walk * 0.4;
-    this.vx = this.dash.x * k + tx * (1 - k); this.vz = this.dash.z * k + tz * (1 - k);
+    const exit=smooth(clamp((p-.45)/.55,0,1));
+    const tx = I.mx * T.move.walk * (.5+.6*exit), tz = I.mz * T.move.walk * (.4+.5*exit);
+    if(this.moveKind==='hesi'){
+      const burst=smooth(clamp((p-.42)/.32,0,1));
+      this.vx=I.mx*T.move.walk*1.18*burst;this.vz=I.mz*T.move.walk*T.move.zFactor*1.18*burst;
+      this.dash={x:this.vx,z:this.vz};
+    }else {this.vx = this.dash.x * k + tx * (1 - k); this.vz = this.dash.z * k + tz * (1 - k);}
     this.x += this.vx * dt; this.z += this.vz * dt;
-    if (!this.ankleChecked && this.actT >= T.moves.ankleCheckAt) { this.ankleChecked = true; g.ankleCheck(this); }
+    const checkAt=this.moveKind==='hesi'?.22:T.moves.ankleCheckAt;
+    if (!this.ankleChecked && this.actT >= checkAt) { this.ankleChecked = true;if(Math.hypot(this.vx,this.vz)>90)g.ankleCheck(this); }
     if (this.actT >= this.actDur) this.setAct('free');
   }
 
   private tickDunk(dt: number, I: Intent, g: GameScene) {
+    // Choose the finish during the approach to the rim, then lock it for the
+    // slam/follow-through. Input has a deadzone and never rerolls timing/odds.
+    if(this.h>20 && this.actT<T.dunk.hitAt-.03 && Math.max(Math.abs(I.mx),Math.abs(I.mz))>.55){
+      this.dunkStyle=this.dunkControls.choose(I.mx,I.mz,this.facing,this.actT,this.dunkStyle);
+    }
     const d = T.dunk, p = clamp(this.actT / d.hitAt, 0, 1);
     const e = 1 - Math.pow(1 - p, 2);
     const tx = T.hoop.x - 40;
@@ -496,6 +558,11 @@ export class Hooper {
     if (this.moveKind === 'btb' && this.act === 'juke') {
       const p = clamp(this.actT / this.actDur, 0, 1);
       ox = lerp(32, -14, Math.sin(p * Math.PI)) ; h = lerp(h, 54, Math.sin(p * Math.PI));
+    }
+    if(this.act==='juke' && (this.moveKind==='hesi'||this.moveKind==='stepback')){
+      const p=clamp(this.actT/this.actDur,0,1),gather=Math.sin(p*Math.PI);
+      ox-=gather*(this.moveKind==='hesi'?7:12);
+      h=lerp(h,this.moveKind==='hesi'?62:43,gather*.8);
     }
     this.carried = { x: this.x + f * ox, z: this.z, h: this.h + h, depthBias: this.ballOx < 14 || (this.moveKind === 'btb' && this.act === 'juke') ? -0.4 : 0.4 };
   }

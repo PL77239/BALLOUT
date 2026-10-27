@@ -3,7 +3,7 @@ import { T } from './tuning';
 import { PX, Pix, pixTexture } from './pixel';
 import type { Hooper } from './hooper';
 
-const BALL_PX = 10;
+const BALL_PX = Math.round(T.ball.r*2/PX);
 
 export type BallMode = 'held' | 'shot' | 'loose';
 

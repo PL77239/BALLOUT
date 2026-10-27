@@ -2,9 +2,12 @@ import { RIVALS_PER_COURT } from './bosses';
 import type { CourtId } from './courts';
 import { Equip, FITS, ITEMS, STARTER_EQUIP, STARTER_OWNED, Slot, SLOTS, itemById } from './loadout';
 
+import { freshCareer, readCareer, type Career } from './career';
+
 const KEY = 'ballout.save.v1';
 
 export interface SaveData {
+  career:Career;
   courtWins: Partial<Record<CourtId,number>>;
   cash: number;
   owned: string[];
@@ -17,7 +20,7 @@ export interface SaveData {
 }
 
 const fresh = (): SaveData => ({
-  courtWins: {}, cash: 250, owned: [...STARTER_OWNED], equip: { ...STARTER_EQUIP }, wins: 0, games: 0, lastCourt: 'brooklyn', level: 'hooper', target: 11,
+  career:freshCareer(),courtWins: {}, cash: 250, owned: [...STARTER_OWNED], equip: { ...STARTER_EQUIP }, wins: 0, games: 0, lastCourt: 'brooklyn', level: 'hooper', target: 11,
 });
 
 let data: SaveData | null = null;
@@ -30,6 +33,7 @@ export function save(): SaveData {
     if (raw) {
       const p = JSON.parse(raw) as Partial<SaveData>;
       data = { ...data, ...p, equip: { ...STARTER_EQUIP, ...(p.equip ?? {}) } };
+      data.career=readCareer(p.career);
       data.courtWins = {};
       for(const [court,wins] of Object.entries(p.courtWins ?? {})) if(Number.isInteger(wins) && wins>=0) data.courtWins[court as CourtId]=Math.min(RIVALS_PER_COURT,wins);
       data.owned = Array.from(new Set([...STARTER_OWNED, ...(data.owned ?? [])])).filter((id) => ITEMS.some((i) => i.id === id));

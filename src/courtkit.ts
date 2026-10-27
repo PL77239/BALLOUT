@@ -307,6 +307,7 @@ export function graffiti(c: Scene2D, x: number, y: number, text: string, col: Co
 
 /** Painted court markings + surface. Everything is in art px; z-lane lines match the gameplay geometry. */
 export interface FloorStyle {
+  art?: (p: Pix) => void;
   base: Col; edge: Col; key: Col; lines: Col; wear?: Col; crack?: number; speckle?: number;
   wet?: boolean; snow?: number; paint2?: Col; border?: Col; seed?: number; sidewalk?: Col; patch?: number;
 }
@@ -326,6 +327,7 @@ export function paintFloor(c: Scene2D, st: FloorStyle) {
   P.ellipse(kx, FY, 6.5, 18, st.key);
   if (st.paint2) { P.rect(kx + 2, kt + 2, 415 - kx - 4, kb - kt - 3, st.paint2); P.rect(kx + 4, kt + 4, 415 - kx - 8, kb - kt - 7, st.key); }
   for (let i = 0; i < 160; i++) P.set(kx + Math.floor(r() * (415 - kx)), kt + Math.floor(r() * (kb - kt)), r() < 0.5 ? shade(st.key, 0.85) : shade(st.key, 1.15));
+  st.art?.(P);
   const L = st.lines;
   P.hline(10, 414, FY - lh, L); P.hline(10, 414, FY + lh, L); P.vline(414, FY - lh, FY + lh, L);
   P.hline(kx, 414, kt, L); P.hline(kx, 414, kb, L); P.vline(kx, kt, kb, L);

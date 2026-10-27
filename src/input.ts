@@ -6,6 +6,7 @@ export interface Intent {
   shootDown: boolean;
   shootUp: boolean;
   a: boolean;
+  aHeld: boolean;
   b: boolean;
   c: boolean;
   cHeld: boolean;
@@ -15,7 +16,7 @@ export interface Intent {
 
 export const emptyIntent = (): Intent => ({
   mx: 0, mz: 0, sprint: false, shootHeld: false, shootDown: false, shootUp: false,
-  a: false, b: false, c: false, cHeld: false, shove: false, checkHeld: false,
+  a: false, aHeld:false,b: false, c: false, cHeld: false, shove: false, checkHeld: false,
 });
 
 const keys = new Set<string>();
@@ -93,7 +94,7 @@ export class Controller {
     const out: Intent = {
       mx: r.mx, mz: r.mz, sprint: r.sprint,
       shootHeld: r.shoot, shootDown: r.shoot && !p.shoot, shootUp: !r.shoot && p.shoot,
-      a: r.a && !p.a, b: r.b && !p.b, c: r.c && !p.c, cHeld:r.c, shove: r.shove && !p.shove,
+      a: r.a && !p.a,aHeld:r.a, b: r.b && !p.b, c: r.c && !p.c, cHeld:r.c, shove: r.shove && !p.shove,
       checkHeld: r.check,
     };
     this.prev = { shoot: r.shoot, a: r.a, b: r.b, c: r.c, shove: r.shove };

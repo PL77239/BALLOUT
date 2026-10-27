@@ -1,4 +1,5 @@
 import { music } from './music';
+import { ATTRS, BADGES, RANKS, RANK_COLORS, TIERS, badgeTier, careerLevel, overall, rankFloor, upgrade, toggleBadge, resetAttributes } from './career';
 import { openLobby } from './net';
 import Phaser from 'phaser';
 import { AiLevel } from './tuning';
@@ -14,11 +15,11 @@ import { label } from './font';
 import { buyFit, buyItem, equip, fitCost, owns, persist, save } from './save';
 import type { GameCfg } from './game';
 
-type Screen = 'main' | 'play' | 'locker' | 'shop';
+type Screen = 'main' | 'play' | 'locker' | 'shop' | 'career';
 const MODES: GameCfg['mode'][] = ['1p', '2p', 'online'];
 const LEVELS: AiLevel[] = ['rookie', 'hooper', 'legend'];
 const TARGETS = [7, 11, 15, 21];
-const MAIN_ROWS = ['PLAY', 'LOCKER', 'SHOP'] as const;
+const MAIN_ROWS = ['PLAY', 'MYPLAYER', 'LOCKER', 'SHOP'] as const;
 const PLAY_ROWS = ['COURT', 'MODE', 'GLOBAL AI', 'FIRST TO', 'RIVAL', 'START'] as const;
 const SHOP_TABS = ['FITS', ...SLOTS] as const;
 type Tab = (typeof SHOP_TABS)[number];
@@ -115,7 +116,7 @@ export class MenuScene extends Phaser.Scene {
 
   private idle(t: number): Rig {
     const r = restRig();
-    r.hipY += Math.sin(t * 2.4) * 1.4; r.lean = 0.05 + Math.sin(t * 1.2) * 0.012;
+    r.hipY = 78 + Math.sin(t * 2.4) * 1.4; r.fHy -= 10; r.bHy -= 10; r.lean = 0.05 + Math.sin(t * 1.2) * 0.012;
     r.head = Math.sin(t * 0.7) * 0.05;
     return r;
   }
@@ -162,6 +163,7 @@ export class MenuScene extends Phaser.Scene {
     if (this.screen === 'main') this.buildMain();
     else if (this.screen === 'play') this.buildPlay();
     else if (this.screen === 'locker') this.buildLocker();
+    else if (this.screen === 'career') this.buildCareer();
     else this.buildShop();
   }
 
@@ -181,6 +183,8 @@ export class MenuScene extends Phaser.Scene {
     const ci = courtInfo(this.cfg.court);
     this.T(266, 112, 'YOU', GOLD, 1, 0.5);
     this.T(336, 112, this.rival.name, 0x7fd4ff, 1, 0.5);
+    this.T(266,92,`OVR ${overall(s.career)} // LVL ${careerLevel(s.career)}`,GOLD,1,.5);
+    this.T(336,74,RANKS[s.career.rank],RANK_COLORS[Math.floor(s.career.rank/3)],1,.5);
     this.T(GW - 8, 8, ci.name, WHITE, 2, 1);
     this.T(GW - 8, 26, ci.sub, GOLD, 1, 1);
   }
@@ -200,8 +204,8 @@ export class MenuScene extends Phaser.Scene {
       if (r === 'START') this.T(96, y, on ? '> GO <' : 'GO', on ? GREEN : GREY, 1, 0.5);
       else this.T(94, y, on ? `< ${vals[i]} >` : vals[i], on ? WHITE : 0xb8b8d0);
     });
-    this.T(14, 116, `${REGIONS[ci.region].name} // ${REGIONS[ci.region].city}`, DIM);
-    COURTS.forEach((cc, i) => this.R(14 + i * 10, 134, 8, 3, cc.id === c.court ? ORANGE : 0x3a3a50));
+    this.T(14, 116, ci.sub.slice(0,27), DIM);
+    COURTS.forEach((cc, i) => this.R(14 + i * (164/COURTS.length), 134, Math.max(3,164/COURTS.length-2), 3, cc.id === c.court ? ORANGE : 0x3a3a50));
     this.panel(6, 146, 178, 40);
     this.T(14, 152, ci.sub, GOLD);
     this.T(14, 164, c.mode === '1p' ? 'YOU EARN CASH FOR BUCKETS, STYLE AND WINS' : c.mode==='online' ? 'PRIVATE ROOM: NO CASH PAYOUT' : 'LOCAL VERSUS: NO CASH PAYOUT', GREY);
@@ -214,6 +218,50 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private ownedIn(slot: Slot) { return itemsFor(slot).filter((i) => owns(i.id)); }
+
+  private buildCareer(){
+    this.header('MYPLAYER');this.panel(6,32,244,179);
+    const c=save().career,rank=c.rank,next=rankFloor(Math.min(17,rank+1)),floor=rankFloor(rank);
+    this.T(14,39,`STREET RANK: ${RANKS[rank]}`,RANK_COLORS[Math.floor(rank/3)]);
+    this.R(14,50,225,3,0x344047);this.R(14,50,Math.round(225*(rank===17?1:(c.rankPoints-floor)/Math.max(1,next-floor))),3,RANK_COLORS[Math.floor(rank/3)]);
+    this.T(14,59,`LOCAL AI // RP ${c.rankPoints} / ${next}`,DIM);
+    this.T(14,71,`OVR ${overall(c)}  LVL ${careerLevel(c)}  XP ${c.xp%300}/300`,GOLD);
+    this.T(14,82,`ATTRIBUTE POINTS: ${c.points}`,WHITE);
+    ATTRS.forEach((key,i)=>{
+      const y=94+i*9,on=this.sel===i;
+      if(on)this.R(10,y-1,232,9,0x273549,.95);
+      this.T(14,y,`${on?'>':' '} ${key.toUpperCase()}`,on?WHITE:GREY);
+      this.T(145,y,`${c.attributes[key]}`,GOLD);this.R(166,y+1,66,3,0x344047);this.R(166,y+1,Math.round(66*(c.attributes[key]-60)/35),3,0x79b7c6);
+    });
+    this.T(14,151,`BADGES ${c.equipped.length}/3 // ENTER EQUIP`,DIM);
+    BADGES.forEach((b,i)=>{
+      const tier=badgeTier(c,b.id),on=this.sel===ATTRS.length+i,y=163+i*9;
+      if(on)this.R(10,y-1,232,9,0x273549,.95);
+      this.T(14,y,`${c.equipped.includes(b.id)?'*':' '} ${b.name}`,on?WHITE:GREY);
+      this.T(145,y,tier?TIERS[tier].replace('HALL OF FAME','HOF'):`LOCK ${c.totals[b.event]}/3`,tier?[DIM,0xbc8d67,0xbcc8cd,GOLD,0xb7a0dc][tier]:DIM);
+    });
+    const reset=this.sel===ATTRS.length+BADGES.length;
+    if(reset)this.R(10,208,232,9,0x273549,.95);
+    this.T(14,209,`${reset?'>':' '} RESET ATTRIBUTES // REFUND POINTS`,reset?GOLD:GREY);
+    const selected=BADGES[this.sel-ATTRS.length];
+    const hint=selected?(()=>{const tier=badgeTier(c,selected.id);return tier===4?'HALL OF FAME // MAX TIER':`${selected.attr.toUpperCase()} ${c.attributes[selected.attr]}/${[60,68,76,84][tier]} // ${selected.event.toUpperCase()} ${c.totals[selected.event]}/${[3,12,30,60][tier]}`;})():'CAMPAIGN BUILDS // PVP HAS EQUAL STATS';
+    this.T(14,222,this.msgT>0?this.msg:reset?'REFUND ALL SPENT POINTS // KEEP XP / RANK':hint,DIM);
+    this.footer('UP/DOWN SELECT  RIGHT/ENTER UPGRADE OR EQUIP  BACKSPACE BACK');
+  }
+
+  private inCareer(n:{dy:number;dx:number;ok:boolean;back:boolean}){
+    if(n.back){this.go('main');return;}
+    if(n.dy)this.sel=(this.sel+n.dy+ATTRS.length+BADGES.length+1)%(ATTRS.length+BADGES.length+1);
+    if(n.ok||n.dx>0){
+      const c=save().career;
+      if(this.sel===ATTRS.length+BADGES.length){const refund=resetAttributes(c);this.msg=`RESET // ${refund} POINTS RETURNED`;this.msgT=2;persist();this.build();return;}
+      const ok=this.sel<ATTRS.length?upgrade(c,ATTRS[this.sel]):toggleBadge(c,BADGES[this.sel-ATTRS.length].id);
+      if(!ok){this.msg=this.sel<ATTRS.length?'NEED ATTRIBUTE POINTS / ATTRIBUTE AT CAP':'BADGE LOCKED OR ALL 3 SLOTS FILLED';this.msgT=1.5;}
+      else this.msgT=0;
+      persist();
+    }
+    this.build();
+  }
 
   private buildLocker() {
     this.header('LOCKER');
@@ -319,7 +367,7 @@ export class MenuScene extends Phaser.Scene {
   update(_t: number, dtMs: number) {
     const dt = Math.min(dtMs / 1000, 0.05);
     this.t += dt;
-    if (this.msgT > 0) { this.msgT -= dt; if (this.msgT <= 0 && this.screen === 'shop') this.build(); }
+    if (this.msgT > 0) { this.msgT -= dt; if (this.msgT <= 0 && (this.screen === 'shop'||this.screen==='career')) this.build(); }
     this.court?.update(this.t, dt);
     const tint = (x: number, y: number) => this.court?.tintAt(x * PX, y * PX) ?? 0xffffff;
     this.pups.forEach((p, i) => { p.update(this.idle(this.t + i * 1.7), dt); p.setTint(mix(tint(p.root.x / PX, p.root.y / PX), 0xffffff, 0.2)); });
@@ -329,12 +377,13 @@ export class MenuScene extends Phaser.Scene {
     if (this.screen === 'main') this.inMain(n);
     else if (this.screen === 'play') this.inPlay(n);
     else if (this.screen === 'locker') this.inLocker(n);
+    else if (this.screen === 'career') this.inCareer(n);
     else this.inShop(n);
   }
 
   private inMain(n: { dx: number; dy: number; ok: boolean }) {
     if (n.dy) { this.sel = (this.sel + n.dy + MAIN_ROWS.length) % MAIN_ROWS.length; this.build(); }
-    if (n.ok) this.go(['play', 'locker', 'shop'][this.sel] as Screen);
+    if (n.ok) this.go(['play', 'career', 'locker', 'shop'][this.sel] as Screen);
   }
 
   private inPlay(n: { dx: number; dy: number; ok: boolean; back: boolean }) {

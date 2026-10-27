@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict'),{load}=require('./headless-art.cjs');
+const handlers={};global.window={addEventListener:(key,fn)=>handlers[key]=fn};
+const pad={connected:true,axes:[0,0],buttons:Array.from({length:16},()=>({pressed:false}))};
+Object.defineProperty(global,'navigator',{configurable:true,value:{getGamepads:()=>[pad]}});
+const {makeControllers}=load('input'),[c]=makeControllers(false);
+const key=(type,code)=>handlers[type]({code,preventDefault(){}});
+key('keydown','KeyJ');key('keydown','KeyD');let I=c.poll();assert(I.a&&I.aHeld&&I.mx===1);
+I=c.poll();assert(!I.a&&I.aHeld,'held key has one edge and a stable hold');
+key('keyup','KeyJ');key('keyup','KeyD');assert(!c.poll().aHeld);
+pad.buttons[2].pressed=true;pad.axes[1]=-.9;I=c.poll();assert(I.a&&I.aHeld&&I.mz===-.9,'Square and stick map to skill input');
+assert(!c.poll().a);assert(c.poll().aHeld);pad.buttons[2].pressed=false;assert(!c.poll().aHeld);
+pad.axes=[.2,0];assert.equal(c.poll().mx,0,'pad drift stays inside movement deadzone');
+pad.buttons[1].pressed=true;assert(c.poll().b,'Circle remains spin');pad.buttons[3].pressed=true;assert(c.poll().cHeld,'Triangle still holds dunk');
+console.log('Skill input passed: actual keyboard and pad mappings, one-shot edges, held state and deadzone');

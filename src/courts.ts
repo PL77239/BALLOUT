@@ -8,12 +8,19 @@ import { music } from './music';
 import { Crowd } from './crowd';
 import { addCourtEvents } from './court_events';
 
-export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'chiraq' | 'warsaw' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la' | 'fairmount' | 'marseille';
+export type CourtId = 'brooklyn' | 'queens' | 'chicago' | 'chiraq' | 'warsaw' | 'harlem' | 'philly' | 'detroit' | 'atl' | 'la' | 'fairmount' | 'marseille' | 'rucker' | 'venice' | 'pigalle' | 'dyckman' | 'tenement' | 'mosswood' | 'kalemegdan';
 
 export interface CourtInfo { id: CourtId; name: string; sub: string; region: RegionId; night: boolean }
 export const COURTS: CourtInfo[] = [
   {id:'marseille',name:'MASSILIA',sub:'MARSEILLE  //  VIEUX-PORT, DUSK',region:'marseille',night:false},
-  { id: 'brooklyn', name: 'THE CAGE', sub: 'BED-STUY, BROOKLYN  //  NIGHT', region: 'bk', night: true },
+  { id: 'brooklyn', name: 'THE CAGE', sub: 'WEST 4TH ST, MANHATTAN  //  DUSK', region: 'bk', night: false },
+  { id: 'rucker', name: 'GREG MARIUS', sub: 'HOLCOMBE RUCKER PARK, HARLEM', region: 'harlem', night: false },
+  { id: 'venice', name: 'VENICE BEACH', sub: 'LOS ANGELES  //  THE BOARDWALK', region: 'la', night: false },
+  { id: 'pigalle', name: 'PIGALLE DUPERRE', sub: 'PARIS 9E  //  RUE DUPERRE', region: 'marseille', night: false },
+  { id: 'dyckman', name: 'DYCKMAN', sub: 'NYC  //  NAGLE AVE & W 204TH', region: 'harlem', night: false },
+  { id: 'tenement', name: 'THE TENEMENT', sub: 'TAGUIG, PHILIPPINES  //  FORT BONIFACIO', region: 'marseille', night: false },
+  { id: 'mosswood', name: 'MOSSWOOD', sub: 'OAKLAND  //  WEBSTER ST', region: 'la', night: false },
+  { id: 'kalemegdan', name: 'KALEMEGDAN', sub: 'BELGRADE  //  FORTRESS COURT', region: 'warsaw', night: false },
   { id: 'queens', name: 'THE BRIDGE', sub: 'QUEENSBRIDGE, QUEENS  //  NIGHT', region: 'queens', night: true },
   { id: 'philly', name: 'BROAD & ERIE', sub: 'NORTH PHILLY  //  RAIN, NIGHT', region: 'philly', night: true },
   { id: 'detroit', name: 'THE PLANT', sub: 'DETROIT  //  SNOW, NIGHT', region: 'detroit', night: true },
@@ -42,6 +49,7 @@ export interface CourtScene {
 export class Live {
   objs: Phaser.GameObjects.GameObject[] = [];
   ticks: ((t: number, dt: number) => void)[] = [];
+  disposers: (()=>void)[] = [];
   private n = 0;
   constructor(public scene: Phaser.Scene, public c: Scene2D, public id: string) {}
 
@@ -66,6 +74,7 @@ export class Live {
     return g;
   }
   tick(fn: (t: number, dt: number) => void) { this.ticks.push(fn); }
+  onDestroy(fn:()=>void){this.disposers.push(fn);}
 
   /** Something that drives across the backdrop and wraps around. */
   mover(key: string, w: number, y: number, speed: number, depth: number, gap = 120, o: { tint?: number; flip?: boolean; x0?: number } = {}) {
@@ -248,7 +257,7 @@ export function buildCourt(scene: Phaser.Scene, id: CourtId): CourtScene {
     spots: c.spots,
     boomX: (bx + 5) * PX,
     update: (t, dt) => { live.ticks.forEach((f) => f(t, dt)); crowd.update(t, dt); },
-    destroy: () => { live.objs.forEach((o) => o.destroy()); objs.forEach((o) => o.destroy()); crowd.destroy(); },
+    destroy: () => { live.disposers.forEach(f=>f());live.objs.forEach((o) => o.destroy()); objs.forEach((o) => o.destroy()); crowd.destroy(); },
     tintAt,
     drawNet,
     cheer: (p) => crowd.cheer(p),

@@ -4,7 +4,7 @@ let saved='';global.localStorage={getItem:()=>JSON.stringify({cash:123,wins:2,ga
 global.ImageData=class{constructor(w,h){this.data=new Uint8ClampedArray(w*h*4);}};
 const {bossesFor}=load('bosses'),{save,unlockedRival,recordRivalWin}=load('save');
 assert.equal(save().cash,123,'old inventory/currency save retained');assert.deepEqual(save().courtWins,{},'old save gains empty progression');
-for(const court of ['brooklyn','queens','harlem','chicago','chiraq','philly','detroit','atl','la','warsaw','fairmount','marseille']){
+for(const court of ['brooklyn','queens','harlem','chicago','chiraq','philly','detroit','atl','la','warsaw','fairmount','marseille','rucker','venice','pigalle','dyckman','tenement','mosswood','kalemegdan']){
  const rivals=bossesFor(court);assert.equal(rivals.length,6);assert.equal(new Set(rivals.map(r=>r.name)).size,6);
  for(let i=1;i<6;i++)for(const key of ['speed','accuracy','stamina','defense'])assert(rivals[i].stats[key]>rivals[i-1].stats[key],`${court} tier ${i} raises ${key}`);
  assert.equal(unlockedRival(court),0);assert.equal(recordRivalWin(court,4),false,'cannot skip locked rivals');
