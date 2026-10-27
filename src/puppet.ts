@@ -258,8 +258,12 @@ export class Puppet {
     step(this.chain, 230, 9, 0.7, 0, 0);
     // Soft cloth follows the torso and gait; it never delays the gameplay rig.
     const running=clamp(Math.abs(m.f)/350,0,1);
-    step(this.cloth, 150, 16, 1.1, clamp(-this.vel.lean*.5,-1.5,1.5)-running*.8+Math.sin(this.t*13)*running*1.2,
-      clamp(-this.vel.hipY*.012,-1.2,1.2)+Math.sin(this.t*26)*running*.5);
+    const airborne = m.h > 4;
+    // Airborne: shirt billows upward and flaps more; running: cloth trails behind.
+    const airLift = airborne ? -1.8 : 0;
+    const airFlap = airborne ? Math.sin(this.t*20)*1.4 : 0;
+    step(this.cloth, 150, 16, 1.1, clamp(-this.vel.lean*.5,-1.5,1.5)-running*.8+Math.sin(this.t*13)*running*1.2+airFlap,
+      clamp(-this.vel.hipY*.012,-1.2,1.2)+Math.sin(this.t*26)*running*.5+airLift);
     this.t += dt;
     this.blinkAt -= dt;
     if (this.blinkAt <= 0) { this.blink = 0.12; this.blinkAt = 2 + Math.random() * 3.5; }
@@ -494,8 +498,7 @@ export class Puppet {
       }
       if(l.bottomDetail==='stripe') stitch(hx,hy,kx,ky,3.6*u,bt);
     }
-    this.shoe(b, L, l, skin, k, u, sx);
-    if(covered && l.bottomFit){
+    if(covered){
       // Draw fabric over the ankle collar, leaving the toe and sole visible.
       // The fold follows the actual shin and foot angle rather than the screen.
       const width=(l.bottomFit==='wide'?5.6:l.bottomFit==='baggy'?5.0:4.3)*u;
@@ -507,6 +510,7 @@ export class Puppet {
           .commit(shade(bc,t===.89?.68:1.13),{line:null,flat:true});
       }
     }
+    this.shoe(b, L, l, skin, k, u, sx);
   }
 
   private shoe(b: Brush, L: { kn: number[]; an: number[]; ank: number; far: boolean }, l: Loadout, skin: Col, k: number, u: number, sx: number) {
@@ -706,7 +710,9 @@ export class Puppet {
       [x,y]=unDrape(x,y);return cloth(x,y) && pred(x,y);
     });
     b.begin().cap(hx,hy,nx,ny,cut.waist*breadth*u,cut.waist*breadth*u,-.10,.02,false,false).commit(l.bottomColor,{line:null});
-    if(tp==='tank' || tp==='jersey') b.begin().frame(hx,hy,angle,mir,u,38,(x,y)=>y>=shoulderY && y<shoulderY+1.5 && Math.abs(x)<cut.neck).commit(skin,{line:null});
+    // Neck cutout for every top: skin shows through under the collar so shirts
+    // never overlap the jaw / neck no matter the cut.
+    b.begin().frame(hx,hy,angle,mir,u,38,(x,y)=>y>=shoulderY && y<shoulderY+1.5 && Math.abs(x)<cut.neck).commit(skin,{line:null});
     frame(()=>true).commit(l.topColor);
     // Cloth shadows follow the garment, rather than the screen or animation frame.
     b.ink((x,y) => {

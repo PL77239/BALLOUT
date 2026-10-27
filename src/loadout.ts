@@ -40,7 +40,8 @@ export interface Loadout {
 export function hairUnderHeadwear(hair: HairKind, head: HeadKind): HairKind {
   if(head==='skimask')return 'bald';
   const covers = head==='fullcap' || head==='backcap' || head==='fitted' || head==='beanie' || head==='bucket' || head==='durag';
-  return covers && (['afro','hightop','shortlocs','flattop','mohawk','bun'].includes(hair)) ? 'fade' : hair;
+  const bulky = ['afro','hightop','shortlocs','flattop','mohawk','bun','braids','locs','twists','crop','cornrows','waves'];
+  return covers && bulky.includes(hair) ? 'fade' : hair;
 }
 
 /** Item previews must clear item-specific details just like equipping a fresh loadout. */
