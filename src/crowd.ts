@@ -28,7 +28,7 @@ export class Crowd {
     void REGIONS;
     spots.forEach((s, i) => {
       const l = rivalFor(look);
-      const sc = s.kind === 'kid' ? 0.46 : 0.62;
+      const sc = s.kind === 'kid' ? 0.43 : 0.55;
       const p = new Puppet(scene, l, { scale: sc, w: 64, h: 58, key: `fan_${id}_${i}` });
       p.root.setPosition(s.x * PX, s.y * PX).setDepth(s.y * PX);
       p.setFacing(s.face);
@@ -47,7 +47,7 @@ export class Crowd {
     const sh = (hx: number, hy: number, lean: number, hipY: number) => ({ x: hx + Math.sin(lean) * 52, y: hipY + Math.cos(lean) * 52 + hy });
     if (s.kind === 'sit') {
       r.hipY = 52 + bob * 0.8; r.lean = 0.05 + bob * 0.02;
-      r.fFx = 38; r.bFx = 33; r.fFy = 0; r.bFy = 0;
+      r.fFx = 30; r.bFx = -26; r.fFy = 0; r.bFy = 0;
       const a = sh(0, 0, r.lean, r.hipY);
       r.fHx = a.x + 22; r.fHy = a.y - 30; r.bHx = a.x + 14; r.bHy = a.y - 34;
       if (up > 0) { r.fHx = a.x + 14; r.fHy = a.y + 40 * up; r.bHx = a.x - 2; r.bHy = a.y + 34 * up; r.hipY += j * 8; }
@@ -67,7 +67,14 @@ export class Crowd {
         r.fHx = a.x + 12; r.fHy = a.y + 46 * k + Math.sin(t * 12 + f.phase) * 5 * k; r.bHx = a.x - 6; r.bHy = a.y + 42 * k - Math.sin(t * 12 + f.phase) * 5 * k;
       }
     }
-    r.turn = 1;
+    // City spectators face the court/camera rather than duplicating the players'
+    // side profile. Alternate relaxed conversation and hands-in-lap gestures.
+    r.turn = .12 + Math.sin(t*.35+f.phase)*.08;
+    if(s.kind==='sit' && up===0){r.fHx=20;r.bHx=-18;r.fHy=r.hipY+12;r.bHy=r.hipY+14;}
+    if(s.kind==='stand' && up===0 && Math.sin(f.phase)>0){
+      r.fHx=24;r.fHy=r.hipY+42+Math.sin(t*1.4+f.phase)*4;
+      r.bHx=-16;r.bHy=r.hipY+18;
+    }
     r.head = f.look * 0.12;
     r.emo = f.cheer > 0 ? 1 : 0;
     r.mouth = f.cheer > 0 ? 0.7 : 0;

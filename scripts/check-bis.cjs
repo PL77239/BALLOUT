@@ -26,6 +26,21 @@ const mover=make();mover.hasBall=true;mover.startMove('cross',moveG);moveG.gt+=.
 assert(labels.some(x=>x.includes('AROUND THE WORLD')),'three-move combo produces its own label');
 // Spectators and the large locker preview use different texture bounds.
 const {Puppet}=load('puppet');
+// Regression: the shirt must follow the same leaning torso in both profiles.
+// Mirroring screen coordinates twice used to rotate the left-facing top away.
+for(const lean of [-.7,-.38,.25,.6]){
+ const masks=[];
+ for(const facing of [1,-1]){
+  const p=new Puppet(scene,look);p.pix.clear();p.brush.reset();
+  p.torsoPiece(p.brush,[64,80],[64+Math.sin(lean)*22*facing,80-Math.cos(lean)*22],look,0x996644,1,lean,facing,facing);
+  masks.push(p.pix);
+ }
+ let mismatch=0,area=0;
+ for(let y=0;y<144;y++)for(let x=0;x<128;x++){
+  const a=!!masks[0].alpha(x,y),b=!!masks[1].alpha(127-x,y);if(a||b)area++;if(a!==b)mismatch++;
+ }
+ assert(mismatch/area<.04,'leaning top stays attached in mirrored profiles');
+}
 for(const opts of [{scale:.62,w:64,h:58},{scale:.46,w:64,h:58},{scale:1.5,w:180,h:150}]){
  for(const hair of ['fade','afro','hightop','braids','mohawk','bun']){
   const p=new Puppet(scene,{...look,hair},opts);p.paint();

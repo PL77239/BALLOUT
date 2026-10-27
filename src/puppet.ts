@@ -182,6 +182,7 @@ export class Puppet {
   private hair = trail();
   private chain = trail();
   private tail = trail();
+  private cloth = trail();
   private lastV = { f: 0, h: 0 };
   private lastHead = { x: 0, y: 0, px: 0, py: 0 };
   private t = Math.random() * 10;
@@ -255,6 +256,7 @@ export class Puppet {
     step(this.hair, 170, 11, 0.9, 0, 0);
     step(this.tail, 120, 7, 1.2, 0, 0);
     step(this.chain, 230, 9, 0.7, 0, 0);
+    step(this.cloth, 210, 20, 0.28, 0, 0);
     this.t += dt;
     this.blinkAt -= dt;
     if (this.blinkAt <= 0) { this.blink = 0.12; this.blinkAt = 2 + Math.random() * 3.5; }
@@ -609,21 +611,26 @@ export class Puppet {
 
     const cut = GARMENT_CUTS[tp];
     const height = Math.hypot(nx - hx, ny - hy) / u;
-    const angle = Math.atan2(nx - hx, hy - ny);
+    // frame() mirrors before rotating: undo the screen-space reflection here.
+    // Otherwise a left-facing lean rotates the shirt away from its shoulders.
+    const angle = Math.atan2(nx - hx, hy - ny) * mir;
     const shoulderY = -height;
-    const hemY = -cut.hem + 1.5;
+    const hemY = -cut.hem + 1.5 + this.cloth.y * .18;
     // Wider front/back and narrower profile, without collapsing at a turn.
     const breadth = 0.85 + 0.15 * (1 - Math.abs(this.cur.turn));
     const widthAt = (y: number) => {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
-      return (t < 0.72 ? lerp(cut.waist, cut.chest, t / 0.72) : lerp(cut.chest, cut.shoulder, (t - 0.72) / 0.28)) * breadth * 1.18;
+      return (t < 0.72 ? lerp(cut.waist, cut.chest, t / 0.72) : lerp(cut.chest, cut.shoulder, (t - 0.72) / 0.28)) * breadth * 1.10;
     };
     const cloth = (x: number, y: number) => y >= shoulderY && y <= hemY && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
       && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
-    const frame = (pred: (x: number, y: number) => boolean) => b.begin().frame(hx, hy, angle, mir, u, 38, (x, y) => cloth(x,y) && pred(x,y));
+    // Anchor the collar; let the hem lag slightly behind acceleration/landing.
+    // Prints and seams use the same deformation as the cloth silhouette.
+    const clothX=(x:number,y:number)=>x-this.cloth.x*.24*clamp((y-shoulderY)/Math.max(1,hemY-shoulderY),0,1)**2;
+    const frame = (pred: (x: number, y: number) => boolean) => b.begin().frame(hx, hy, angle, mir, u, 38, (x, y) => {x=clothX(x,y);return cloth(x,y) && pred(x,y);});
     b.begin().cap(hx,hy,nx,ny,cut.waist*breadth*u,cut.waist*breadth*u,-.10,.02,false,false).commit(l.bottomColor,{line:null});
     if(tp==='tank' || tp==='jersey') b.begin().frame(hx,hy,angle,mir,u,38,(x,y)=>y>=shoulderY && y<shoulderY+1.5 && Math.abs(x)<cut.neck).commit(skin,{line:null});
-    b.begin().frame(hx, hy, angle, mir, u, 38, cloth).commit(l.topColor);
+    frame(()=>true).commit(l.topColor);
     // Cloth shadows follow the garment, rather than the screen or animation frame.
     b.ink((x,y) => {
       const dx = (x + .5 - hx) / u, dy = (y + .5 - hy) / u;
