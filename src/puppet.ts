@@ -359,10 +359,10 @@ export class Puppet {
 
     /* ---- head (face + hair on skull; hats drawn later) ---- */
     b.part = 5; this.headPiece(b, head, r, l, skin, hu, sx, mir, back, front);
+    this.chainPiece(b, [hx, hy], [nx, ny], l, u, r.lean, sx);
 
     /* ---- near arm, then headwear on top ---- */
     b.part = 7; this.armPiece(b, armF, l, skin, u, false);
-    this.chainPiece(b, [hx, hy], [nx, ny], l, u, r.lean, sx);
     b.part = 10; this.headWear(b, head, r, l, hu, sx, mir, back, front);
 
     p.outline(OUT);
@@ -445,11 +445,16 @@ export class Puppet {
       crease(kx, ky, ax, ay, 0.26);
     } else if (covered) {
       const W: Record<string, number[]> = { joggers: [5.3, 4.3, 3.8, 2.3], sweats: [6.2, 5.3, 4.8, 4.0], jeans: [5.4, 4.8, 4.6, 4.2], khakis: [5.8, 5.2, 4.8, 4.1] };
-      const [w0, w1, w2, w3] = W[bot];
+      const fit=l.bottomFit;
+      const [w0,w1,w2,w3]=W[bot].map((w,i)=>w+(fit==='wide'?[.6,1.1,1.5,1.8]:fit==='baggy'?[.5,.8,1.1,1.3]:fit==='stacked'?[0,.2,.5,.8]:[0,0,0,0])[i]);
       b.begin().cap(hx,hy,kx,ky,w0*u,w1*u,0,1,false,true)
         .disc(kx,ky,Math.max(w1,w2)*u)
         .cap(kx,ky,ax,ay,w2*u,w3*u,0,.94,true,false).commit(bc);
-      if(l.bottomTexture==='tile:camo')b.ink((x,y)=>{const ink=sampleTexture('tile:camo',x/1.5,y/1.5);return ink==='1'?shade(bc,.66):ink==='2'?bt:-1;});
+      if(l.bottomTexture==='tile:camo')b.ink((x,y)=>{
+        const project=(a:number[],z:number[],offset:number)=>{const dx=z[0]-a[0],dy=z[1]-a[1],len=Math.hypot(dx,dy)||1,t=clamp(((x-a[0])*dx+(y-a[1])*dy)/(len*len),0,1);return {d:Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t),side:((x-a[0])*dy-(y-a[1])*dx)/len,along:offset+t*len};};
+        const thigh=project([hx,hy],[kx,ky],0),shin=project([kx,ky],[ax,ay],Math.hypot(kx-hx,ky-hy)),q=thigh.d<shin.d?thigh:shin;
+        const ink=sampleTexture('tile:camo',q.side/u,q.along/u);return ink==='1'?shade(bc,.66):ink==='2'?bt:-1;
+      });
       if (bot === 'jeans') {
         b.begin().cap(kx, ky, ax, ay, (w3 + 0.1) * u, (w3 + 0.2) * u, 0.86, 0.95, false, false).commit(shade(l.bottomColor, k * 1.25), { flat: true, line: null });
         stitch(hx, hy, kx, ky, (w0 - 1.2) * u, bt);
@@ -462,7 +467,7 @@ export class Puppet {
         b.begin().cap(kx, ky, ax, ay, (w3 + 0.1) * u, (w3 + 0.2) * u, 0.78, 0.96, false, false).commit(bt, { flat: true, line: bot === 'joggers' ? shade(bt, 0.6) : null });
       }
     }
-    if(l.bottomTexture) {
+    if(l.bottomTexture && l.bottomTexture!=='tile:camo') {
       const dx=kx-hx,dy=ky-hy,angle=Math.atan2(-dx,dy),end=Math.hypot(dx,dy)/u;
       for(const [ink,color] of [['1',bt],['2',shade(bt,1.3)]] as const)
         b.begin().frame(hx,hy,angle,1,u,30,(x,y)=>sampleTexture(l.bottomTexture,x+3.5,y-2)===ink && Math.abs(x)<3.7 && y>=2 && y<end-.5).commit(color,{flat:true,line:null});
@@ -490,6 +495,18 @@ export class Puppet {
       if(l.bottomDetail==='stripe') stitch(hx,hy,kx,ky,3.6*u,bt);
     }
     this.shoe(b, L, l, skin, k, u, sx);
+    if(covered && l.bottomFit){
+      // Draw fabric over the ankle collar, leaving the toe and sole visible.
+      // The fold follows the actual shin and foot angle rather than the screen.
+      const width=(l.bottomFit==='wide'?5.6:l.bottomFit==='baggy'?5.0:4.3)*u;
+      b.begin().cap(kx,ky,ax,ay,width*.9,width,.74,.97,false,false).commit(bc,{line:null});
+      const dx=ax-kx,dy=ay-ky,len=Math.hypot(dx,dy)||1;
+      for(const t of [.80,.89,.95]){
+        const x=kx+dx*t,y=ky+dy*t;
+        b.begin().cap(x-dy/len*width*.65,y+dx/len*width*.65,x+dy/len*width*.65,y-dx/len*width*.65,.4*u,.4*u)
+          .commit(shade(bc,t===.89?.68:1.13),{line:null,flat:true});
+      }
+    }
   }
 
   private shoe(b: Brush, L: { kn: number[]; an: number[]; ank: number; far: boolean }, l: Loadout, skin: Col, k: number, u: number, sx: number) {
@@ -640,12 +657,14 @@ export class Puppet {
     const angle = Math.atan2(nx - hx, hy - ny) * mir;
     const shoulderY = -height;
     const flex=tp==='puffer'?.35:tp==='bigTee'?1.15:tp==='hoodie'?.8:.65;
-    const hemY = -cut.hem + 1.5 + this.cloth.y * .36*flex;
+    const lift=clamp(((this.cur.fHy+this.cur.bHy)*.5-this.cur.hipY-SHOULDER)/65,0,1);
+    const stride=clamp((this.cur.fFx-this.cur.bFx-30)/55,-1,1);
+    const hemY = -cut.hem + 1.5 + this.cloth.y * .5*flex-lift*2.6;
     // Wider front/back and narrower profile, without collapsing at a turn.
     const breadth = 0.85 + 0.15 * (1 - Math.abs(this.cur.turn));
     const widthAt = (y: number) => {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
-      return (t < 0.72 ? lerp(cut.waist, cut.chest, smooth(t / 0.72)) : lerp(cut.chest, cut.shoulder, smooth((t - 0.72) / 0.28))) * breadth;
+      return (t < 0.72 ? lerp(cut.waist, cut.chest, smooth(t / 0.72)) : lerp(cut.chest, cut.shoulder, smooth((t - 0.72) / 0.28))) * breadth+Math.sin(t*Math.PI)*Math.abs(this.cloth.x)*flex*.15;
     };
     const hemAt=(x:number)=>hemY-.18*flex*x*x/Math.max(1,cut.waist)+flex*(Math.sin(x*.4+this.t*5)*.3+this.cloth.x*x*.075);
     const cloth = (x: number, y: number) => y >= shoulderY && y <= hemAt(x) && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
@@ -654,9 +673,12 @@ export class Puppet {
     // Prints and seams use the same deformation as the cloth silhouette.
     const clothX=(x:number,y:number)=>{
       const v=clamp((y-shoulderY)/Math.max(1,hemY-shoulderY),0,1);
-      return x-this.cloth.x*.6*flex*v*v-Math.sin(v*Math.PI)*clamp(this.cur.lean,-.7,.7)*1.3;
+      return x-this.cloth.x*.85*flex*v*v-Math.sin(v*Math.PI)*(clamp(this.cur.lean,-.7,.7)*2.5+stride*flex*1.4);
     };
-    const frame = (pred: (x: number, y: number) => boolean) => b.begin().frame(hx, hy, angle, mir, u, 38, (x, y) => {x=clothX(x,y);return cloth(x,y) && pred(x,y);});
+    const frame = (pred: (x: number, y: number) => boolean) => b.begin().frame(hx, hy, angle, mir, u, 38, (x, y) => {
+      const v=clamp((y-shoulderY)/Math.max(1,hemY-shoulderY),0,1);
+      y-=x*stride*.16*flex*v*v;x=clothX(x,y);return cloth(x,y) && pred(x,y);
+    });
     b.begin().cap(hx,hy,nx,ny,cut.waist*breadth*u,cut.waist*breadth*u,-.10,.02,false,false).commit(l.bottomColor,{line:null});
     if(tp==='tank' || tp==='jersey') b.begin().frame(hx,hy,angle,mir,u,38,(x,y)=>y>=shoulderY && y<shoulderY+1.5 && Math.abs(x)<cut.neck).commit(skin,{line:null});
     frame(()=>true).commit(l.topColor);

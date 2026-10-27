@@ -53,7 +53,7 @@ export class FX {
     const money=style==='money';
     this.ring(x,y,money?0x81d874:0x77d9f2,12,95,.28);
     if(!money)this.add({x,y,life:.38,max:.38,size:15,grow:95,color:0x49afd9,kind:5});
-    for(let i=0;i<(money?12:24);i++){
+    for(let i=0;i<(money?30:24);i++){
       const life=money?.85+Math.random()*.3:.45+Math.random()*.25;
       this.add({x:x+(Math.random()-.5)*24,y,life,max:life,
         vx:(Math.random()-.5)*(money?190:270),vy:-(money?130:170)-Math.random()*140,

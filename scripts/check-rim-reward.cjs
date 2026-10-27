@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),{load}=require('./headless-art.cjs');
 const {FX}=load('fx');
-for(const [style,kind,count] of [['money',3,12],['splash',4,24]]){
+for(const [style,kind,count] of [['money',3,30],['splash',4,24]]){
  const fx=Object.create(FX.prototype);fx.parts=[];
  const calls=[];const g={clear(){},fillStyle(){},fillRect(...x){calls.push(x);}};fx.gn=g;fx.ga=g;
  fx.rimReward(1100,220,style);assert.equal(fx.parts.filter(p=>p.kind===kind).length,count);

@@ -24,6 +24,7 @@ export interface Loadout {
   /** Optional item-level details; old saves and rivals remain compatible. */
   topGraphic?: TopGraphic; jerseyNumber?: number;
   topTexture?: string; bottomTexture?: string;
+  bottomFit?: 'baggy'|'stacked'|'wide';
   shoeModel?: number; shoeStyle?: 'aj'|'dunk'|'af1'|'supra';
   headBadge?: number; watchStyle?: 'square'|'chrono'|'iced'|'digital';
   chainColor?:Col; chainSize?:number;
@@ -44,7 +45,7 @@ export function hairUnderHeadwear(hair: HairKind, head: HeadKind): HairKind {
 
 /** Item previews must clear item-specific details just like equipping a fresh loadout. */
 export function applyLookPatch(base: Loadout,patch: Partial<Loadout>): Loadout {
- return {...base,...(patch.top?{topGraphic:undefined,jerseyNumber:undefined,topTexture:undefined}:{}),...(patch.bottom?{bottomDetail:undefined,bottomTexture:undefined}:{}),...(patch.shoes?{shoeModel:undefined,shoeStyle:undefined}:{}),...(patch.head?{headBadge:undefined}:{}),...(patch.wrist?{watchStyle:undefined}:{}),...(patch.chain?{chainColor:undefined,chainSize:undefined}:{}),...patch};
+ return {...base,...(patch.top?{topGraphic:undefined,jerseyNumber:undefined,topTexture:undefined}:{}),...(patch.bottom?{bottomDetail:undefined,bottomTexture:undefined,bottomFit:undefined}:{}),...(patch.shoes?{shoeModel:undefined,shoeStyle:undefined}:{}),...(patch.head?{headBadge:undefined}:{}),...(patch.wrist?{watchStyle:undefined}:{}),...(patch.chain?{chainColor:undefined,chainSize:undefined}:{}),...patch};
 }
 
 export const SKIN_TONES: Col[] = [0xf2cfa8, 0xd9a273, 0xb87a4b, 0x8a5634, 0x5e3a24, 0x3f2618];

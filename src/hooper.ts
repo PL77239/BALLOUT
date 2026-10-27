@@ -81,6 +81,7 @@ export class Hooper {
   dribbleMoves = 0;
   stats: BossStats = PLAYER_STATS;
   staminaMax = T.stamina.max;
+  careerBonus={green:0,finish:0,moveDiscount:0,regen:0,steal:0};
   private staminaDelay = 0;
   private exhausted = false;
 
@@ -112,7 +113,7 @@ export class Hooper {
   }
 
   dunkWindowSec(g: GameScene): number {
-    return (T.dunk.windowSec + this.stats.accuracy * 0.00035) * this.timingScale(g);
+    return (T.dunk.windowSec + this.stats.accuracy * 0.00035 + (this.careerBonus?.finish??0)) * this.timingScale(g);
   }
 
   setLoadout(l: Loadout) { this.loadout = l; this.puppet.dress(l); }
@@ -157,7 +158,7 @@ export class Hooper {
     const dist = g.distToHoop(this.x, this.z);
     const f = dist < 250 ? lerp(1.8, 1, dist / 250) : lerp(1, 0.6, clamp((dist - 250) / (T.arcR - 250), 0, 1));
     const c = this.contestOf(g);
-    let w = T.shot.greenHalf * Math.max(0.55, f) * (1 - T.shot.contestPenalty * c) * this.timingScale(g);
+    let w = (T.shot.greenHalf+this.careerBonus.green+(this.layupStyle?this.careerBonus.finish*.25:0)) * Math.max(0.55, f) * (1 - T.shot.contestPenalty * c) * this.timingScale(g);
     if (this.fade) w *= T.shot.fadePenalty;
     if (this.fade) w *= 1 + T.shot.fadeContest * 0.3;
     if (this.fireOn) w *= T.shot.fireBonus;
@@ -170,7 +171,7 @@ export class Hooper {
     if (!this.hasBall) return;
     const chained = g.gt - this.comboT < T.moves.comboWindow;
     const nextMoves=chained?this.dribbleMoves+1:1;
-    if(!this.spendStamina(11+nextMoves*6,g))return;
+    if(!this.spendStamina(Math.max(11,11+nextMoves*6-this.careerBonus.moveDiscount),g))return;
     const I = this.I;
     const prev = this.comboKind;
     this.comboN = chained ? Math.min(6, this.comboN + 1) : 1;
@@ -197,6 +198,7 @@ export class Hooper {
     const triples:Record<string,string>={'cross>btb>spin':'AROUND THE WORLD','spin>cross>btb':'GHOST STEP','btb>cross>spin':'FULL CIRCLE','cross>spin>cross':'DOUBLE TAKE'};
     if(this.moveHistory.length===3) label=triples[this.moveHistory.join('>')] ?? label;
     g.popupAt(this, this.comboN > 1 ? `${label} x${this.comboN}` : label, this.comboN > 2 ? '#ff7a1a' : '#ffe45e', this.comboN > 1 ? 30 : 24);
+    if(this.comboN===2)g.recordCombo?.(this);
     if (this.comboN > 1) this.gainHeat(4 * this.comboN);
     g.fx.dust(this.x, this.sy, 5, -Math.sign(this.dash.x));
   }
@@ -322,7 +324,7 @@ export class Hooper {
     const sprinting = I.sprint && moving && !this.exhausted && this.stamina > 0 && (this.act === 'free');
     this.sprintT = sprinting ? this.sprintT + dt : 0;
     if (sprinting) {this.stamina = Math.max(0, this.stamina - T.stamina.sprintDrain * dt);this.staminaDelay=.55;if(this.stamina===0)this.exhausted=true;}
-    else if(this.staminaDelay===0 && !I.a && !I.b && !I.c && !I.cHeld && !I.shove && !(I.sprint&&moving) && (this.act==='free'||this.act==='recover'))this.stamina = Math.min(this.staminaMax, this.stamina + (T.stamina.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
+    else if(this.staminaDelay===0 && !I.a && !I.b && !I.c && !I.cHeld && !I.shove && !(I.sprint&&moving) && (this.act==='free'||this.act==='recover'))this.stamina = Math.min(this.staminaMax, this.stamina + (T.stamina.regen + this.careerBonus.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
 
     for (const k of BUFFERED) this.buf[k] = I[k] ? T.input.buffer : Math.max(0, this.buf[k] - dt);
     if (!I.shootHeld && !I.shootDown) this.buf.shootDown = 0;
@@ -478,6 +480,11 @@ export class Hooper {
   }
 
   private tickDunk(dt: number, I: Intent, g: GameScene) {
+    // Choose the finish during the approach to the rim, then lock it for the
+    // slam/follow-through. Input has a deadzone and never rerolls timing/odds.
+    if(this.h>20 && this.actT<T.dunk.hitAt-.03 && Math.max(Math.abs(I.mx),Math.abs(I.mz))>.55){
+      this.dunkStyle=Math.abs(I.mz)>Math.abs(I.mx)?(I.mz<0?2:0):(I.mx*this.facing<0?1:3);
+    }
     const d = T.dunk, p = clamp(this.actT / d.hitAt, 0, 1);
     const e = 1 - Math.pow(1 - p, 2);
     const tx = T.hoop.x - 40;

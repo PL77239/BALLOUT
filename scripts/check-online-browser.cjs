@@ -26,13 +26,14 @@ export default class Peer extends Emitter {
   for(const p of [a,b]){
    p.on('pageerror',e=>errors.push(e.message));await p.goto(`http://127.0.0.1:${port}/`);
    await p.waitForFunction(()=>window.__phaser?.scene?.getScene('menu')?.sys.isActive());
-   await p.evaluate(async host=>{const m=window.__phaser.scene.getScene('menu');if(host){const {buildLoadout,STARTER_EQUIP}=await import('/src/loadout.ts');m.myLook=()=>buildLoadout({...STARTER_EQUIP,top:'sw.hoodie.syrup.black',head:'sw.head.lakers.fullcap',shoes:'sw.aj.12.0',chain:'sw.chain.dogtag.gold',wrist:'sw.watch.iced.steel',face:'sw.face.beardblunt'});}m.cfg.mode='online';m.startGame();},p===a);
+   await p.evaluate(async host=>{const m=window.__phaser.scene.getScene('menu');if(host){const {save}=await import('/src/save.ts');save().career.attributes.shooting=95;save().career.equipped=['sniper'];save().career.totals.greens=100;const {buildLoadout,STARTER_EQUIP}=await import('/src/loadout.ts');m.myLook=()=>buildLoadout({...STARTER_EQUIP,top:'sw.hoodie.syrup.black',bottom:'sw.camo.wide.urban',head:'sw.head.lakers.fullcap',shoes:'sw.aj.12.0',chain:'sw.chain.dogtag.gold',wrist:'sw.watch.iced.steel',face:'sw.face.beardblunt'});}m.cfg.mode='online';m.startGame();},p===a);
   }
   await a.click('#net-host');await a.waitForFunction(()=>document.querySelector('#net-status').textContent.startsWith('ROOM:'));
   const room=(await a.locator('#net-status').textContent()).match(/ROOM: ([A-Z2-9]{6})/)[1];
   await b.fill('#net-code',room);await b.click('#net-join');
   for(const p of [a,b])await p.waitForFunction(()=>window.__g?.cfg.netRole);
   await a.waitForFunction(()=>window.__g.phase==='live');
+  assert(await a.evaluate(()=>window.__g.hoopers[0].stats.accuracy===54&&window.__g.hoopers[0].careerBonus.green===0),'PvP ignores campaign grind');
   assert.equal(await b.evaluate(()=>window.__g.hoopers[0].loadout.shoeModel),12,'guest receives new item details');
   assert.equal(await b.evaluate(()=>window.__g.hoopers[0].loadout.watchStyle),'iced');
   const before=await a.evaluate(()=>window.__g.hoopers[1].z);
@@ -47,6 +48,7 @@ export default class Peer extends Emitter {
   await b.waitForFunction(()=>window.__g.phase==='over'&&window.__g.hoopers[0].score>=window.__g.cfg.target);
   await b.waitForFunction(()=>window.__greenPulse && ['money','splash'].includes(window.__rimReward));
   assert.equal(await a.evaluate(()=>window.__g.result),null,'online match pays no campaign cash');
+  assert.equal(await a.evaluate(async()=>{const {save}=await import('/src/save.ts');return save().career.xp;}),0,'casual PvP awards no career XP');
   await b.click('button:has-text("LEAVE ROOM")');
   await a.waitForFunction(()=>document.body.textContent.includes('Opponent left')||document.body.textContent.includes('Connection closed'));
   assert.deepEqual(errors,[]);

@@ -230,7 +230,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
     case 'dunk': {
       const u = clamp(h.actT / T.dunk.airtime, 0, 1);
       r.fFx = 18; r.bFx = -14; r.fFy = r.bFy = air ? 16 : 0; r.fAnk = r.bAnk = air ? 0.5 : 0;
-      const sx = h.dunkStyle===2 || h.trickDunk;
+      const sx = h.dunkStyle===2;
       if (u < 0.16) {
         const c = ease(u / 0.16);
         r.hipY = 86 - 18 * c; r.lean = 0.12 + 0.18 * c; hands(lerp(20, 26, c), lerp(-30, -32, c), lerp(18, 22, c), lerp(-28, -30, c));

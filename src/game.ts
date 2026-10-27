@@ -1,3 +1,4 @@
+import { awardMatch, careerStats, careerBonuses, RANKS, type Performance } from './career';
 import { music } from './music';
 import { net, closeNet } from './net';
 import Phaser from 'phaser';
@@ -46,7 +47,7 @@ const STYLE_PAY: [RegExp, number][] = [
   [/ANKLES GONE/, 30], [/ANKLE BREAKER/, 20], [/POSTER/, 25], [/WINDMILL/, 12], [/REJECTED|DENIED/, 14], [/STOLEN/, 8], [/SLAM/, 8], [/SWISH|NOTHING BUT NET/, 5],
 ];
 
-export interface MatchResult { win: boolean; lines: [string, number][]; total: number }
+export interface MatchResult { win: boolean; lines: [string, number][]; total: number; career?:ReturnType<typeof awardMatch> }
 
 export class GameScene extends Phaser.Scene {
   cfg!: GameCfg;
@@ -102,6 +103,8 @@ export class GameScene extends Phaser.Scene {
   private pointCountShown = -1;
   private introCountShown = -1;
   result: MatchResult | null = null;
+  private careerEvents:Performance={greens:0,dunks:0,combos:0,steals:0,games:0};
+  recordCombo(h:Hooper){if(h.id===0&&this.cfg?.mode==='1p')this.careerEvents.combos++;}
 
   private static PERFECT_TAGS = ['PERFECT', 'GREEN', 'MONEY', 'SWISH', 'SPLASH', 'CASH', 'BUCKET'];
 
@@ -121,6 +124,7 @@ export class GameScene extends Phaser.Scene {
     this.hoopers = []; this.dunkHints = []; this.hud = {}; this.legend = null; this.pauseUi = []; this.overUi = [];
     this.time_ = 0; this.realT = 0; this.paused = false; this.winner = null; this.timeScale = 1; this.slowT = 0; this.hitT = 0; this.overT = 0;
     this.style = [0, 0]; this.buckets = [0, 0]; this.result = null;
+    this.careerEvents={greens:0,dunks:0,combos:0,steals:0,games:0};
     this.pointCountdown = 0; this.pointCountShown = -1;
     this.acc = 0; this.tick = 0; this.latch = [emptyIntent(), emptyIntent()]; this.lastLogged = [-1, -1]; this.inputLog = [];
     this.seed = (cfg.seed ?? (Math.random() * 0xffffffff)) >>> 0;
@@ -145,7 +149,8 @@ export class GameScene extends Phaser.Scene {
 
     const rival = cfg.p2 ?? bossToLoadout(bossAt(cfg.court, 0));
     const rStats = cfg.mode==='2p' ? PLAYER_STATS : cfg.p2Stats ?? bossAt(cfg.court, cfg.rivalIdx ?? 0).stats;
-    this.hoopers = [new Hooper(this, 0, cfg.p1, PLAYER_STATS), new Hooper(this, 1, rival, rStats)];
+    this.hoopers = [new Hooper(this, 0, cfg.p1, cfg.mode==='1p'?careerStats(save().career):PLAYER_STATS), new Hooper(this, 1, rival, rStats)];
+    if(cfg.mode==='1p')this.hoopers[0].careerBonus=careerBonuses(save().career);
     this.dunkHints = this.hoopers.map(() => label(this,0,0,'DUNK READY',0x8dffb4,{ox:0.5,depth:3001}).setVisible(false));
     this.hoopers.forEach((h) => { h.onIgnite = () => this.onIgnite(h); });
     const [c1, c2] = makeControllers(cfg.mode === '2p' && !cfg.netRole);
@@ -250,6 +255,7 @@ export class GameScene extends Phaser.Scene {
     if (this.phase !== 'live') return;
     const h = info.shooter, o = this.opp(h);
     h.score += info.pts;
+    if(h.id===0&&this.cfg?.mode==='1p'){if(info.dunk)this.careerEvents.dunks++;else if(info.perfect)this.careerEvents.greens++;}
     if(info.perfect) this.perfectMoment(h,h.meterInfo.contest>0.3,clean && !info.dunk && !info.touchedRim);
     this.buckets[h.id] += info.pts;
     h.gainHeat(14 + (info.perfect ? 10 : 0));
@@ -296,8 +302,9 @@ export class GameScene extends Phaser.Scene {
       total = lines.reduce((a, l) => a + l[1], 0);
       const s = save();
       s.games++; if (win) { s.wins++; if(cfgRival(this.cfg) && recordRivalWin(this.cfg.court,this.cfg.rivalIdx!)) lines.push(['NEXT RIVAL UNLOCKED',0]); }
+      const career=awardMatch(s.career,win,this.cfg.level,this.cfg.rivalIdx??0,this.careerEvents);
       addCash(total); persist();
-      this.result = { win, lines, total };
+      this.result = { win, lines, total,career };
     }
     this.time.delayedCall(900, () => this.showResults());
   }
@@ -307,7 +314,7 @@ export class GameScene extends Phaser.Scene {
     const w = this.winner!, [a, b] = this.hoopers;
     const ui = this.overUi;
     const rows = this.result?.lines.length ?? 0;
-    const ph = 60 + rows * 9 + (this.result ? 26 : 8);
+    const ph = 60 + rows * 9 + (this.result ? 26 : 8)+(this.result?.career?24:0);
     const pw = 202, px = Math.round((VW - pw) / 2), py = Math.round((VH - LEGEND_H - ph) / 2) - 6;
     const g = this.add.graphics().setDepth(7000).setScrollFactor(0).setPosition(fixedOrigin(VW), fixedOrigin(VH));
     const R = (x: number, y: number, ww: number, hh: number, c: number, al = 1) => { g.fillStyle(c, al); g.fillRect(x * PX, y * PX, ww * PX, hh * PX); };
@@ -323,6 +330,7 @@ export class GameScene extends Phaser.Scene {
       }
       t(px + 24, y + 2, this.result.win ? 'CASH EARNED' : 'CASH EARNED', 0xffffff, 1, 0); t(px + pw - 24, y + 2, `+$${this.result.total}`, 0xffd24a, 1, 1);
       y += 14;
+      const c=this.result.career;if(c){t(px+24,y,`XP +${c.xp}  LVL ${c.level}  OVR ${c.overall}`,0xd9d5b8,1,0);y+=10;t(px+24,y,`${c.rank>c.oldRank?'UP ':c.rank<c.oldRank?'DOWN ':''}${RANKS[c.rank]}  RP ${c.rankDelta>=0?'+':''}${c.rankDelta}`,c.rank<c.oldRank?0xff8d72:0x8bd8b2,1,0);}
     }
     t(px + pw / 2, py + ph - 12, this.cfg.netRole ? 'LEAVE ROOM TO PLAY AGAIN' : 'ENTER REMATCH     BACKSPACE MENU', 0x8a8aa0, 1);
   }
@@ -393,9 +401,9 @@ export class GameScene extends Phaser.Scene {
     this.fx.ring(hp.x, T.court.floorY - hp.rimH, 0xffd060, 20, 460, 0.5);
     this.fx.sparks(hp.x, T.court.floorY - hp.rimH, 24, 0xffa030, 460);
     if (posterized) {
-      this.popupAt(h, h.trickDunk ? 'WINDMILL POSTER!' : 'POSTERIZED!', '#ff4fa0', 40);
+      this.popupAt(h, h.dunkStyle===2 ? 'WINDMILL POSTER!' : 'POSTERIZED!', '#ff4fa0', 40);
       o.knock('fall', -o.facing, 220); h.gainHeat(10);
-    } else if (h.trickDunk) this.popupAt(h, 'WINDMILL!', '#ff4fa0', 36);
+    } else if (h.dunkStyle===2) this.popupAt(h, 'WINDMILL!', '#ff4fa0', 36);
     else if(h.dunkStyle===1) this.popupAt(h,'REVERSE!', '#ffcd6b',32);
     else if(h.dunkStyle===3) this.popupAt(h,'ONE HAND!', '#ffcd6b',32);
     this.punch(hp.x - 60, T.court.floorY - 160);
@@ -408,7 +416,7 @@ export class GameScene extends Phaser.Scene {
     const dx = (o.x - h.x) * h.facing;
     if (dx < 6 || dx > T.steal.range || Math.abs(o.z - h.z) > T.steal.zRange) return false;
     if (o.protectT > 0 || o.act === 'shoot' || o.act === 'dunk') return false;
-    let p = T.steal.base + h.stats.defense / 220;
+    let p = T.steal.base + h.stats.defense / 220 + (h.careerBonus?.steal??0);
     if (Math.abs(o.vx) > T.move.sprintFloor || o.sprintT > 0.05) p += T.steal.sprintBonus;
     if (o.act === 'juke' && o.actT > 0.05 && o.actT < 0.24) p += T.steal.jukeBonus;
     if (o.stamina < T.stamina.lowAt) p += T.steal.lowStaminaBonus;
@@ -422,6 +430,7 @@ export class GameScene extends Phaser.Scene {
     this.needsClear = true; this.cleared = false;
     h.protectT = 0.7; o.pickupLock = 0.8;
     h.gainHeat(18);
+    if(h.id===0&&this.cfg?.mode==='1p')this.careerEvents.steals++;
     this.popupAt(h, 'STOLEN!', '#7fd4ff', 34);
     this.fx.ring(this.ball.x, this.ball.sy, 0x9fe8ff, 12, 240, 0.3);
     this.fx.sparks(this.ball.x, this.ball.sy, 10, 0x9fe8ff, 300);

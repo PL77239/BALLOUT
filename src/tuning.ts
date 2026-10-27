@@ -8,7 +8,7 @@ export const T = {
   hoop: { x: 1108, rimH: 292, rimR: 27, boardH0: 274, boardH1: 402, boardX: 1148 },
   arcR: 430,
   zScale: 3,
-  ball: { r: 15, g: 1800, bounce: 0.68, dribblePeriod: 0.46 },
+  ball: { r: 16.5, g: 1800, bounce: 0.68, dribblePeriod: 0.46 },
   sim: { hz: 240, maxSteps: 24 },
   input: { buffer: 0.09 },
   move: {

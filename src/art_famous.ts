@@ -20,6 +20,30 @@ const stands=(c:Scene2D,x:number,y:number,w:number)=>{
  for(let i=0;i<4;i++){c.base.rect(x,y+i*5,w,3,0x9b9e99);c.base.hline(x,x+w,y+i*5,0xd2d1c4);}
  for(let dx=5;dx<w;dx+=24)c.base.vline(x+dx,y,y+21,0x494f4d);
 };
+// Additional depth from photo studies: village masonry, Harlem/Inwood
+// apartment slabs, and Oakland's lower residential/park edge, behind trees.
+function neighbourhood(c:Scene2D,id:string){
+ if(id==='cage'){
+  building(c,75,12,254,140,0x8d796c,{cols:19,rows:11,lit:.03,trim:0x4c5757});
+  c.base.rect(80,113,247,39,0x9e9f8c);c.base.hline(80,326,115,0xc4c0a7);
+  for(let x=88;x<325;x+=24)c.base.vline(x,117,150,0x808675);
+ }else if(id==='rucker'){
+  building(c,119,-12,193,164,0x8b7566,{cols:16,rows:14,lit:.03,trim:0x4d5858});
+  for(const x of [135,186,237,288])c.base.rect(x,0,4,144,0x746756);
+ }else if(id==='dyckman'){
+  building(c,-8,-8,91,160,0x8f7662,{cols:7,rows:13,lit:.03});
+  building(c,133,69,123,82,0x9f8067,{cols:10,rows:6,lit:.02});
+  c.base.rect(79,126,61,25,0xa9b3a5);c.base.hline(80,140,125,0x627d7a);
+ }else{
+  c.base.rect(0,115,427,38,0x6e8163);
+  for(const [x,y,w,color] of [[8,104,64,0xb4b29b],[93,99,58,0xb6ada2],[246,102,62,0x9aa79b]]){
+   building(c,x,y,w,150-y,color,{cols:4,rows:3,lit:0});
+   c.base.poly([x-4,y,x+w/2,y-16,x+w+4,y],0x626d65);
+  }
+  building(c,279,37,43,109,0x9baba8,{cols:3,rows:8,lit:0,trim:0x6c8388});
+  for(let x=0;x<427;x+=17)c.base.ellipse(x,141+(x%5),15,12, x%2?0x405e48:0x526f50);
+ }
+}
 function finish(c:Scene2D,id:string,st:FloorStyle){
  paintFloor(c,st);bench(c,13,150,26);bench(c,273,150,26);boombox(c,BOOM_X[id],159);paintHoop(c,{board:0xdfebe8,pole:0x38433f});
 }
@@ -36,7 +60,7 @@ function fans(c:Scene2D,place='cage'){
 
 export const cage:CourtArt={seed:1101,crowdLook:'bk',amb:daylight,
  paint(c){
-  sky(c,[0x84a4ba,0xb0c1c4,0xe4c7a0],0,154);
+  sky(c,[0x84a4ba,0xb0c1c4,0xe4c7a0],0,154);neighbourhood(c,'cage');
   building(c,-8,5,93,146,0x957260,{cols:8,rows:10,lit:.1});building(c,300,0,130,152,0xa49b83,{cols:10,rows:11,lit:.12});
   trees(c,[100,165,248,325],105);
   // Tall enclosure, Greenwich Village facades, blue/orange half court.
@@ -50,7 +74,7 @@ export const cage:CourtArt={seed:1101,crowdLook:'bk',amb:daylight,
 
 const rucker:CourtArt={seed:1414,crowdLook:'harlem',amb:daylight,
  paint(c){
-  sky(c,[0x9db7c2,0xd8d6c0],0,154);
+  sky(c,[0x9db7c2,0xd8d6c0],0,154);neighbourhood(c,'rucker');
   for(const [x,y,w] of [[5,12,53],[60,27,46],[311,8,68],[379,23,48]])building(c,x,y,w,150-y,0x9b9484,{cols:4,rows:10,lit:.08});
   // Elevated pedestrian bridge and tall mature trees around the refurbished court.
   c.base.rect(0,76,161,8,0x8b9391);c.base.hline(0,164,74,0xbcc3b4);
@@ -94,7 +118,7 @@ const pigalle:CourtArt={seed:1616,crowdLook:'marseille',amb:daylight,
 };
 const dyckman:CourtArt={seed:1717,crowdLook:'harlem',amb:daylight,
  paint(c){
-  sky(c,[0x7eafcc,0xc7d4ca],0,154);building(c,343,-8,90,161,0x996c51,{cols:7,rows:12,lit:.08});
+  sky(c,[0x7eafcc,0xc7d4ca],0,154);neighbourhood(c,'dyckman');building(c,343,-8,90,161,0x996c51,{cols:7,rows:12,lit:.08});
   building(c,0,92,95,53,0xd0c9ae,{cols:7,rows:3,lit:.05});trees(c,[28,122,218,295],88,2);
   stands(c,8,125,155);stands(c,235,125,100);chainFence(c,0,92,GW,153,0x56685b,.3);
   c.base.rect(164,115,94,30,0x242c2c);sign(c,170,120,'DYCKMAN',0xe15e51,{scale:1});sign(c,170,132,'NAGLE AVE',0xe1d5b5);
@@ -122,7 +146,7 @@ const tenement:CourtArt={seed:1818,crowdLook:'marseille',amb:daylight,
 };
 const mosswood:CourtArt={seed:1919,crowdLook:'la',amb:daylight,
  paint(c){
-  sky(c,[0x82b2cd,0xcbd7c6],0,154);building(c,350,23,77,127,0xae9c7a,{cols:6,rows:8,lit:0});
+  sky(c,[0x82b2cd,0xcbd7c6],0,154);neighbourhood(c,'mosswood');building(c,350,23,77,127,0xae9c7a,{cols:6,rows:8,lit:0});
   trees(c,[17,79,142,220,305,398],114,3);
   c.base.rect(165,114,103,35,0xa78c68);c.base.poly([156,116,177,101,252,101,278,116],0x655c4a);
   c.base.rect(182,124,17,25,0x42514a);c.base.rect(225,124,22,14,0x5b7570);
