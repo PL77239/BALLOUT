@@ -327,8 +327,8 @@ export class Puppet {
     }
 
     const headTh = r.lean * 0.5 + r.head;
-    // A slightly larger, compact head and clearer limbs read at the fixed camera scale.
-    const hu=u*1.5;
+    // Athletic proportions, closer to a digitised arcade player than a mascot.
+    const hu=u*1.18;
     const hcW = [neckW[0] + Math.sin(headTh) * 19, neckW[1] + Math.cos(headTh) * 19];
     const head = { x: X(hcW[0]), y: Y(hcW[1]), th: headTh };
 
@@ -361,13 +361,27 @@ export class Puppet {
     this.dirty = false;
   }
 
+  /** Quantised directional light follows the limb as it bends. */
+  private skinVolume(b: Brush, a: number[], z: number[], radius: number, color: Col, u: number) {
+    const dx=z[0]-a[0], dy=z[1]-a[1], length=Math.hypot(dx,dy)||1;
+    b.ink((x,y)=>{
+      if(!b.has(x-1,y)||!b.has(x+1,y)||!b.has(x,y-1)||!b.has(x,y+1)) return -1;
+      const side=((x+.5-a[0])*dy-(y+.5-a[1])*dx)/length/(radius*u);
+      const along=((x+.5-a[0])*dx+(y+.5-a[1])*dy)/length;
+      const band=side<-.45?.74:side<-.05?.91:side<.48?1.12:1.02;
+      return shade(color,band*(along<length*.18?.94:1));
+    });
+  }
+
   private legPiece(b: Brush, L: { hp: number[]; kn: number[]; an: number[]; ank: number; far: boolean }, l: Loadout, skin: Col, u: number, sx: number) {
     const far = L.far, k = far ? 0.74 : 1;
     const sk = shade(skin, k), bc = shade(l.bottomColor, k), bt = shade(l.bottomTrim, k);
     const [hx, hy] = L.hp, [kx, ky] = L.kn, [ax, ay] = L.an;
-    b.begin().cap(hx, hy, kx, ky, 4.3 * u, 3.0 * u,0,1,false,true).commit(sk);
+    b.begin().cap(hx, hy, kx, ky, 4.8 * u, 3.3 * u,0,1,false,true).commit(sk);
+    this.skinVolume(b,[hx,hy],[kx,ky],4.8,sk,u);
     b.begin().disc(kx, ky, 2.05 * u).commit(shade(sk, 0.88), { line: null, flat: true });
-    b.begin().cap(kx, ky, ax, ay, 2.8 * u, 1.9 * u).commit(sk);
+    b.begin().cap(kx, ky, ax, ay, 3.2 * u, 2.1 * u).commit(sk);
+    this.skinVolume(b,[kx,ky],[ax,ay],3.2,sk,u);
     b.begin().disc(Math.round(kx + (ax - kx) * 0.08), Math.round(ky + (ay - ky) * 0.08), 1.35 * u).commit(shade(sk, 1.12), { line: null, flat: true });
     const covered = COVERED.has(l.bottom);
     if (l.socks !== 'none' && !covered && l.shoes !== 'boot') {
@@ -512,9 +526,11 @@ export class Puppet {
     const k = far ? 0.74 : 1;
     const sk = shade(skin, k), tc = shade(l.topColor, k), tt = shade(l.topTrim, k);
     const [sx0, sy0] = A.sh, [ex, ey] = A.el, [wx, wy] = A.wr;
-    b.begin().cap(sx0, sy0, ex, ey, 3.1 * u, 2.25 * u,0,1,false,true).commit(sk);
+    b.begin().cap(sx0, sy0, ex, ey, 3.8 * u, 2.6 * u,0,1,false,true).commit(sk);
+    this.skinVolume(b,[sx0,sy0],[ex,ey],3.8,sk,u);
     b.begin().disc(ex, ey, 1.85 * u).commit(shade(sk, 0.88), { line: null, flat: true });
-    b.begin().cap(ex, ey, wx, wy, 2.2 * u, 1.7 * u).commit(sk);
+    b.begin().cap(ex, ey, wx, wy, 2.6 * u, 1.8 * u).commit(sk);
+    this.skinVolume(b,[ex,ey],[wx,wy],2.6,sk,u);
     b.begin().disc(Math.round(ex + (wx - ex) * 0.12), Math.round(ey + (wy - ey) * 0.12), 1.15 * u).commit(shade(sk, 1.08), { line: null, flat: true });
     const sleeveUp = (c: Col, a: number, bb: number, rr: number) => b.begin().cap(sx0, sy0, ex, ey, (2.2 + rr) * u, cut.cuff * u, a, bb, true, false).commit(c);
     const t = l.top;
@@ -595,7 +611,7 @@ export class Puppet {
     const breadth = 0.85 + 0.15 * (1 - Math.abs(this.cur.turn));
     const widthAt = (y: number) => {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
-      return (t < 0.72 ? lerp(cut.waist, cut.chest, t / 0.72) : lerp(cut.chest, cut.shoulder, (t - 0.72) / 0.28)) * breadth * 1.08;
+      return (t < 0.72 ? lerp(cut.waist, cut.chest, t / 0.72) : lerp(cut.chest, cut.shoulder, (t - 0.72) / 0.28)) * breadth * 1.18;
     };
     const cloth = (x: number, y: number) => y >= shoulderY && y <= hemY && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
       && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
@@ -765,6 +781,9 @@ export class Puppet {
     const skull = (x: number, y: number) => Math.abs(x)<5.8 && y>-6 && y<4.5 && !(y<-4 && Math.abs(x)>4.3);
     const jaw = (x: number, y: number) => y>=1 && y<6 && x>-3.8+(y-1)*.4 && x<5.4-(y-1)*.25;
     F(10, (x, y) => skull(x, y) || jaw(x, y) || (x >= 4.8 && x <= 6.5 && y >= -0.2 && y <= 1.9 && !front)).commit(skin);
+    // Chunky shadow planes suggest the photographed sprites of 1990s arcade games.
+    F(10, (x,y) => (skull(x,y)||jaw(x,y)) && x < -2.2 && y > -3).commit(shade(skin,.78),{flat:true,line:null});
+    F(10, (x,y) => (skull(x,y)||jaw(x,y)) && x > .5 && x < 3.5 && y > -3 && y < 2).commit(shade(skin,1.12),{flat:true,line:null});
     const sdw = shade(skin, 0.8);
     if (!back && !front) {
       F(8, (x, y) => x >= 4.9 && x <= 6.5 && y >= 0.1 && y <= 1.8).commit(shade(skin, 1.03), { line: null });
