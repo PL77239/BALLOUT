@@ -339,6 +339,11 @@ export class Puppet {
     /* ---- far limbs, torso, near leg ---- */
     b.part = 1; this.legPiece(b, legB, l, skin, u, sx);
     b.part = 2; this.armPiece(b, armB, l, skin, u, true);
+    // The seat belongs to the trousers, not either individual leg. Bridge the
+    // moving thigh roots before drawing the near leg and shirt over it.
+    b.part = 4;
+    b.begin().cap(legB.hp[0],legB.hp[1],legF.hp[0],legF.hp[1],5.1*u,5.1*u,0,1,true,true)
+      .commit(l.bottomColor,{line:null});
     b.part = 4; this.legPiece(b, legF, l, skin, u, sx);
     b.part = 3; this.torsoPiece(b, [hx, hy], [nx, ny], l, skin, u, r.lean, sx, mir);
 

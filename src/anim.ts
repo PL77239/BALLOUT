@@ -202,11 +202,11 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
       const down=drop*(1-rise);
       // One seated collapse, with feet below the hips throughout the fall.
       // The old hips dropped below the raised ankles and flipped the leg IK.
-      r.hipY=lerp(88,78,trip)*(1-down)+38*down;
-      r.lean=lerp(.12,-.72,down);r.head=.18*down;
-      r.fFx=lerp(18,44,down);r.bFx=lerp(-14,10,down);
-      r.fFy=0;r.bFy=2*down;r.fAnk=.12*down;r.bAnk=-.08*down;
-      hands(lerp(24,20,down),lerp(4,-24,down),lerp(-14,-8,down),lerp(14,-30,down));
+      r.hipY=lerp(82,76,trip)*(1-down)+51*down;
+      r.lean=lerp(.12,-.38,down);r.head=.12*down;
+      r.fFx=lerp(18,36,down);r.bFx=lerp(-14,-18,down);
+      r.fFy=0;r.bFy=0;r.fAnk=.08*down;r.bAnk=-.06*down;
+      hands(lerp(24,26,down),lerp(4,-18,down),lerp(-14,-18,down),lerp(14,-22,down));
       r.emo=-1;r.mouth=0;
       break;
     }
