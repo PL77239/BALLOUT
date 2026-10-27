@@ -670,7 +670,9 @@ export class Puppet {
       const kx=dx*Math.cos(angle)+dy*Math.sin(angle),ky=-dx*Math.sin(angle)+dy*Math.cos(angle);
       pantFollow=clamp(kx*Math.min(.65,(Math.max(0,hemY)+4)/Math.max(5,ky)),-4.2,4.2);
     }
-    const bend=pantFollow*flex+this.cloth.x*.65*flex;
+    // Keep the hem over the waistband: follow the thighs without sliding
+    // the whole shirt forward and exposing the rear of the trousers.
+    const bend=clamp(pantFollow*flex+this.cloth.x*.4*flex,-2.4,2.4);
     const kneeLift=clamp((this.cur.fFy-this.cur.bFy)/36,-1,1);
     const hemTilt=clamp(kneeLift*.95+stride*.65,-1.35,1.35)*flex;
     // Wider front/back and narrower profile, without collapsing at a turn.
@@ -679,7 +681,11 @@ export class Puppet {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
       return (t < 0.72 ? lerp(cut.waist, cut.chest, smooth(t / 0.72)) : lerp(cut.chest, cut.shoulder, smooth((t - 0.72) / 0.28))) * breadth+Math.sin(t*Math.PI)*Math.abs(this.cloth.x)*flex*.15;
     };
-    const hemAt=(x:number)=>hemY-.32*flex*x*x/Math.max(1,cut.waist)+Math.sin(x*.42+this.t*4)*.18*flex;
+    const hemAt=(x:number)=>{
+      const rear=1-smooth(clamp((x+cut.waist*.3)/(cut.waist*.65),0,1));
+      const curved=hemY-.14*flex*x*x/Math.max(1,cut.waist)+Math.sin(x*.42+this.t*4)*.12*flex;
+      return Math.max(curved,3.5*rear); // rear tail always overlaps the trouser seat
+    };
     const cloth = (x: number, y: number) => y >= shoulderY && y <= hemAt(x) && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
       && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
     // Collar/shoulders stay fixed. The lower half curves toward the trousers;
@@ -687,11 +693,13 @@ export class Puppet {
     const unDrape=(x:number,y:number):[number,number]=>{
       const v=clamp((y-shoulderY)/Math.max(1,hemY-shoulderY),0,1);
       const lower=smooth(clamp((v-.38)/.62,0,1));
-      const center=bend*lower+Math.sin(v*Math.PI)*clamp(this.cur.lean,-.7,.7)*1.5;
+      const front=smooth(clamp((x+cut.waist)/(cut.waist*2),0,1));
+      const center=bend*lower*(.15+.85*front)+Math.sin(v*Math.PI)*clamp(this.cur.lean,-.7,.7)*.8;
       x-=center;
-      y-=hemTilt*x/Math.max(1,cut.waist)*lower;
+      const tilt=hemTilt*x/Math.max(1,cut.waist)*lower;
+      y-=x<0?Math.max(0,tilt):tilt;
       // Soft compression above the waistband rounds the lower corners.
-      y+=crouch*flex*Math.sin(x*.24)*.55*lower;
+      y+=crouch*flex*Math.sin(Math.max(0,x)*.24)*.4*lower;
       return [x,y];
     };
     const frame = (pred: (x: number, y: number) => boolean) => b.begin().frame(hx, hy, angle, mir, u, 38, (x, y) => {

@@ -13,3 +13,12 @@ for(const top of ['tee','bigTee','hoodie','flannel','longsleeve','puffer','jerse
  assert([...a,...b].every(Number.isFinite));
 }
 console.log('Hem drape passed: eight cuts, both facings, pinned upper garment and lower cloth follows trouser geometry');
+
+// The rear hem must remain over the seat at maximum forward drape, jump lift and crouch.
+for(const top of ['tee','bigTee','hoodie','flannel','longsleeve','puffer','jersey','tank'])for(const facing of [-1,1]){
+ const p=new Puppet(scene,{...buildLoadout({...STARTER_EQUIP}),top,topColor:color,topTrim:color});p.t=0;p.cloth.x=7;p.cloth.y=-6;
+ Object.assign(p.cur,{hipY:35,fHy:160,bHy:160,fFy:32,bFy:0});
+ p.pix.clear();p.brush.reset();p.torsoPiece(p.brush,[64,80],[64,58],p.loadout,0x8a5634,1,0,facing,facing,[[76,99],[74,103]]);
+ for(const x of [-4,-3,-2])for(const y of [0,1,2]){const px=64+facing*x,py=80+y;assert(p.pix.alpha(px,py)>0);assert.notEqual(p.pix.get(px,py),p.loadout.bottomColor,`${top}: rear waistband exposed`);assert.notEqual(p.pix.get(px,py),0x8a5634,`${top}: rear skin exposed`);}
+}
+console.log('Rear hem coverage passed: both facings under maximum drift, crouch and arm lift');
