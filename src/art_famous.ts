@@ -53,7 +53,7 @@ function fans(c:Scene2D,place='cage'){
  if(place==='venice'){c.base.rect(81,140,6,13,0x5c7977);c.base.ellipse(112,142,3,12,0xe3b579);c.base.vline(112,130,154,0x5f8791);}
  if(place==='pigalle'){for(let y=103;y<147;y+=5)c.base.hline(103,123,y,0x427d70);for(let x=106;x<124;x+=5)c.base.vline(x,102,149,0x427d70);c.base.rect(305,144,12,8,0xa97158);c.base.ellipse(311,141,8,6,0x547d5b);}
  if(place==='dyckman'){sign(c,3,115,'204 ST',0xe4dab7,{bg:0x385c4b});c.base.rect(135,145,12,7,0x716e59);}
- if(place==='tenement'){for(let x=91;x<321;x+=44){c.base.rect(x,81,7,4,0x946a50);c.base.ellipse(x+3,79,5,4,0x4f7654);}c.base.vline(316,1,31,0x565e5a);c.base.hline(304,328,9,0x565e5a);}
+ if(place==='tenement'){for(let x=91;x<321;x+=44){c.base.rect(x,77,12,6,0x946a50);c.base.ellipse(x+2,75,8,6,0x4f7654);c.base.ellipse(x+14,75,8,6,0x4f7654);c.base.rect(x+4,73,4,2,0x7a6a5a);c.base.rect(x+6,79,2,1,0x7a6a5a);}c.base.vline(316,1,31,0x565e5a);c.base.hline(304,328,9,0x565e5a);}
  if(place==='mosswood'){c.base.rect(113,127,7,23,0x6d6750);sign(c,102,127,'WEBSTER',0xd7c590,{bg:0x3e5b45});c.base.rect(249,144,6,9,0x59705b);}
  if(place==='kalemegdan'){c.base.vline(220,85,119,0x55564b);c.base.rect(353,142,20,9,0xada18a);c.base.hline(353,372,142,0xc3b798);}
  spots(c,[[25,152,'sit'],[61,153,'stand'],[110,153,'kid'],[175,152,'stand'],[232,153,'elder'],[285,152,'sit'],[335,153,'cheer']]);}

@@ -842,6 +842,15 @@ export class GameScene extends Phaser.Scene {
     for (const h of this.hoopers) {
       const k = Math.max(0.4, 1 - h.h / 260);
       shadowEllipse(s, h.x / PX, (h.sy + 3) / PX, 9 * k + 2, 2 * k + 0.6, 0.42 * k);
+      // Subtle player ellipse on the floor (NBA/FIFA style), tinted per player.
+      const ellipseColor = h.id === 0 ? 0xffd24a : (this.cfg.mode === '2p' ? 0x7fd4ff : 0xffffff);
+      const erx = 14, ery = 5;
+      s.fillStyle(ellipseColor, 0.22);
+      const eR = Math.max(1, Math.round(ery));
+      for (let j = -eR; j <= eR; j++) {
+        const w = Math.round(erx * Math.sqrt(1 - (j / (eR + 0.6)) ** 2));
+        if (w > 0) s.fillRect(Math.round(h.x / PX - w) * PX, Math.round((h.sy + 2) / PX + j) * PX, w * 2 * PX, PX);
+      }
       let tint = this.court.tintAt(h.x, h.sy);
       if (h.fireOn) { tint = mix(tint, 0xffa850, 0.35 + 0.15 * Math.sin(this.realT * 18)); if (Math.random() < 0.8) this.fx.flame(h.x + (Math.random() - 0.5) * 40, h.sy - h.h - Math.random() * 150, 1, 8); }
       h.puppet.setTint(tint);
