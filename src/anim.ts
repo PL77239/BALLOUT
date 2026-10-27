@@ -138,6 +138,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
   }
 
   /* ---------- actions ---------- */
+  if(h.skillGather>0 && h.act==='free'){r.hipY-=Math.min(1,h.skillGather/T.moves.neutralHold)*3;r.head-=.07;}
   const p = h.actDur > 0 ? clamp(h.actT / h.actDur, 0, 1) : 0;
   switch (h.act) {
     case 'shoot': {
@@ -292,6 +293,15 @@ function juke(h: Hooper, r: Rig, p: number, hands: Hands) {
     r.fFx = 14 - 10 * Math.sin(p * TAU) ** 2 * 0.4; r.bFx = -14;
     hands(16 + Math.sin(p * TAU) * 6, -24, 30, -6);
     r.head = -0.1;
+  } else if(h.moveKind==='hesi'){
+    const hang=1-ease(seg(p,.35,.7));
+    r.hipY=76-5*wind+6*rise;r.lean=.04-.10*hang+.22*burst*(1-rise);r.head=-.10*hang;
+    r.fFx=18-6*wind+12*burst;r.bFx=-14-7*wind;
+    if(h.handSide>0){r.bHx=24;r.bHy=r.hipY+43;}else{r.fHx=24;r.fHy=r.hipY+43;}
+  } else if(h.moveKind==='stepback'){
+    r.hipY=75-9*wind+8*rise;r.lean=-.30*Math.sin(p*Math.PI)+.03;r.head=.13*wind;
+    r.fFx=lerp(20,9,burst);r.bFx=lerp(-14,-32,burst);r.fFy=6*Math.sin(p*Math.PI);r.bFy=2;
+    r.fAnk=-.18*wind;r.bAnk=.12*wind;
   } else {
     r.hipY = 78 - 8 * wind + 10 * rise; r.lean = 0.16 + 0.18 * burst * (1 - rise) - 0.08 * wind * (1 - burst);
     r.fFx = lerp(12, 22, burst); r.bFx = lerp(-12, -18, burst);

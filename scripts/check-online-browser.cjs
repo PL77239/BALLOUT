@@ -41,6 +41,11 @@ export default class Peer extends Emitter {
   const zA=await a.evaluate(()=>window.__g.hoopers[1].z),zB=await b.evaluate(()=>window.__g.hoopers[1].z);
   assert(Math.abs(zA-before)>10,'guest movement reaches host physics');assert(Math.abs(zA-zB)<20,'guest converges to host');
   assert.deepEqual(await a.evaluate(()=>window.__g.hoopers.map(h=>h.isCpu)),[false,false]);
+  // Held skill input must survive the real guest->host input pipeline.
+  await a.evaluate(()=>{const g=window.__g,h=g.hoopers[1],d=g.hoopers[0];g.phase='live';g.needsClear=false;g.cleared=true;h.reset(550,0,true);h.stamina=100;d.reset(1050,50,false);d.act='fall';d.actDur=99;g.ball.mode='held';g.ball.owner=h;g.ball.setHeld(h.x+32,0,50);});
+  await b.keyboard.down('j');await a.waitForFunction(()=>window.__g.hoopers[1].act==='juke'&&window.__g.hoopers[1].moveKind==='hesi');
+  await b.waitForFunction(()=>window.__g.hoopers[1].moveKind==='hesi');await b.keyboard.up('j');
+  assert.equal(await a.evaluate(()=>window.__g.hoopers[1].comboN),1,'remote hold triggers one paid hesitation');
   // A green score must also deliver its short visual reward to the guest.
   await b.evaluate(()=>{const fx=window.__g.fx,ring=fx.ring.bind(fx);window.__greenPulse=false;window.__rimReward=null;const reward=fx.rimReward.bind(fx);fx.rimReward=(...args)=>{window.__rimReward=args[2];return reward(...args);};fx.ring=(...args)=>{if(args[2]===0x66ffb0)window.__greenPulse=true;return ring(...args);};});
   // Force a real winning bucket through the host score handler; guest must see it.

@@ -26,15 +26,24 @@ After takeoff, while above 20 world units and before the final 0.03s leading int
 
 Neutral input retains the selection. The slam locks it. Direction does not reroll timing, shot odds or stamina cost, and does not change scoring. Both facings are tested. Combo heat bonuses remain tied to the combo, not to choosing a flashy animation.
 
-## Broader skill moves — proposal only
+## Skill moves — implemented
 
-The user requested an explanation before changing broader controls. The following is deliberately **not implemented**:
+| Input with the ball | Action |
+|---|---|
+| J / Square + direction | Directional crossover |
+| J / Square + backward relative to facing | Stepback |
+| Neutral J / Square, release before 0.16 simulation seconds | Crossover |
+| Neutral J / Square held for 0.16 simulation seconds | Hesitation; move the stick / WASD to burst out |
+| K / Circle | Spin |
+| L / Triangle away from dunk range | Behind the back |
 
-1. Keep movement on WASD/left stick and the current shot timing.
-2. A trick button plus lateral direction chooses the crossover side; neutral plus a short hold could give hesitation, backward input a stepback.
-3. A second trick in a short window could chain double-cross, cross→spin or behind-the-back→burst. Every link must pay its full cost. Exiting the move in the opposite direction creates a deliberate change of pace.
-4. Beat the defender through spacing, wrong-foot timing and stamina; a sequence alone never guarantees an ankle break. The existing probabilistic defense remains relevant.
-5. Test deadzones and windows on keyboard and pad before committing to a new right-stick scheme. Air dunk direction selection above is already implemented independently.
+Direction during the neutral gather immediately selects a cross or backward stepback. A held trick button starts only one move. Shooting, possession loss and other actions cancel the gather. The defender still uses J / Square for steals, so the new rules apply only with possession. Pause (Esc / Start) shows the controls.
+
+Chain the next move within 0.68 simulation seconds. Input buffering permits the next move after 40% of the current animation. Examples: hesitation → cross → spin (HANG TIME), cross → stepback → cross (SNAKE BITE), behind the back → hesitation → cross (GHOST BURST). Every link pays the existing escalating stamina cost; badges only discount that cost. Zero stamina blocks moves and holding trick input prevents regeneration. Stationary hesitation never rolls ankle break; movement still faces the existing probabilistic spacing/defense check and cooldown. No combo guarantees a fall.
+
+Each new move has a distinct body and dribble pose. Late movement input guides exits. A shot after stepback can cancel the late move and retains the backward fade penalty. Ordinary shot timing and near-rim dunk controls are unchanged. Keyboard and emulated standard gamepad input, both facings, held/released input, stamina and private guest-to-host input are covered by tests. Public Internet WebRTC is not covered by the substitute-transport test.
+
+![Pause controls](skill-controls.png)
 
 ## Clothing, ball, rewards and scenery
 
@@ -53,4 +62,4 @@ Added scenery sits behind the trees, based on these additional photo studies:
 
 Pure tests cover XP/OVR/attribute caps, badge tiers/slots, rank changes and demotion protection, old saves, four airborne dunk choices in both facings, deadzone/lock and unchanged stamina cost. Existing tests cover action costs, progression, wardrobe, faces, falls, rim rewards, ambient and networking. Chromium exercises menu navigation, upgrades, badge equip, live campaign effects, airborne keyboard choice, match XP, reload persistence, court rendering and private PvP with equal base stats. The two-browser online test uses a substitute transport; Internet WebRTC remains outside that test.
 
-All peers must use `ballout-private-6` because the ball radius and dunk-direction rules changed.
+All peers must use `ballout-private-7` because held skill input, move kinds, ball radius and dunk-direction rules changed. Replay input format is now 2 (held skill bit 1024).

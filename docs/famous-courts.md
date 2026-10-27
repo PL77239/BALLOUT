@@ -15,7 +15,7 @@ Seven new courts and the updated Cage use original procedural pixel drawings stu
 
 Drop audio in `public/audio/bgm/courts/<id>/`. MP3/OGG/M4A/WAV files are indexed automatically on dev/build. New folders intentionally have no tracks yet. The Cage keeps `brooklyn` to preserve saves and existing audio. New courts reuse existing wardrobe pools; the location label comes from the court itself.
 
-All 19 courts have six progressively stronger rivals, region-appropriate ambient events, online selection and independent progression. Both peers must use the updated `ballout-private-6` build.
+All 19 courts have six progressively stronger rivals, region-appropriate ambient events, online selection and independent progression. Both peers must use the updated `ballout-private-7` build.
 
 ## Character pass
 

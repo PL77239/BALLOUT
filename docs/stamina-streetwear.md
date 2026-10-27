@@ -6,7 +6,7 @@ Special actions require their full cost before changing the action, combo, prote
 
 Steal costs 4, block/jump 6, shove uses the tuning cost (13), and dunk uses its tuning cost (8). Sprint drains continuously. Regen pauses for 0.55s after spending and at least 0.4s after a rejected action. Repeated special-action inputs and holding sprint while moving prevent recovery; resting or ordinary walking restores it. After complete exhaustion, sprint/special actions unlock at 18 stamina. Walking and ordinary shots remain available, with the existing low-stamina movement/timing penalties.
 
-The host enforces these same methods for local players, remote players and AI. Network build version is `ballout-private-6` so old rules cannot silently mix with new ones.
+The host enforces these same methods for local players, remote players and AI. Network build version is `ballout-private-7` so old rules cannot silently mix with new ones.
 
 ## Catalogue
 

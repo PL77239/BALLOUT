@@ -5,7 +5,7 @@ const scene={textures:{exists:()=>false,createCanvas:()=>({getContext:()=>({putI
 const make=()=>new Hooper(scene,0,buildLoadout({...STARTER_EQUIP}));
 const g={gt:10,phase:'live',needsClear:false,cleared:true,popupAt:noop,fx:{dust:noop},opp:()=>({x:0,z:0,hasBall:false,act:'fall',I:{checkHeld:false}}),distToHoop:()=>500,ankleCheck:noop};
 const idle={mx:0,mz:0,sprint:false,shootHeld:false,shootDown:false,shootUp:false,a:false,b:false,c:false,cHeld:false,shove:false,checkHeld:false};
-for(const call of [h=>h.startMove('cross',g),h=>h.startMove('spin',g),h=>h.startMove('btb',g),h=>h.startSwipe(),h=>h.startBlock(),h=>h.startShove(g),h=>h.startDunk(g)]){
+for(const call of [h=>h.startMove('cross',g),h=>h.startMove('spin',g),h=>h.startMove('btb',g),h=>h.startMove('hesi',g),h=>h.startMove('stepback',g),h=>h.startSwipe(),h=>h.startBlock(),h=>h.startShove(g),h=>h.startDunk(g)]){
  const h=make();h.stamina=0;h.hasBall=true;h.x=T.hoop.x-100;
  for(let i=0;i<20;i++)call(h);
  assert.equal(h.act,'free','zero energy cannot start an action');assert.equal(h.stamina,0);assert.equal(h.comboN,0);assert.equal(h.vh,0);

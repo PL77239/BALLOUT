@@ -617,14 +617,14 @@ export class GameScene extends Phaser.Scene {
   /** Human edges (button presses) are held until a sim step consumes them, so a press is never lost between steps. */
   private latchIntent(i: number, n: Intent) {
     const l = this.latch[i];
-    l.mx = n.mx; l.mz = n.mz; l.cHeld=n.cHeld; l.sprint = n.sprint; l.shootHeld = n.shootHeld; l.checkHeld = n.checkHeld;
+    l.mx = n.mx; l.mz = n.mz; l.cHeld=n.cHeld;l.aHeld=n.aHeld; l.sprint = n.sprint; l.shootHeld = n.shootHeld; l.checkHeld = n.checkHeld;
     l.shootDown ||= n.shootDown; l.shootUp ||= n.shootUp;
     l.a ||= n.a; l.b ||= n.b; l.c ||= n.c; l.shove ||= n.shove;
   }
 
   private logIntent(i: number, I: Intent) {
     const q = (v: number) => (Math.round(clamp(v, -1, 1) * 127) + 128) & 255;
-    const bits = (I.sprint ? 1 : 0) | (I.shootHeld ? 2 : 0) | (I.shootDown ? 4 : 0) | (I.shootUp ? 8 : 0) | (I.a ? 16 : 0) | (I.b ? 32 : 0) | (I.c ? 64 : 0) | (I.shove ? 128 : 0) | (I.checkHeld ? 256 : 0) | (I.cHeld ? 512 : 0);
+    const bits = (I.sprint ? 1 : 0) | (I.shootHeld ? 2 : 0) | (I.shootDown ? 4 : 0) | (I.shootUp ? 8 : 0) | (I.a ? 16 : 0) | (I.b ? 32 : 0) | (I.c ? 64 : 0) | (I.shove ? 128 : 0) | (I.checkHeld ? 256 : 0) | (I.cHeld ? 512 : 0) | (I.aHeld ? 1024 : 0);
     const v = q(I.mx) | (q(I.mz) << 8) | (bits << 16);
     if (v !== this.lastLogged[i]) { this.lastLogged[i] = v; this.inputLog.push(this.tick, i, v); }
   }
@@ -705,7 +705,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Snapshot for replays and, later, server-side verification of ranked results. */
   replay() {
-    return { seed: this.seed, hz: T.sim.hz, steps: this.tick, cfg: { mode: this.cfg.mode, court: this.cfg.court, level: this.cfg.level, target: this.cfg.target }, log: this.inputLog };
+    return { inputFormat:2,seed: this.seed, hz: T.sim.hz, steps: this.tick, cfg: { mode: this.cfg.mode, court: this.cfg.court, level: this.cfg.level, target: this.cfg.target }, log: this.inputLog };
   }
 
   private cameraTarget() {
@@ -751,8 +751,10 @@ export class GameScene extends Phaser.Scene {
       ['ESC / START   RESUME', 0xffe45e, 1], ['BACKSPACE / CIRCLE   QUIT TO MENU', 0xffe45e, 1], ['', 0, 1],
       ['MOVE  WASD / STICK      SPRINT  SHIFT / R1', 0xc8c8d8, 1],
       ['SHOOT  SPACE / X: HOLD, RELEASE IN GREEN, TAP = PUMP FAKE', 0xc8c8d8, 1],
-      ['CROSSOVER  J / SQUARE      SPIN  K / CIRCLE', 0xc8c8d8, 1],
-      ['DUNK  L / TRIANGLE + UP / DOWN FOR STYLE', 0xc8c8d8, 1],
+      ['J / SQUARE + DIRECTION: CROSS // BACK: STEPBACK', 0xc8c8d8, 1],
+      ['NEUTRAL: TAP J/SQR = CROSS // HOLD = HESITATION', 0xc8c8d8, 1],
+      ['K / CIRCLE: SPIN // L / TRI FAR: BEHIND BACK', 0xc8c8d8, 1],
+      ['DUNK L / TRI // CHOOSE STYLE WITH DIRECTION IN AIR', 0xc8c8d8, 1],
       ['TAP SHOOT IN GREEN AT RIM  //  CLOSE SHOT = LAYUP', 0xc8c8d8, 1],
       ['DEFENSE  STEAL J   BLOCK SPACE   HAND-CHECK R / L2', 0xc8c8d8, 1],
       ['REBOUND  JUMP THEN STEAL IN AIR: SPACE + J / X + SQUARE', 0xc8c8d8, 1],
