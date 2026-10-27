@@ -561,6 +561,17 @@ export class Puppet {
         m===11?(y>.25):(Math.floor(x*1.5)%2===0)
       )).commit(trim,{flat:true,line:null});
       if(m===6||m===8)fr(12,(x,y)=>x> -3.5&&x< -1.4&&y> -2.4&&y<.2).commit(trim,{flat:true,line:null});
+      if(m===1)fr(12,(x,y)=>x>4.5&&x<6.8&&y>-.2&&y<.8).commit(shade(l.shoeTrim,k),{flat:true,line:null});
+      if(m===3)fr(12,(x,y)=>x>3&&x<6&&y>.2&&y<1.4&&Math.floor(x+y)%2===0).commit(shade(l.shoeTrim,k*0.7),{flat:true,line:null});
+      if(m===4)fr(12,(x,y)=>x>-1&&x<4&&y>-.3&&y<.6&&Math.floor(x*2+y*3)%3===0).commit(shade(l.shoeTrim,k),{flat:true,line:null});
+      if(m===5)for(let sx=-2;sx<5;sx+=1.2)fr(12,(x,y)=>Math.abs(x-sx)<.4&&y>.8&&y<1.5).commit(shade(l.shoeTrim,k),{flat:true,line:null});
+      if(m===6)fr(12,(x,y)=>x>4.5&&x<6.8&&y>-.6&&y<.2).commit(shade(l.shoeTrim,k),{flat:true,line:null});
+      if(m===7)fr(12,(x,y)=>Math.abs(x-1.5)<.6&&y>-.8&&y<.2).commit(shade(l.shoeTrim,k),{flat:true,line:null});
+      if(m===8)fr(12,(x,y)=>Math.abs(y-.2)<.3&&x>-2&&x<5).commit(shade(l.shoeTrim,k),{flat:true,line:null});
+      if(m===9)fr(12,(x,y)=>x>4&&x<6&&y>-.8&&y<-.2).commit(shade(l.shoeTrim,k),{flat:true,line:null});
+      if(m===10)fr(12,(x,y)=>x>3&&x<6&&y>-.9&&y<-.3).commit(shade(l.shoeTrim,k),{flat:true,line:null});
+      if(m===11)fr(12,(x,y)=>x>-2&&x<6.8&&y>.9&&y<1.6).commit(shade(l.shoeTrim,k*0.5),{flat:true,line:null});
+      if(m===12)fr(12,(x,y)=>x>0&&x<3&&y>-.4&&y<.8).commit(shade(l.shoeTrim,k),{flat:true,line:null});
     }else if(l.shoeStyle==='dunk')fr(12,(x,y)=>x>4&&x<7&&y>-.9&&y<.4).commit(shade(l.shoeTrim,k),{line:null});
     else if(l.shoeStyle==='supra')b.begin().cap(L.kn[0],L.kn[1],ax,ay,3.2*u,3*u,.7,.78,false,false).commit(shade(l.shoeTrim,k),{line:null});
     fr(12, (x, y) => y > 1.5 && y <= (kind === 'boot' ? 3.3 : kind === 'runner' ? 3 : kind === 'cortez' ? 2 : 2.5) && x >= -3.6 && x <= 7.4).commit(so, { flat: false });
@@ -676,7 +687,7 @@ export class Puppet {
     }
     // Keep the hem over the waistband: follow the thighs without sliding
     // the whole shirt forward and exposing the rear of the trousers.
-    const bend=clamp(pantFollow*flex+this.cloth.x*.4*flex,-2.4,2.4);
+    const bend=clamp(pantFollow*flex*0.5+this.cloth.x*.2*flex,-1.2,1.2);
     const kneeLift=clamp((this.cur.fFy-this.cur.bFy)/36,-1,1);
     const hemTilt=clamp(kneeLift*.95+stride*.65,-1.35,1.35)*flex;
     // Wider front/back and narrower profile, without collapsing at a turn.
@@ -692,9 +703,9 @@ export class Puppet {
     };
     const hemAt=(x:number)=>{
       const rear=1-smooth(clamp((x+cut.waist*.3)/(cut.waist*.65),0,1));
-      const curved=hemY-.14*flex*x*x/Math.max(1,cut.waist)+Math.sin(x*.42+this.t*4)*.12*flex;
-      const frontOverlap = tp === 'bigTee' ? 5.0 : tp === 'hoodie' ? 4.5 : tp === 'puffer' ? 4.5 : 4.0;
-      const rearOverlap = tp === 'bigTee' ? 4.0 : tp === 'hoodie' ? 3.6 : tp === 'puffer' ? 3.6 : 3.5;
+      const curved=hemY-.04*flex*x*x/Math.max(1,cut.waist);
+      const frontOverlap = tp === 'bigTee' ? 6.0 : tp === 'hoodie' ? 5.5 : tp === 'puffer' ? 5.5 : 5.0;
+      const rearOverlap = tp === 'bigTee' ? 4.0 : tp === 'hoodie' ? 3.5 : tp === 'puffer' ? 3.5 : 3.5;
       return Math.max(curved, rear * rearOverlap + (1 - rear) * frontOverlap); // shirt always overlaps the trouser waistband
     };
     const cloth = (x: number, y: number) => y >= shoulderY && y <= hemAt(x) && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
@@ -705,9 +716,9 @@ export class Puppet {
       const v=clamp((y-shoulderY)/Math.max(1,hemY-shoulderY),0,1);
       const lower=smooth(clamp((v-.38)/.62,0,1));
       const front=smooth(clamp((x+cut.waist)/(cut.waist*2),0,1));
-      const center=bend*lower*(.15+.85*front)+Math.sin(v*Math.PI)*clamp(this.cur.lean,-.7,.7)*.8;
+      const center=bend*lower*(.15+.85*front)*0.5+Math.sin(v*Math.PI)*clamp(this.cur.lean,-.7,.7)*.4;
       x-=center;
-      const tilt=hemTilt*x/Math.max(1,cut.waist)*lower;
+      const tilt=hemTilt*x/Math.max(1,cut.waist)*lower*0.5;
       y-=x<0?Math.max(0,tilt):tilt;
       // Soft compression above the waistband rounds the lower corners.
       y+=crouch*flex*Math.sin(Math.max(0,x)*.24)*.4*lower;
