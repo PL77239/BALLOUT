@@ -32,3 +32,11 @@ This remains procedural pixel art. The controlled review GIF is rendered through
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE=... node scripts/check-famous-browser.cjs`: all eight scenes, six rivals, soundtrack manifests, no browser exceptions. Then `python scripts/render-famous-preview.py` creates the contact sheet.
 - `node scripts/capture-character-study.cjs && python scripts/render-character-study.py`: controlled character study.
 - Gameplay, falls, turn rendering, ambient events, network protocol and Pages asset checks are run alongside the above. Actual WebRTC across different networks remains unverified.
+
+## Ambient and rim-reward follow-up
+
+The hem now has a curved, asymmetric lower boundary with a moving fold instead of a horizontal cut. Spectators use shuffled facing directions, modest standing-position offsets, and quieter clothing cuts. Sitting positions keep their seat anchors. All event people now use the same Puppet as players and spectators, with separate bicycle/skateboard/dog props, and destroy their textures when the court is replaced. This applies to the original courts as well as the new ones.
+
+New-court vegetation uses different proportions and palettes: broad village trees, taller Rucker crowns, warmer Dyckman foliage, narrow tropical Tenement trees, spreading Mosswood oaks, and the Belgrade canopy. Extra static props accompany quiet live layers: wind-driven Venice palm fronds and sea glints, Pigalle/Tenement laundry, Rucker/Dyckman pennants and leaves, Mosswood falling leaves, and a waving Kalemegdan flag. The previous maps retain their bespoke moving scenery.
+
+A made perfect shot with no rim contact triggers water for the SPLASH tag, or fluttering green banknotes for the other green tags. The effect originates at the rim; release, misses, ordinary makes, rimmed makes and dunks do not trigger this clean-shot reward. The host transmits the chosen style to the guest. `check-bis.cjs` checks the score gate, `check-rim-reward.cjs` checks particles and expiry, and the online browser test checks that the guest receives the effect. `docs/rim-rewards.gif` captures score-triggered effects in the game.

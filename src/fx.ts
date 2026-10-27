@@ -4,7 +4,7 @@ import { label } from './font';
 
 interface P {
   x: number; y: number; vx: number; vy: number; life: number; max: number;
-  size: number; grow: number; color: number; add: boolean; grav: number; kind: 0 | 1 | 2; drag: number;
+  size: number; grow: number; color: number; add: boolean; grav: number; kind: 0 | 1 | 2 | 3 | 4 | 5; drag: number;
 }
 
 const hex = (s: string) => parseInt(s.replace('#', ''), 16);
@@ -49,6 +49,18 @@ export class FX {
     this.add({ x, y, life, max: life, size, grow, color, add: true, kind: 2 });
   }
 
+  rimReward(x:number,y:number,style:'splash'|'money'){
+    const money=style==='money';
+    this.ring(x,y,money?0x81d874:0x77d9f2,12,95,.28);
+    if(!money)this.add({x,y,life:.38,max:.38,size:15,grow:95,color:0x49afd9,kind:5});
+    for(let i=0;i<(money?12:24);i++){
+      const life=money?.85+Math.random()*.3:.45+Math.random()*.25;
+      this.add({x:x+(Math.random()-.5)*24,y,life,max:life,
+        vx:(Math.random()-.5)*(money?190:270),vy:-(money?130:170)-Math.random()*140,
+        grav:money?380:650,drag:money?.6:0,kind:money?3:4,color:money?0x4d9e59:0x71cfe9});
+    }
+  }
+
   flame(x: number, y: number, n = 1, spread = 8) {
     for (let i = 0; i < n; i++) {
       const l = 0.28 + Math.random() * 0.3;
@@ -88,7 +100,24 @@ export class FX {
       p.size = Math.max(PX, p.size + p.grow * dt);
       const k = p.life / p.max;
       const g = p.add ? ga : gn;
-      if (p.kind === 0) {
+      if(p.kind===3){
+        // Whole-pixel bills flutter edge-on and open again as they descend.
+        const w=Math.max(2,Math.round(6*Math.abs(Math.cos((p.max-p.life)*13+p.vx)))),h=3;
+        const x=snap(p.x),y=snap(p.y);g.fillStyle(0x244c37,k>.2?1:k*5);g.fillRect(x-PX,y-PX,(w+2)*PX,(h+2)*PX);
+        g.fillStyle(0x64b779,k>.2?1:k*5);g.fillRect(x,y,w*PX,h*PX);
+        g.fillStyle(0xb7df9d,k>.2?1:k*5);g.fillRect(x+Math.floor(w/2)*PX,y,PX,h*PX);
+        if(w>3){g.fillRect(x,y+PX,PX,PX);g.fillRect(x+(w-1)*PX,y+PX,PX,PX);}
+      }else if(p.kind===5){
+        // A blue crown of water opens around the rim before breaking into drops.
+        for(let j=0;j<15;j++){
+          const a=j/14*Math.PI,xx=p.x+Math.cos(a)*p.size,yy=p.y-Math.sin(a)*p.size*(.65+(j%3)*.25);
+          g.fillStyle(p.color,k);g.fillRect(snap(xx),snap(yy),2*PX,2*PX);
+          if(j%2===0){g.fillStyle(0xb7f0fb,k);g.fillRect(snap(xx),snap(yy)-PX,PX,PX);}
+        }
+      }else if(p.kind===4){
+        g.fillStyle(p.color,k>.25?1:k*4);g.fillRect(snap(p.x),snap(p.y),2*PX,3*PX);
+        g.fillStyle(0xe0fbff,k>.25?1:k*4);g.fillRect(snap(p.x),snap(p.y),PX,PX);
+      }else if (p.kind === 0) {
         const s = Math.max(1, Math.round(p.size / PX / 1.6));
         g.fillStyle(p.color, k > 0.5 ? 0.85 : 0.5);
         g.fillRect(snap(p.x), snap(p.y), s * PX, s * PX);

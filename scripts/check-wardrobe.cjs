@@ -53,8 +53,8 @@ for(const top of tops){
 const {hairUnderHeadwear}=load('loadout');
 for(const head of ['fullcap','backcap','fitted','beanie','bucket','durag'])for(const hair of ['afro','hightop']){
  assert.equal(hairUnderHeadwear(hair,head),'fade');
- const equipped={...base,head,hair};const p=new Puppet(scene,equipped);p.paint();
- const tucked=new Puppet(scene,{...equipped,hair:'fade'});tucked.paint();
+ const equipped={...base,head,hair};const p=new Puppet(scene,equipped);p.t=0;p.paint();
+ const tucked=new Puppet(scene,{...equipped,hair:'fade'});tucked.t=0;tucked.paint();
  assert.deepEqual(p.pix.px,tucked.pix.px,`${hair} must tuck under ${head} in all render layers`);
  assert.equal(p.loadout.hair,hair,'equipped hairstyle is preserved');
 }

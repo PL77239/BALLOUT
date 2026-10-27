@@ -31,7 +31,7 @@ const {Puppet}=load('puppet');
 for(const lean of [-.7,-.38,.25,.6]){
  const masks=[];
  for(const facing of [1,-1]){
-  const p=new Puppet(scene,look);p.pix.clear();p.brush.reset();
+  const p=new Puppet(scene,look);p.t=0;p.pix.clear();p.brush.reset();
   p.torsoPiece(p.brush,[64,80],[64+Math.sin(lean)*22*facing,80-Math.cos(lean)*22],look,0x996644,1,lean,facing,facing);
   masks.push(p.pix);
  }
@@ -48,15 +48,21 @@ for(const opts of [{scale:.62,w:64,h:58},{scale:.46,w:64,h:58},{scale:1.5,w:180,
   for(let y=0;y<p.pix.h;y++)assert(!p.pix.alpha(0,y)&&!p.pix.alpha(p.pix.w-1,y),'silhouette stays inside NPC and locker textures');
  }
 }
-const game=Object.create(GameScene.prototype),scorer=make(),rival=make(),pops=[],rings=[];
+const game=Object.create(GameScene.prototype),scorer=make(),rival=make(),pops=[],rings=[],rewards=[];
 scorer.hasBall=true;scorer.x=T.hoop.x-180;rival.x=scorer.x+70;
 Object.assign(game,{cfg:{mode:'2p'},phase:'live',hoopers:[scorer,rival],buckets:[0,0],style:[0,0],rand:()=>0,needsClear:false,cleared:true,
- ball:{setHeld:noop,launch:noop},fx:{ring:(...x)=>rings.push(x),sparks:noop,popup:noop},court:{cheer:noop},popupAt:(h,t)=>pops.push(t),hitstop:noop,slowmo:noop,shake:noop,afterPoint:noop});
+ ball:{setHeld:noop,launch:noop},fx:{rimReward:(...x)=>rewards.push(x),ring:(...x)=>rings.push(x),sparks:noop,popup:noop},court:{cheer:noop},popupAt:(h,t)=>pops.push(t),hitstop:noop,slowmo:noop,shake:noop,afterPoint:noop});
 game.launchShot(scorer,{perfect:true,err:0,green:.04,m:.8,e:0,grade:'green',willMake:true});
-assert(!pops.some(x=>x==='PERFECT!'),'no score celebration at release');
+assert(!pops.some(x=>x==='PERFECT!'),'no score celebration at release');assert.equal(rewards.length,0,'no rim reward before a basket');
 game.onScore({shooter:scorer,perfect:true,pts:1,dunk:false,touchedRim:false},true);
 assert(pops.includes('PERFECT!'),'green celebration follows the scored shot');assert(rings.length>=2,'score includes the green burst');
 assert.equal(scorer.celeb,3);
+assert.deepEqual(rewards[0],[T.hoop.x,T.court.floorY-T.hoop.rimH,'money']);
+const made={shooter:scorer,perfect:true,pts:1,dunk:false,touchedRim:false};
+game.rand=()=>4.1/7;
+game.onScore({...made,touchedRim:true},false);assert.equal(rewards.length,1,'rattled green does not get a clean-shot reward');
+game.onScore({...made,perfect:false},true);assert.equal(rewards.length,1,'ordinary make does not get a green reward');
+game.onScore(made,true);assert.equal(rewards.at(-1)[2],'splash','SPLASH tag selects water');
 // A made shot enters the point pause. The pose must still animate there;
 // previously the simulation returned before any celebration could advance.
 Object.assign(game,{phase:'point',pointCountdown:2,pointCountShown:-1,slowT:0,hitT:0,timeScale:1,time_:0,tick:0,ctrls:[null,null],brains:[null,null],latch:[{},{}],showBanner:noop});

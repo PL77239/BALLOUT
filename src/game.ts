@@ -250,7 +250,7 @@ export class GameScene extends Phaser.Scene {
     if (this.phase !== 'live') return;
     const h = info.shooter, o = this.opp(h);
     h.score += info.pts;
-    if(info.perfect) this.perfectMoment(h,h.meterInfo.contest>0.3);
+    if(info.perfect) this.perfectMoment(h,h.meterInfo.contest>0.3,clean && !info.dunk && !info.touchedRim);
     this.buckets[h.id] += info.pts;
     h.gainHeat(14 + (info.perfect ? 10 : 0));
     if (o.fireOn) { o.fireT = 0; o.heat = 0; this.popupAt(o, 'COOLED OFF', '#9fe8ff', 22); }
@@ -346,12 +346,14 @@ export class GameScene extends Phaser.Scene {
     this.fx.sparks(h.x,h.sy-h.h-130,12,0xb1ffdb,200);
   }
 
-  private perfectMoment(h: Hooper, contested = false) {
+  private perfectMoment(h: Hooper, contested = false, cleanShot = true) {
     const tag = GameScene.PERFECT_TAGS[Math.floor(this.rand() * GameScene.PERFECT_TAGS.length)];
     const text = contested ? `${tag}!  (CONTESTED)` : `${tag}!`;
     this.popupAt(h, text, '#4dff88', 44);
     this.greenSpark(h);
-    if(this.cfg.netRole==='host')net?.send({type:'event',kind:'green',id:h.id});
+    const reward=cleanShot?(tag.includes('SPLASH')?'splash':'money'):null;
+    if(reward)this.fx.rimReward(T.hoop.x,T.court.floorY-T.hoop.rimH,reward);
+    if(this.cfg.netRole==='host')net?.send({type:'event',kind:'green',id:h.id,reward});
     this.hitstop(0.05);
     this.slowmo(0.55, 0.18);
   }
@@ -767,7 +769,7 @@ export class GameScene extends Phaser.Scene {
     };
     if(this.cfg.netRole==='guest') {
       session.onState=s=>this.receiveNetworkState(s);
-      session.onEvent=e=>{if(e.kind==='green'&&(e.id===0||e.id===1))this.greenSpark(this.hoopers[e.id]);if(e.kind==='sound'&&['rim','board','bounce'].includes(e.sound))(sfx as any)[e.sound]();if(e.kind==='banner')this.showBanner(String(e.main).slice(0,100),String(e.sub).slice(0,150),1.2);if(e.kind==='popup'&&(e.id===0||e.id===1))this.fx.popup(this.hoopers[e.id].x,this.hoopers[e.id].sy-205,String(e.text).slice(0,80),'#ffe45e',24);};
+      session.onEvent=e=>{if(e.kind==='green'&&(e.id===0||e.id===1)){this.greenSpark(this.hoopers[e.id]);if(e.reward==='splash'||e.reward==='money')this.fx.rimReward(T.hoop.x,T.court.floorY-T.hoop.rimH,e.reward);}if(e.kind==='sound'&&['rim','board','bounce'].includes(e.sound))(sfx as any)[e.sound]();if(e.kind==='banner')this.showBanner(String(e.main).slice(0,100),String(e.sub).slice(0,150),1.2);if(e.kind==='popup'&&(e.id===0||e.id===1))this.fx.popup(this.hoopers[e.id].x,this.hoopers[e.id].sy-205,String(e.text).slice(0,80),'#ffe45e',24);};
       if(session.latest)this.receiveNetworkState(session.latest);
       session.send({type:'ready'});
       this.showBanner('YOU ARE P2','WAITING FOR HOST',1);

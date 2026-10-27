@@ -39,11 +39,11 @@ export default class Peer extends Emitter {
   assert(Math.abs(zA-before)>10,'guest movement reaches host physics');assert(Math.abs(zA-zB)<20,'guest converges to host');
   assert.deepEqual(await a.evaluate(()=>window.__g.hoopers.map(h=>h.isCpu)),[false,false]);
   // A green score must also deliver its short visual reward to the guest.
-  await b.evaluate(()=>{const fx=window.__g.fx,ring=fx.ring.bind(fx);window.__greenPulse=false;fx.ring=(...args)=>{if(args[2]===0x66ffb0)window.__greenPulse=true;return ring(...args);};});
+  await b.evaluate(()=>{const fx=window.__g.fx,ring=fx.ring.bind(fx);window.__greenPulse=false;window.__rimReward=null;const reward=fx.rimReward.bind(fx);fx.rimReward=(...args)=>{window.__rimReward=args[2];return reward(...args);};fx.ring=(...args)=>{if(args[2]===0x66ffb0)window.__greenPulse=true;return ring(...args);};});
   // Force a real winning bucket through the host score handler; guest must see it.
   await a.evaluate(()=>{const g=window.__g;g.hoopers[0].score=g.cfg.target-1;g.onScore({shooter:g.hoopers[0],pts:1,perfect:true,dunk:false,touchedRim:false},true);});
   await b.waitForFunction(()=>window.__g.phase==='over'&&window.__g.hoopers[0].score>=window.__g.cfg.target);
-  await b.waitForFunction(()=>window.__greenPulse);
+  await b.waitForFunction(()=>window.__greenPulse && ['money','splash'].includes(window.__rimReward));
   assert.equal(await a.evaluate(()=>window.__g.result),null,'online match pays no campaign cash');
   await b.click('button:has-text("LEAVE ROOM")');
   await a.waitForFunction(()=>document.body.textContent.includes('Opponent left')||document.body.textContent.includes('Connection closed'));

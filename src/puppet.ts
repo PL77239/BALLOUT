@@ -628,7 +628,8 @@ export class Puppet {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
       return (t < 0.72 ? lerp(cut.waist, cut.chest, smooth(t / 0.72)) : lerp(cut.chest, cut.shoulder, smooth((t - 0.72) / 0.28))) * breadth;
     };
-    const cloth = (x: number, y: number) => y >= shoulderY && y <= hemY && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
+    const hemAt=(x:number)=>hemY-.18*flex*x*x/Math.max(1,cut.waist)+flex*(Math.sin(x*.4+this.t*5)*.3+this.cloth.x*x*.075);
+    const cloth = (x: number, y: number) => y >= shoulderY && y <= hemAt(x) && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
       && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
     // Anchor the collar; let the hem lag slightly behind acceleration/landing.
     // Prints and seams use the same deformation as the cloth silhouette.
@@ -648,7 +649,7 @@ export class Puppet {
       const fold=Math.abs(along-(hemY-3)-lx*.32)<.5 && Math.abs(lx)<widthAt(along)-1;
       return shade(l.topColor,fold?.87:lx < -widthAt(-height*.5)*.55 ? .78 : lx > 3 ? 1.08 : 1);
     });
-    frame((x,y) => y > hemY - 1.2).commit(tp === 'hoodie' ? l.topTrim : shade(l.topColor,.72), {flat:true,line:null});
+    frame((x,y) => y > hemAt(x) - .8).commit(tp === 'hoodie' ? l.topTrim : shade(l.topColor,.83), {flat:true,line:null});
     if (tp === 'jersey' || tp === 'tank') {
       frame((x,y) => Math.abs(x) > widthAt(y)-1.3 || y < shoulderY + 1.1).commit(l.topTrim,{flat:true,line:null});
     }

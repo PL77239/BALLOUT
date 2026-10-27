@@ -14,6 +14,7 @@ interface Fan {
   cheer: number;
   look: number;
   nextLook: number;
+  view: number;
 }
 
 /** Background spectators: small puppets that bob, look around and jump when somebody scores. */
@@ -27,13 +28,17 @@ export class Crowd {
   constructor(scene: Phaser.Scene, spots: Spot[], look: RegionId, id: string) {
     void REGIONS;
     spots.forEach((s, i) => {
-      const l = rivalFor(look);
+      const l = {...rivalFor(look),topTexture:undefined,bottomTexture:undefined,chain:'none' as const};
+      // At background scale favour quiet, readable cuts over bulky layers.
+      if(i%3===0){l.top='tee';l.bottom='jeans';}
+      if(i%3===1){l.top='hoodie';l.bottom='joggers';}
       const sc = s.kind === 'kid' ? 0.43 : 0.55;
       const p = new Puppet(scene, l, { scale: sc, w: 64, h: 58, key: `fan_${id}_${i}` });
-      p.root.setPosition(s.x * PX, s.y * PX).setDepth(s.y * PX);
-      p.setFacing(s.face);
+      const spot={...s,x:s.x+(s.kind==='sit'?0:(Math.random()-.5)*8),y:s.y+(s.kind==='sit'?0:Math.floor(Math.random()*3)-1)};
+      p.root.setPosition(spot.x * PX, spot.y * PX).setDepth(spot.y * PX);
+      p.setFacing(Math.random()<.5?1:-1);
       this.objs.push(p.root);
-      const f: Fan = { p, spot: s, phase: Math.random() * 6, rate: 0.7 + Math.random() * 0.6, acc: 0, idle: 0, cheer: 0, look: 0, nextLook: 1 + Math.random() * 4 };
+      const f: Fan = { p, spot, view:s.kind==='sit'?.08:[.05,.12,.2,.55,.9][Math.floor(Math.random()*5)],phase: Math.random() * 6, rate: 0.7 + Math.random() * 0.6, acc: 0, idle: 0, cheer: 0, look: 0, nextLook: 1 + Math.random() * 4 };
       this.fans.push(f);
       p.snap(this.poseFor(f, 0));
     });
@@ -69,7 +74,7 @@ export class Crowd {
     }
     // City spectators face the court/camera rather than duplicating the players'
     // side profile. Alternate relaxed conversation and hands-in-lap gestures.
-    r.turn = .12 + Math.sin(t*.35+f.phase)*.08;
+    r.turn = f.view + Math.sin(t*.35+f.phase)*.035;
     if(s.kind==='sit' && up===0){r.fHx=20;r.bHx=-18;r.fHy=r.hipY+12;r.bHy=r.hipY+14;}
     if(s.kind==='stand' && up===0 && Math.sin(f.phase)>0){
       r.fHx=24;r.fHy=r.hipY+42+Math.sin(t*1.4+f.phase)*4;

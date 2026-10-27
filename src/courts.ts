@@ -49,6 +49,7 @@ export interface CourtScene {
 export class Live {
   objs: Phaser.GameObjects.GameObject[] = [];
   ticks: ((t: number, dt: number) => void)[] = [];
+  disposers: (()=>void)[] = [];
   private n = 0;
   constructor(public scene: Phaser.Scene, public c: Scene2D, public id: string) {}
 
@@ -73,6 +74,7 @@ export class Live {
     return g;
   }
   tick(fn: (t: number, dt: number) => void) { this.ticks.push(fn); }
+  onDestroy(fn:()=>void){this.disposers.push(fn);}
 
   /** Something that drives across the backdrop and wraps around. */
   mover(key: string, w: number, y: number, speed: number, depth: number, gap = 120, o: { tint?: number; flip?: boolean; x0?: number } = {}) {
@@ -255,7 +257,7 @@ export function buildCourt(scene: Phaser.Scene, id: CourtId): CourtScene {
     spots: c.spots,
     boomX: (bx + 5) * PX,
     update: (t, dt) => { live.ticks.forEach((f) => f(t, dt)); crowd.update(t, dt); },
-    destroy: () => { live.objs.forEach((o) => o.destroy()); objs.forEach((o) => o.destroy()); crowd.destroy(); },
+    destroy: () => { live.disposers.forEach(f=>f());live.objs.forEach((o) => o.destroy()); objs.forEach((o) => o.destroy()); crowd.destroy(); },
     tintAt,
     drawNet,
     cheer: (p) => crowd.cheer(p),

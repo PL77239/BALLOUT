@@ -1,5 +1,7 @@
 import type { CourtId, Live } from './courts';
 import { GW, PX, Pix } from './pixel';
+import { Puppet, restRig } from './puppet';
+import { rivalFor, type RegionId } from './loadout';
 
 type Cameo = { kind: 'bmx'|'courier'|'skate'|'dance'|'dog'; color: number; accent: number };
 // Small neighbourhood cameos, deliberately behind play and without collision or sound.
@@ -21,47 +23,37 @@ export const COURT_CAMEOS: Record<CourtId,Cameo[]> = {
   marseille:[{kind:'skate',color:0x52b9dc,accent:0xf0f0df}],
   warsaw:[{kind:'courier',color:0x252b36,accent:0xe4bb32},{kind:'skate',color:0x596242,accent:0xc7c1aa}],
 };
+/** Props only; the person is rendered by the same Puppet as players and fans. */
 export function paintCameo(p:Pix,c:Cameo,phase:number) {
-  // Larger connected shapes and consistent highlights make cameos read as
-  // characters at court scale, not as thin stick figures.
-  const dark=0x161722,skin=0x9b6a4c,light=0xd59a73,step=phase?2:-2;
-  const wheel=(x:number)=>{
-    for(let i=0;i<32;i++){const a=i*Math.PI/16;p.set(Math.round(x+5*Math.cos(a)),Math.round(26+5*Math.sin(a)),dark);}
-    p.line(x-3,26,x+3,26,0x99a7ae);p.line(x,23,x,29,0x99a7ae);
-  };
-  const cycling=c.kind==='bmx'||c.kind==='courier';
-  if(cycling){wheel(7);wheel(31);p.line(7,26,17,17,dark);p.line(17,17,24,26,c.accent);p.line(7,26,24,26,c.accent);p.line(24,26,31,16,c.accent);p.line(31,16,31,26,dark);p.line(28,15,34,15,dark);}
-  p.rect(12,3,8,7,dark);p.rect(13,3,7,6,skin);p.rect(17,5,2,2,light);p.set(18,5,dark);
-  p.rect(12,2,8,3,c.color);p.rect(18,3,3,1,c.accent);
-  p.rect(11,10,10,9,dark);p.rect(12,10,8,8,c.color);p.rect(13,11,2,6,c.accent);
-  if(cycling){
-    p.line(19,11,26,14,skin);p.line(26,14,30,15,light);
-    p.line(15,18,20+step,23,dark);p.line(20+step,23,17,27,dark);p.rect(15,26,5,2,c.accent);
-    p.line(13,18,14-step,22,dark);p.line(14-step,22,21,25,dark);
-    if(c.kind==='courier'){p.rect(7,9,6,9,dark);p.rect(8,10,4,6,c.accent);}
-  }else if(c.kind==='dance'){
-    p.line(12,11,7,8+step,skin);p.line(19,11,25,7-step,skin);
-    p.line(14,19,10+step,28,dark);p.line(18,19,23-step,28,dark);
-    p.rect(8+step,27,5,2,c.accent);p.rect(21-step,27,5,2,c.accent);
-    p.rect(4,24,6,5,dark);p.rect(5,25,2,2,c.accent);
-  }else{
-    p.line(14,19,12+step,28,dark);p.line(18,19,22-step,28,dark);p.line(19,11,25,17,skin);
-    p.rect(10+step,27,5,2,c.accent);p.rect(20-step,27,5,2,c.accent);
-    if(c.kind==='skate'){p.rect(8,29,19,2,c.accent);p.set(11,31,dark);p.set(25,31,dark);}
-    else{p.line(25,17,31,24,0x918d81);p.rect(27,23,9,5,dark);p.rect(28,23,8,4,c.accent);p.rect(34,21,4,4,c.accent);p.line(28,27,28+step,30,dark);p.line(34,27,34-step,30,dark);}
-  }
+ const dark=0x252935,step=phase?2:-2;
+ if(c.kind==='bmx'||c.kind==='courier'){
+  for(const x of [14,45]){for(let a=0;a<40;a++){const t=a*Math.PI/20;p.set(x+Math.round(Math.cos(t)*7),49+Math.round(Math.sin(t)*7),dark);}p.line(x-5,49,x+5,49,0xa1aaa7);p.line(x,44,x,54,0xa1aaa7);}
+  p.line(14,49,26,37,c.accent);p.line(26,37,34,49,c.accent);p.line(14,49,34,49,c.accent);p.line(34,49,45,36,c.accent);p.line(45,36,45,49,dark);p.line(41,35,48,35,dark);p.rect(24,35,7,2,dark);
+ }else if(c.kind==='skate'){p.rect(17,55,31,2,c.accent);p.rect(21,57,4,3,dark);p.rect(41,57,4,3,dark);}
+ else if(c.kind==='dance'){p.rect(5,48,10,8,dark);p.rect(7,50,3,4,c.accent);p.rect(11,50,2,4,0x6a7680);}
+ else {p.line(38,40,51,48,0x8f9281);p.rect(49,46,11,5,c.accent);p.rect(57,43,5,6,c.accent);p.rect(49+step,50,3,6,dark);p.rect(57-step,50,3,6,dark);}
 }
 export function addCourtEvents(L:Live,id:CourtId,random= Math.random) {
-  const options=COURT_CAMEOS[id];
-  const sprites=options.map(c=>[0,1].map(phase=>L.img(L.tex(40,34,p=>paintCameo(p,c,phase)),-50,125,-984).setVisible(false)));
-  let wait=18+random()*20, x=-42, active=false, direction=1, variant=0, elapsed=0;
-  L.tick((_t,dt)=>{
-    if(!active){wait-=dt;if(wait>0)return;active=true;elapsed=0;direction=random()<.5?1:-1;x=direction===1?-42:GW+2;variant=Math.min(options.length-1,Math.floor(random()*options.length));}
-    elapsed+=dt;
-    const kind=options[variant].kind;
-    x+=direction*(kind==='dance'?13:kind==='dog'?19:31)*dt;
-    const phase=Math.floor(elapsed*(kind==='dance'?5:4))%2;
-    sprites[variant].forEach((im,i)=>{im.setVisible(i===phase);im.setFlipX(direction<0);im.setPosition(Math.round(x)*PX,(125+(kind==='dance'?Math.round(Math.sin(elapsed*6)):0))*PX);});
-    if(x>GW+44||x< -46){sprites[variant].forEach(im=>im.setVisible(false));active=false;wait=35+random()*45;}
-  });
+ const options=COURT_CAMEOS[id];
+ const region:RegionId=['venice','mosswood','la'].includes(id)?'la':['pigalle','tenement','marseille'].includes(id)?'marseille':id==='kalemegdan'?'warsaw':['rucker','dyckman'].includes(id)?'harlem':id==='brooklyn'?'bk':id==='fairmount'?'philly':id==='chicago'?'chi':id as RegionId;
+ const people=options.map(c=>{
+  const l={...rivalFor(region),top:'tee' as const,topColor:c.color,topTrim:c.accent,topTexture:undefined,bottomTexture:undefined,bottom:'jeans' as const,bottomColor:0x303d50,head:'backcap' as const,headColor:c.color,chain:'none' as const};
+  const p=new Puppet(L.scene,l,{scale:.52,w:64,h:64});p.root.setDepth(-983).setVisible(false);L.onDestroy(()=>p.destroy());return p;
+ });
+ const props=options.map(c=>[0,1].map(phase=>L.img(L.tex(64,64,p=>paintCameo(p,c,phase)),-70,95,-982).setVisible(false)));
+ let wait=18+random()*20,x=-70,active=false,direction=1,variant=0,elapsed=0;
+ L.tick((_t,dt)=>{
+  if(!active){wait-=dt;if(wait>0)return;active=true;elapsed=0;direction=random()<.5?1:-1;x=direction===1?-70:GW+2;variant=Math.min(options.length-1,Math.floor(random()*options.length));}
+  elapsed+=dt;const kind=options[variant].kind,cycling=kind==='bmx'||kind==='courier';
+  x+=direction*(kind==='dance'?11:kind==='dog'?18:29)*dt;
+  const phase=Math.floor(elapsed*(kind==='dance'?5:4))%2,person=people[variant],r=restRig();
+  r.hipY=cycling?55:76;r.lean=cycling?.36:.08;r.turn=kind==='dance'?.15:1;
+  r.fFx=cycling?24:18+Math.sin(elapsed*7)*12;r.bFx=cycling?-14:-18-Math.sin(elapsed*7)*12;
+  r.fFy=cycling?8+phase*12:Math.max(0,Math.cos(elapsed*7))*5;r.bFy=cycling?20-phase*12:Math.max(0,-Math.cos(elapsed*7))*5;
+  r.fHx=cycling?43:17;r.bHx=cycling?37:-5;r.fHy=cycling?81:96+Math.sin(elapsed*7)*8;r.bHy=cycling?83:96-Math.sin(elapsed*7)*8;
+  if(kind==='dance'){r.fHx=30;r.bHx=-24;r.fHy=137+Math.sin(elapsed*5)*13;r.bHy=118-Math.sin(elapsed*5)*13;}
+  person.setFacing(direction);person.update(r,dt,{}, {f:direction*60,h:0});person.root.setVisible(true).setPosition((x+32)*PX,151*PX);
+  props[variant].forEach((im,i)=>{im.setVisible(i===phase);im.setFlipX(direction<0);im.setPosition(Math.round(x)*PX,95*PX);});
+  if(x>GW+70||x< -72){props[variant].forEach(im=>im.setVisible(false));person.root.setVisible(false);active=false;wait=35+random()*45;}
+ });
 }
