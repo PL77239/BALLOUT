@@ -15,6 +15,8 @@ export class FX {
   private gn: Phaser.GameObjects.Graphics;
   private ga: Phaser.GameObjects.Graphics;
   private parts: P[] = [];
+  private pendingNotices:{x:number;y:number;text:string;color:string;size:number;rise:number}[]=[];
+  private notices:{x:number;y:number;w:number;h:number;life:number}[]=[];
 
   constructor(private scene: Phaser.Scene) {
     this.gn = scene.add.graphics().setDepth(2000);
@@ -80,14 +82,52 @@ export class FX {
 
   /** Floating pixel-font text. `size` picks the 1x or 2x font. */
   popup(x: number, y: number, text: string, color = '#ffe45e', size = 34, rise = 46) {
-    const k = size >= 30 ? 2 : 1;
-    const t = label(this.scene, snap(x), snap(y), text, hex(color), { k, ox: 0.5, oy: 0.5, depth: 2600 });
-    t.y += PX * 4;
-    this.scene.tweens.add({ targets: t, y: y - PX * 0, duration: 120, ease: 'Back.Out' });
-    this.scene.tweens.add({ targets: t, y: y - rise, alpha: 0, delay: 560, duration: 420, onComplete: () => t.destroy() });
+    if(this.pendingNotices.length>=12)this.pendingNotices.shift();
+    const cam=this.scene.cameras?.main;
+    this.pendingNotices.push({x:x-(cam?.scrollX??0),y:y-(cam?.scrollY??0),text,color,size,rise});
+    this.flushNotices();
+  }
+
+  private flushNotices(){
+    const cam=this.scene.cameras?.main,view=cam?.worldView;
+    const left=(view?.x??0)-(cam?.scrollX??0),top=(view?.y??0)-(cam?.scrollY??0),width=view?.width??1280,height=view?.height??720;
+    for(let i=0;i<this.pendingNotices.length;){
+      const n=this.pendingNotices[i],k=n.size>=30?2:1;
+      const t=label(this.scene,0,0,n.text,hex(n.color),{k,ox:.5,oy:.5,depth:2600}).setScrollFactor(0);
+      if(t.displayWidth>width-24)t.setScale(PX);
+      const w=t.displayWidth+18,h=t.displayHeight+12;
+      const x=Math.max(left+w/2+8,Math.min(left+width-w/2-8,n.x));
+      const minY=top+70+h/2+n.rise,maxY=top+height-55-h/2;
+      const base=Math.max(minY,Math.min(maxY,n.y));let yy:number|null=null;
+      for(let j=0;j<24;j++){
+        const candidate=base+(j%2?1:-1)*Math.ceil(j/2)*(h+n.rise+12);
+        if(candidate<minY||candidate>maxY)continue;
+        if(!this.notices.some(other=>Math.abs(x-other.x)<(w+other.w)/2 && candidate+h/2>other.y-other.h/2 && candidate-n.rise-h/2<other.y+other.h/2)){yy=candidate;break;}
+      }
+      if(yy===null){t.destroy();i++;continue;}
+      this.pendingNotices.splice(i,1);
+      this.notices.push({x,y:yy-n.rise/2,w,h:h+n.rise,life:1.05});
+      t.setPosition(snap(x),snap(yy));
+      this.scene.tweens.add({targets:t,y:yy-n.rise,alpha:0,delay:520,duration:420,onComplete:()=>t.destroy()});
+    }
+  }
+
+  /** Style-specific rim impacts: power, reverse, windmill, one hand, clutch, 360. */
+  dunkReward(x:number,y:number,style:number){
+    const colors=[0xffb04c,0xb49bff,0xff674a,0x8cddff,0x73f0d8,0xe794ff];
+    const color=colors[style]??colors[0];
+    this.ring(x,y,color,14,240,.35);
+    if(style===0){this.ring(x,y+15,0xffe4a3,8,380,.24);this.sparks(x,y,26,color,360);}
+    else if(style===1){this.ring(x,y,color,25,-45,.3);this.sparks(x,y,18,color,240);}
+    else if(style===2){for(let i=0;i<32;i++){const a=i/32*Math.PI*2;this.add({x:x+Math.cos(a)*25,y:y+Math.sin(a)*20,vx:Math.cos(a+.9)*190,vy:Math.sin(a+.9)*190,life:.45,max:.45,color,kind:1,add:true,drag:2});}}
+    else if(style===3){this.sparks(x,y,20,0xbbeaff,400);this.ring(x,y,0xffffff,6,160,.22);}
+    else if(style===4){this.ring(x-20,y,color,12,160,.4);this.ring(x+20,y,0xffffff,12,160,.4);this.sparks(x,y,18,color,250);}
+    else {for(let i=0;i<3;i++)this.ring(x,y,[color,0xffffff,0x80baff][i],8+i*20,210-i*35,.45);this.sparks(x,y,30,color,300);}
   }
 
   update(dt: number) {
+    this.notices=(this.notices??[]).filter(n=>(n.life-=dt)>0);
+    if(this.pendingNotices?.length)this.flushNotices();
     const gn = this.gn, ga = this.ga;
     gn.clear(); ga.clear();
     for (let i = this.parts.length - 1; i >= 0; i--) {

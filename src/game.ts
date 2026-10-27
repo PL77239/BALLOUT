@@ -1,3 +1,4 @@
+import { DUNK_NAMES } from './dunk_controls';
 import { awardMatch, careerStats, careerBonuses, RANKS, type Performance } from './career';
 import { music } from './music';
 import { net, closeNet } from './net';
@@ -207,7 +208,7 @@ export class GameScene extends Phaser.Scene {
   popupAt(h: Hooper, text: string, color = '#ffe45e', size = 28) {
     if(this.cfg.netRole==='host')net?.send({type:'event',kind:'popup',id:h.id,text,color,size});
     for (const [re, pay] of STYLE_PAY) if (re.test(text)) { this.style[h.id] += pay; break; }
-    this.fx.popup(h.x + (Math.random() - 0.5) * 30, h.sy - h.h - 205, text, color, size);
+    this.fx.popup(h.x, h.sy - h.h - 205, text, color, size);
   }
 
   slowmo(scale: number, dur: number) { this.timeScale = scale; this.slowT = dur; }
@@ -387,6 +388,8 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     sfx.dunk();
+    this.fx.dunkReward(T.hoop.x,T.court.floorY-T.hoop.rimH,h.dunkStyle);
+    if(this.cfg.netRole==='host')net?.send({type:'event',kind:'dunkFx',style:h.dunkStyle});
     const posterized = Math.abs(o.x - h.x) < 120 && Math.abs(o.z - h.z) < 50 && o.act !== 'fall';
     h.hasBall = false;
     const b = this.ball;
@@ -403,7 +406,8 @@ export class GameScene extends Phaser.Scene {
     if (posterized) {
       this.popupAt(h, h.dunkStyle===2 ? 'WINDMILL POSTER!' : 'POSTERIZED!', '#ff4fa0', 40);
       o.knock('fall', -o.facing, 220); h.gainHeat(10);
-    } else if (h.dunkStyle===2) this.popupAt(h, 'WINDMILL!', '#ff4fa0', 36);
+    } else if(h.dunkStyle>=4)this.popupAt(h,DUNK_NAMES[h.dunkStyle]+'!', '#a1dfff',34);
+    else if (h.dunkStyle===2) this.popupAt(h, 'WINDMILL!', '#ff4fa0', 36);
     else if(h.dunkStyle===1) this.popupAt(h,'REVERSE!', '#ffcd6b',32);
     else if(h.dunkStyle===3) this.popupAt(h,'ONE HAND!', '#ffcd6b',32);
     this.punch(hp.x - 60, T.court.floorY - 160);
@@ -754,7 +758,7 @@ export class GameScene extends Phaser.Scene {
       ['J / SQUARE + DIRECTION: CROSS // BACK: STEPBACK', 0xc8c8d8, 1],
       ['NEUTRAL: TAP J/SQR = CROSS // HOLD = HESITATION', 0xc8c8d8, 1],
       ['K / CIRCLE: SPIN // L / TRI FAR: BEHIND BACK', 0xc8c8d8, 1],
-      ['DUNK L / TRI // CHOOSE STYLE WITH DIRECTION IN AIR', 0xc8c8d8, 1],
+      ['AIR DUNK: UP>DOWN CLUTCH // BACK>UP>FWD 360', 0xc8c8d8, 1],
       ['TAP SHOOT IN GREEN AT RIM  //  CLOSE SHOT = LAYUP', 0xc8c8d8, 1],
       ['DEFENSE  STEAL J   BLOCK SPACE   HAND-CHECK R / L2', 0xc8c8d8, 1],
       ['REBOUND  JUMP THEN STEAL IN AIR: SPACE + J / X + SQUARE', 0xc8c8d8, 1],
@@ -780,7 +784,7 @@ export class GameScene extends Phaser.Scene {
     };
     if(this.cfg.netRole==='guest') {
       session.onState=s=>this.receiveNetworkState(s);
-      session.onEvent=e=>{if(e.kind==='green'&&(e.id===0||e.id===1)){this.greenSpark(this.hoopers[e.id]);if(e.reward==='splash'||e.reward==='money')this.fx.rimReward(T.hoop.x,T.court.floorY-T.hoop.rimH,e.reward);}if(e.kind==='sound'&&['rim','board','bounce'].includes(e.sound))(sfx as any)[e.sound]();if(e.kind==='banner')this.showBanner(String(e.main).slice(0,100),String(e.sub).slice(0,150),1.2);if(e.kind==='popup'&&(e.id===0||e.id===1))this.fx.popup(this.hoopers[e.id].x,this.hoopers[e.id].sy-205,String(e.text).slice(0,80),'#ffe45e',24);};
+      session.onEvent=e=>{if(e.kind==='dunkFx'&&Number.isInteger(e.style)&&e.style>=0&&e.style<=5)this.fx.dunkReward(T.hoop.x,T.court.floorY-T.hoop.rimH,e.style);if(e.kind==='green'&&(e.id===0||e.id===1)){this.greenSpark(this.hoopers[e.id]);if(e.reward==='splash'||e.reward==='money')this.fx.rimReward(T.hoop.x,T.court.floorY-T.hoop.rimH,e.reward);}if(e.kind==='sound'&&['rim','board','bounce'].includes(e.sound))(sfx as any)[e.sound]();if(e.kind==='banner')this.showBanner(String(e.main).slice(0,100),String(e.sub).slice(0,150),1.2);if(e.kind==='popup'&&(e.id===0||e.id===1))this.fx.popup(this.hoopers[e.id].x,this.hoopers[e.id].sy-this.hoopers[e.id].h-205,String(e.text).slice(0,80),/^#[0-9a-f]{6}$/i.test(e.color)?e.color:'#ffe45e',Number.isFinite(e.size)?Math.max(16,Math.min(44,e.size)):24);};
       if(session.latest)this.receiveNetworkState(session.latest);
       session.send({type:'ready'});
       this.showBanner('YOU ARE P2','WAITING FOR HOST',1);

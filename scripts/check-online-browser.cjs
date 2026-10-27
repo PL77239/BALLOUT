@@ -46,10 +46,13 @@ export default class Peer extends Emitter {
   await b.keyboard.down('j');await a.waitForFunction(()=>window.__g.hoopers[1].act==='juke'&&window.__g.hoopers[1].moveKind==='hesi');
   await b.waitForFunction(()=>window.__g.hoopers[1].moveKind==='hesi');await b.keyboard.up('j');
   assert.equal(await a.evaluate(()=>window.__g.hoopers[1].comboN),1,'remote hold triggers one paid hesitation');
+  await b.evaluate(()=>{const fx=window.__g.fx,real=fx.dunkReward.bind(fx);window.__dunkStyle=null;fx.dunkReward=(...args)=>{window.__dunkStyle=args[2];return real(...args);};});
+  await a.evaluate(()=>{const g=window.__g,h=g.hoopers[1];h.dunkStyle=5;h.x=1060;h.h=100;g.hoopers[0].x=500;g.dunkHit(h,false);});
+  await b.waitForFunction(()=>window.__dunkStyle===5);
   // A green score must also deliver its short visual reward to the guest.
   await b.evaluate(()=>{const fx=window.__g.fx,ring=fx.ring.bind(fx);window.__greenPulse=false;window.__rimReward=null;const reward=fx.rimReward.bind(fx);fx.rimReward=(...args)=>{window.__rimReward=args[2];return reward(...args);};fx.ring=(...args)=>{if(args[2]===0x66ffb0)window.__greenPulse=true;return ring(...args);};});
   // Force a real winning bucket through the host score handler; guest must see it.
-  await a.evaluate(()=>{const g=window.__g;g.hoopers[0].score=g.cfg.target-1;g.onScore({shooter:g.hoopers[0],pts:1,perfect:true,dunk:false,touchedRim:false},true);});
+  await a.evaluate(()=>{const g=window.__g;g.phase='live';g.hoopers[0].score=g.cfg.target-1;g.onScore({shooter:g.hoopers[0],pts:1,perfect:true,dunk:false,touchedRim:false},true);});
   await b.waitForFunction(()=>window.__g.phase==='over'&&window.__g.hoopers[0].score>=window.__g.cfg.target);
   await b.waitForFunction(()=>window.__greenPulse && ['money','splash'].includes(window.__rimReward));
   assert.equal(await a.evaluate(()=>window.__g.result),null,'online match pays no campaign cash');

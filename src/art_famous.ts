@@ -110,6 +110,12 @@ const pigalle:CourtArt={seed:1616,crowdLook:'marseille',amb:daylight,
   c.base.rect(267,98,24,55,0xf2cf6b);c.base.poly([197,98,230,98,202,153,171,153],0xc0d0c0);
   for(const x of [162,244,302])sign(c,x,103,'6',0xf2e7d2,{scale:2});
   for(let i=0;i<6;i++){c.base.rect(100,139+i*3,51,3,0xc9c8ad);c.base.hline(100,150,139+i*3,0xe1debd);}
+  // Parisian wall fixtures and recessed windows remain within the side facades.
+  for(const x of [18,51,345,381]){c.base.rect(x,46,13,22,0x48575c);c.base.rect(x+2,48,9,18,0x759598);c.base.vline(x+6,48,65,0xb1b8a6);c.base.hline(x, x+13,68,0x857b69);}
+  for(const x of [12,57,346,390]){c.base.rect(x,99,20,3,0x766857);c.base.rect(x+3,95,14,4,0xa67059);c.base.ellipse(x+10,94,8,4,0x567561);}
+  c.base.vline(87,29,149,0x787f76);c.base.vline(339,24,150,0x9d9985);
+  sign(c,12,120,'RUE DUPERRE',0xdddcc2,{bg:0x3f656d});
+  c.base.rect(345,132,22,19,0x526166);c.base.rect(347,134,18,16,0x69777c);c.base.rect(362,140,2,2,0xc9b993);
   c.base.vline(151,130,156,0x3b777f);sign(c,173,79,'PIGALLE',0x4e6471,{bg:0xd9d1bc});fans(c,'pigalle');
  },paintFloor(c){finish(c,'pigalle',{base:0x6db3ca,edge:0x4e8198,key:0xe3bd70,lines:0xf4e7cf,seed:16,crack:0,patch:0,speckle:.14,art:p=>{
    p.poly([10,161,117,161,167,219,10,219],0xd382ac);p.poly([117,161,188,161,238,219,167,219],0xe6c578);
@@ -187,9 +193,10 @@ for(const [id,art] of Object.entries(places))art.live=(L)=>{
    }
    for(let i=0;i<14;i++)dot((i*37+t*5)%427,121+i%3*3,0xc4d4c8);
   }else if(id==='tenement'||id==='pigalle'){
-   const x0=id==='tenement'?76:54,y0=id==='tenement'?58:75;
-   for(let i=0;i<5;i++){
-    const x=x0+i*17,dy=Math.round(Math.sin(t*1.3+i)*1.5);
+   const x0=id==='tenement'?76:12,y0=id==='tenement'?58:75;
+   const count=id==='tenement'?5:4,spacing=id==='tenement'?17:18;
+   for(let i=0;i<count;i++){
+    const x=x0+i*spacing,dy=Math.round(Math.sin(t*1.3+i)*1.5);
     g.fillStyle(0x6b776d,1);g.fillRect(x*PX,y0*PX,12*PX,PX);
     g.fillStyle([0xb36665,0xc9bc9e,0x668f9c,0x7b8e69,0xc49d62][i],1);g.fillRect((x+2+dy)*PX,(y0+1)*PX,7*PX,(6+i%3)*PX);
    }

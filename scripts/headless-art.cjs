@@ -16,7 +16,7 @@ function load(name) {
     if (id === './sfx') return {sfx};
     const n=id.replace('./','');
     if(n.endsWith('.json')) return {default:JSON.parse(fs.readFileSync(path.join(__dirname,'../src',n),'utf8'))};
-    if (['career','streetwear','tuning','hooper','game','ai','loadout','pixel','puppet','wardrobe','anim','courtkit','court_common','font','art_cities','art_marseille','bosses','save','court_events','net_protocol'].includes(n)) return load(n);
+    if (['dunk_controls','career','streetwear','tuning','hooper','game','ai','loadout','pixel','puppet','wardrobe','anim','courtkit','court_common','font','art_cities','art_marseille','bosses','save','court_events','net_protocol'].includes(n)) return load(n);
     if (n==='input') return {emptyIntent:()=>({mx:0,mz:0,sprint:false}),MenuNav:class{}};
     if (n==='net') return {net:null,closeNet:noop};
     if (n==='music') return {music:{}};

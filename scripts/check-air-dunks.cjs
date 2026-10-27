@@ -9,3 +9,12 @@ for(const facing of [-1,1])for(const [mx,mz,expected] of [[0,-1,2],[0,1,0],[-fac
 }
 const h=new Hooper(scene,0,buildLoadout({...STARTER_EQUIP}));Object.assign(h,{act:'dunk',actT:.22,h:90,dunkStyle:3,dunkFrom:{x:800,z:0}});h.tickDunk(1/240,{mx:.2,mz:.1},{});assert.equal(h.dunkStyle,3,'stick deadzone retains selected finish');
 console.log('Air dunk choice passed: four directions, both facings, deadzone, lock and unchanged stamina');
+
+const {DunkControls}=load('dunk_controls');
+for(const facing of [-1,1]){
+ const a=new DunkControls();a.choose(0,-1,facing,.15,0);assert.equal(a.choose(0,1,facing,.23,2),4);assert.equal(a.choose(1,0,facing,.30,4),4,'combo stays locked');
+ const b=new DunkControls();b.choose(-facing,0,facing,.14,0);b.choose(0,-1,facing,.21,1);assert.equal(b.choose(facing,0,facing,.28,2),5);
+ b.reset();assert.equal(b.choose(facing,0,facing,.14,0),3);
+ const c=new DunkControls();for(let i=0;i<30;i++)assert.notEqual(c.choose(.9,-.9,facing,i/240,0),5,'holding diagonal is not a rotation');
+}
+console.log('Dunk sequences passed: up-down clutch and back-up-forward 360 in both facings, lock/reset and diagonal rejection');

@@ -34,6 +34,13 @@ export function badgeTier(c:Career,id:Badge){
  return tier;
 }
 export function upgrade(c:Career,key:Attribute){if(c.points<1||c.attributes[key]>=95)return false;c.attributes[key]++;c.points--;return true;}
+/** Respec only: refund spent points without changing earned progress or inventory. */
+export function resetAttributes(c:Career){
+ const refund=ATTRS.reduce((sum,key)=>sum+c.attributes[key]-60,0);
+ for(const key of ATTRS)c.attributes[key]=60;
+ c.points+=refund;
+ return refund;
+}
 export function toggleBadge(c:Career,id:Badge){
  if(c.equipped.includes(id)){c.equipped=c.equipped.filter(x=>x!==id);return true;}
  if(c.equipped.length>=3||badgeTier(c,id)===0)return false;c.equipped.push(id);return true;

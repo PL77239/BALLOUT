@@ -9,3 +9,6 @@ for(const [style,kind,count] of [['money',3,30],['splash',4,24]]){
  for(let i=0;i<150;i++)fx.update(1/60);assert.equal(fx.parts.length,0,'all reward particles expire');
 }
 console.log('Rim reward passed: money/water render at rim and expire');
+
+const signatures=[];
+for(let style=0;style<6;style++){const fx=Object.create(FX.prototype);fx.parts=[];const g={clear(){},fillStyle(){},fillRect(){}};fx.gn=g;fx.ga=g;fx.dunkReward(1100,220,style);signatures.push(JSON.stringify(fx.parts.map(p=>[p.kind,p.color,p.grow])));assert(fx.parts.length>10);for(let i=0;i<150;i++)fx.update(1/60);assert.equal(fx.parts.length,0);}assert.equal(new Set(signatures).size,6,'six distinct rim impacts');

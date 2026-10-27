@@ -1,5 +1,5 @@
 import { music } from './music';
-import { ATTRS, BADGES, RANKS, RANK_COLORS, TIERS, badgeTier, careerLevel, overall, rankFloor, upgrade, toggleBadge } from './career';
+import { ATTRS, BADGES, RANKS, RANK_COLORS, TIERS, badgeTier, careerLevel, overall, rankFloor, upgrade, toggleBadge, resetAttributes } from './career';
 import { openLobby } from './net';
 import Phaser from 'phaser';
 import { AiLevel } from './tuning';
@@ -240,17 +240,21 @@ export class MenuScene extends Phaser.Scene {
       this.T(14,y,`${c.equipped.includes(b.id)?'*':' '} ${b.name}`,on?WHITE:GREY);
       this.T(145,y,tier?TIERS[tier].replace('HALL OF FAME','HOF'):`LOCK ${c.totals[b.event]}/3`,tier?[DIM,0xbc8d67,0xbcc8cd,GOLD,0xb7a0dc][tier]:DIM);
     });
+    const reset=this.sel===ATTRS.length+BADGES.length;
+    if(reset)this.R(10,208,232,9,0x273549,.95);
+    this.T(14,209,`${reset?'>':' '} RESET ATTRIBUTES // REFUND POINTS`,reset?GOLD:GREY);
     const selected=BADGES[this.sel-ATTRS.length];
     const hint=selected?(()=>{const tier=badgeTier(c,selected.id);return tier===4?'HALL OF FAME // MAX TIER':`${selected.attr.toUpperCase()} ${c.attributes[selected.attr]}/${[60,68,76,84][tier]} // ${selected.event.toUpperCase()} ${c.totals[selected.event]}/${[3,12,30,60][tier]}`;})():'CAMPAIGN BUILDS // PVP HAS EQUAL STATS';
-    this.T(14,217,this.msgT>0?this.msg:hint,DIM);
+    this.T(14,222,this.msgT>0?this.msg:reset?'REFUND ALL SPENT POINTS // KEEP XP / RANK':hint,DIM);
     this.footer('UP/DOWN SELECT  RIGHT/ENTER UPGRADE OR EQUIP  BACKSPACE BACK');
   }
 
   private inCareer(n:{dy:number;dx:number;ok:boolean;back:boolean}){
     if(n.back){this.go('main');return;}
-    if(n.dy)this.sel=(this.sel+n.dy+ATTRS.length+BADGES.length)%(ATTRS.length+BADGES.length);
+    if(n.dy)this.sel=(this.sel+n.dy+ATTRS.length+BADGES.length+1)%(ATTRS.length+BADGES.length+1);
     if(n.ok||n.dx>0){
       const c=save().career;
+      if(this.sel===ATTRS.length+BADGES.length){const refund=resetAttributes(c);this.msg=`RESET // ${refund} POINTS RETURNED`;this.msgT=2;persist();this.build();return;}
       const ok=this.sel<ATTRS.length?upgrade(c,ATTRS[this.sel]):toggleBadge(c,BADGES[this.sel-ATTRS.length].id);
       if(!ok){this.msg=this.sel<ATTRS.length?'NEED ATTRIBUTE POINTS / ATTRIBUTE AT CAP':'BADGE LOCKED OR ALL 3 SLOTS FILLED';this.msgT=1.5;}
       else this.msgT=0;

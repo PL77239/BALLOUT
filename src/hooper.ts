@@ -1,3 +1,4 @@
+import { DunkControls, type DunkStyle } from './dunk_controls';
 import Phaser from 'phaser';
 import { sfx } from './sfx';
 import { Puppet, restRig } from './puppet';
@@ -58,7 +59,8 @@ export class Hooper {
   ballOx = 32;
   bouncePhase = 0;
   trickDunk = false;
-  dunkStyle: 0|1|2|3 = 0;
+  dunkStyle: DunkStyle = 0;
+  private dunkControls=new DunkControls();
   layupStyle: 0|1|2 = 0;
   dunkFrom = { x: 0, z: 0 };
   dunkHit = false;
@@ -273,7 +275,7 @@ export class Hooper {
   startDunk(g: GameScene): boolean {
     if (!this.canDunk(g)) return false;
     if(!this.spendStamina(T.dunk.cost,g))return false;
-    this.setAct('dunk', T.dunk.airtime);
+    this.setAct('dunk', T.dunk.airtime);this.dunkControls=new DunkControls();
     this.dunkFrom = { x: this.x, z: this.z };
     this.dunkHit = false;
     this.dunkSlam = false;
@@ -510,7 +512,7 @@ export class Hooper {
     // Choose the finish during the approach to the rim, then lock it for the
     // slam/follow-through. Input has a deadzone and never rerolls timing/odds.
     if(this.h>20 && this.actT<T.dunk.hitAt-.03 && Math.max(Math.abs(I.mx),Math.abs(I.mz))>.55){
-      this.dunkStyle=Math.abs(I.mz)>Math.abs(I.mx)?(I.mz<0?2:0):(I.mx*this.facing<0?1:3);
+      this.dunkStyle=this.dunkControls.choose(I.mx,I.mz,this.facing,this.actT,this.dunkStyle);
     }
     const d = T.dunk, p = clamp(this.actT / d.hitAt, 0, 1);
     const e = 1 - Math.pow(1 - p, 2);

@@ -9,7 +9,7 @@ The new main-menu MYPLAYER screen separates character development from win/loss 
 - Five badges: GREEN MACHINE (green window), RIM ARTIST (dunk and close-layup timing), QUICK CHAIN (move cost), PICK POCKET (steal chance), SECOND WIND (regen). Equip at most three. Bronze/Silver/Gold/Hall of Fame require both attribute thresholds 60/68/76/84 and performance milestones 3/12/30/60.
 - Eighteen ranks in six colour groups: Rookie, Hooper, Baller, Ace, Master and Legend, each I–III. RP gains/losses depend on difficulty and rival tier relative to rank. A first loss at a demotion boundary has protection; a second consecutive loss can demote. Results show XP, level, OVR, RP and an UP/DOWN indicator when the rank changes.
 
-These attributes, badge bonuses and ranks apply to the local AI campaign. Local/private PvP keeps equal base stats and awards no career XP/RP. This is not a server-verified global ranking or matchmaking service. Badge bonuses are modest and do not bypass full stamina-cost checks. Starter campaign physical stats match the previous defaults.
+These attributes, badge bonuses and ranks apply to the local AI campaign. Local/private PvP keeps equal base stats and awards no career XP/RP. This is not a server-verified global ranking or matchmaking service. Badge bonuses are modest and do not bypass full stamina-cost checks. Starter campaign physical stats match the previous defaults. The last MYPLAYER row resets attributes to 60 and refunds all spent points; XP, rank, performance milestones, equipped badges, inventory and currency remain. Badge tiers are recalculated from the reset attributes.
 
 Concept references: [official 2K MyPLAYER attributes and badges](https://nba.2k.com/2k26/courtside-report/myplayer-builder/), [Bandai Namco promotion / rank-point design](https://www.bandainamcoent.com/news/tekken-8-patch-notes-v2-00). The implementation uses its own basketball attributes, badges, rank names and thresholds. The MYPLAYER screenshot uses a controlled demonstration profile.
 
@@ -23,8 +23,10 @@ After takeoff, while above 20 world units and before the final 0.03s leading int
 | Down / stick toward camera | Two-hand |
 | Forward relative to facing | One-hand |
 | Back relative to facing | Reverse |
+| Up → down while airborne | Double clutch |
+| Back → up → forward while airborne | 360 slam |
 
-Neutral input retains the selection. The slam locks it. Direction does not reroll timing, shot odds or stamina cost, and does not change scoring. Both facings are tested. Combo heat bonuses remain tied to the combo, not to choosing a flashy animation.
+Directional sequences require distinct turns at least 0.045 simulation seconds apart; holding a diagonal cannot complete one. A completed sequence locks its style until the slam. Neutral input retains the selection. The slam locks it. Direction does not reroll timing, shot odds or stamina cost, and does not change scoring. Both facings are tested. Combo heat bonuses remain tied to the combo, not to choosing a flashy animation.
 
 ## Skill moves — implemented
 
@@ -62,4 +64,4 @@ Added scenery sits behind the trees, based on these additional photo studies:
 
 Pure tests cover XP/OVR/attribute caps, badge tiers/slots, rank changes and demotion protection, old saves, four airborne dunk choices in both facings, deadzone/lock and unchanged stamina cost. Existing tests cover action costs, progression, wardrobe, faces, falls, rim rewards, ambient and networking. Chromium exercises menu navigation, upgrades, badge equip, live campaign effects, airborne keyboard choice, match XP, reload persistence, court rendering and private PvP with equal base stats. The two-browser online test uses a substitute transport; Internet WebRTC remains outside that test.
 
-All peers must use `ballout-private-7` because held skill input, move kinds, ball radius and dunk-direction rules changed. Replay input format is now 2 (held skill bit 1024).
+All peers must use `ballout-private-8` because held skill input, move kinds, ball radius and dunk-direction rules changed. Replay input format is now 2 (held skill bit 1024).

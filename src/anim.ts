@@ -240,6 +240,8 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
         const k = ease((u - 0.16) / 0.38);
         r.hipY = 94; r.lean = 0.1 + 0.1 * k;
         if (sx) { const a = -Math.PI / 2 + k * Math.PI * 2.2; hands(Math.cos(a) * 56, Math.sin(a) * 56 + 6, 14, 42); r.lean = 0.1 - 0.06 * Math.sin(k * Math.PI * 2); }
+        else if(h.dunkStyle===4){const pump=Math.sin(k*Math.PI);r.lean=-.12*pump;hands(30+8*k,-18+94*k-55*pump,20+8*k,-20+82*k-45*pump);r.fFy+=18*pump;r.bFy+=10*pump;}
+        else if(h.dunkStyle===5){r.turn=Math.cos(k*Math.PI*2);r.lean=.13+Math.sin(k*Math.PI*2)*.16;hands(28+10*k,30+48*k,16,12+44*k);r.fFx=20+Math.sin(k*Math.PI*2)*12;r.bFx=-20;}
         else if(h.dunkStyle===1){r.turn=lerp(1,-.7,k);r.lean=-.12;hands(lerp(20,32,k),lerp(-30,76,k),lerp(20,8,k),lerp(-24,42,k));}
         else if(h.dunkStyle===3){r.lean=.24;hands(lerp(20,45,k),lerp(-30,80,k),lerp(20,4,k),lerp(-24,16,k));}
         else hands(lerp(20, 38, k), lerp(-30, 76, k), lerp(20, 22, k), lerp(-24, 62, k));
