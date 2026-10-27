@@ -67,7 +67,7 @@ export class Hooper {
   lastDirZ = 1;
   ph = 0;
   I: Intent = emptyIntent();
-  anim = { prevV: 0, acc: 0, guard: 0, air: false };
+  anim = { prevV: 0, acc: 0, guard: 0, air: false, land: 0 };
   mood: '' | 'hype' | 'down' = '';
   moodT = 0;
   celeb = 0;

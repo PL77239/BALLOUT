@@ -4,6 +4,10 @@ import { GW, PX, Pix } from './pixel';
 type Cameo = { kind: 'bmx'|'courier'|'skate'|'dance'|'dog'; color: number; accent: number };
 // Small neighbourhood cameos, deliberately behind play and without collision or sound.
 export const COURT_CAMEOS: Record<CourtId,Cameo[]> = {
+  rucker:[{kind:'courier',color:0x343e54,accent:0xd6b96a}],venice:[{kind:'skate',color:0x54babc,accent:0xecc17d}],
+  pigalle:[{kind:'courier',color:0xd079ad,accent:0x73b7d4}],dyckman:[{kind:'dance',color:0x34563b,accent:0xe8c249}],
+  tenement:[{kind:'dog',color:0xc7564a,accent:0xd9bd80}],mosswood:[{kind:'skate',color:0x3368b4,accent:0xe9c94e}],
+  kalemegdan:[{kind:'courier',color:0x745044,accent:0xded8b5}],
   la:[{kind:'bmx',color:0x245bb4,accent:0xe3e6ed}],
   brooklyn:[{kind:'courier',color:0xc38c35,accent:0x34492c}],
   queens:[{kind:'dance',color:0x253e70,accent:0xe4bd42}],

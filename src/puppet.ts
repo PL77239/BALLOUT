@@ -9,7 +9,7 @@ const sampleTexture=(id:string|undefined,x:number,y:number)=>{
   if(tiled){iy=((iy%rows.length)+rows.length)%rows.length;const w=rows[iy].length;ix=((ix%w)+w)%w;}
   return rows[iy]?.[ix] ?? '.';
 };
-import { Col, PX, Pix, clamp, lerp, mix, pixTexture, shade } from './pixel';
+import { Col, PX, Pix, clamp, lerp, mix, pixTexture, shade, smooth } from './pixel';
 import { Loadout, SKIN_TONES, hairUnderHeadwear } from './loadout';
 
 export const THIGH = 44;
@@ -55,9 +55,9 @@ export function ik(l1: number, l2: number, dx: number, dy: number, bend: number)
 
 type RigKey = keyof Rig;
 const GROUPS: { keys: RigKey[]; w: number; z: number }[] = [
-  { keys: ['hipY', 'lean', 'bodyX'], w: 26, z: 0.78 },
-  { keys: ['fFx', 'fFy', 'bFx', 'bFy', 'fAnk', 'bAnk'], w: 36, z: 0.92 },
-  { keys: ['fHx', 'fHy', 'bHx', 'bHy'], w: 30, z: 0.58 },
+  { keys: ['hipY', 'lean', 'bodyX'], w: 32, z: 0.88 },
+  { keys: ['fFx', 'fFy', 'bFx', 'bFy', 'fAnk', 'bAnk'], w: 42, z: 0.95 },
+  { keys: ['fHx', 'fHy', 'bHx', 'bHy'], w: 38, z: 0.82 },
   { keys: ['head'], w: 18, z: 0.5 },
 ];
 const DIRECT: RigKey[] = ['turn', 'spin', 'emo', 'mouth'];
@@ -256,7 +256,10 @@ export class Puppet {
     step(this.hair, 170, 11, 0.9, 0, 0);
     step(this.tail, 120, 7, 1.2, 0, 0);
     step(this.chain, 230, 9, 0.7, 0, 0);
-    step(this.cloth, 210, 20, 0.28, 0, 0);
+    // Soft cloth follows the torso and gait; it never delays the gameplay rig.
+    const running=clamp(Math.abs(m.f)/350,0,1);
+    step(this.cloth, 150, 16, 1.1, clamp(-this.vel.lean*.5,-1.5,1.5)-running*.8+Math.sin(this.t*13)*running*1.2,
+      clamp(-this.vel.hipY*.012,-1.2,1.2)+Math.sin(this.t*26)*running*.5);
     this.t += dt;
     this.blinkAt -= dt;
     if (this.blinkAt <= 0) { this.blink = 0.12; this.blinkAt = 2 + Math.random() * 3.5; }
@@ -330,7 +333,7 @@ export class Puppet {
 
     const headTh = r.lean * 0.5 + r.head;
     // Athletic proportions, closer to a digitised arcade player than a mascot.
-    const hu=u*1.18;
+    const hu=u*1.12;
     const hcW = [neckW[0] + Math.sin(headTh) * 19, neckW[1] + Math.cos(headTh) * 19];
     const head = { x: X(hcW[0]), y: Y(hcW[1]), th: headTh };
 
@@ -443,9 +446,9 @@ export class Puppet {
     } else if (covered) {
       const W: Record<string, number[]> = { joggers: [5.3, 4.3, 3.8, 2.3], sweats: [6.2, 5.3, 4.8, 4.0], jeans: [5.4, 4.8, 4.6, 4.2], khakis: [5.8, 5.2, 4.8, 4.1] };
       const [w0, w1, w2, w3] = W[bot];
-      b.begin().disc(kx,ky,Math.max(w1,w2)*u).commit(bc,{line:null});
-      b.begin().cap(hx, hy, kx, ky, w0 * u, w1 * u, 0, 1, false, false).commit(bc);
-      b.begin().cap(kx, ky, ax, ay, w2 * u, w3 * u, 0, 0.94, false, false).commit(bc);
+      b.begin().cap(hx,hy,kx,ky,w0*u,w1*u,0,1,false,true)
+        .disc(kx,ky,Math.max(w1,w2)*u)
+        .cap(kx,ky,ax,ay,w2*u,w3*u,0,.94,true,false).commit(bc);
       if (bot === 'jeans') {
         b.begin().cap(kx, ky, ax, ay, (w3 + 0.1) * u, (w3 + 0.2) * u, 0.86, 0.95, false, false).commit(shade(l.bottomColor, k * 1.25), { flat: true, line: null });
         stitch(hx, hy, kx, ky, (w0 - 1.2) * u, bt);
@@ -551,11 +554,13 @@ export class Puppet {
       if (t === 'bigTee') { sleeveUp(tc, 0, cut.sleeve, 2.2); b.begin().cap(sx0, sy0, ex, ey, 4.6 * u, 4.5 * u, 0.80, 0.88, false, false).commit(shade(tc, 0.88), { flat: true, line: null }); }
     } else if (t === 'hoodie' || t === 'longsleeve' || t === 'flannel' || t === 'puffer') {
       const elbowWidth = t==='puffer'?4.5:t==='hoodie'?3.4:t==='flannel'?3.0:2.6;
-      b.begin().disc(ex,ey,elbowWidth*u).commit(tc,{line:null});
       const rr = t === 'hoodie' ? 1.5 : t === 'puffer' ? 2.5 : t === 'flannel' ? 1.0 : 0.5;
-      sleeveUp(tc, 0, 1, rr);
+      // One continuous sleeve mask eliminates separate capsule outlines/gaps.
+      b.begin().cap(sx0,sy0,ex,ey,(2.2+rr)*u,elbowWidth*u,0,1,true,true)
+        .disc(ex,ey,elbowWidth*u)
+        .cap(ex,ey,wx,wy,elbowWidth*u,(1.7+rr*.9)*u,0,.9,true,false).commit(tc);
+      this.skinVolume(b,[sx0,sy0],[wx,wy],3.5,tc,u);
       if (t === 'flannel') wv('plaid', [sx0, sy0], [ex, ey]); else if (t === 'puffer') wv('baffle', [sx0, sy0], [ex, ey]);
-      b.begin().cap(ex, ey, wx, wy, (1.9 + rr) * u, (1.7 + rr * 0.9) * u, 0, 0.9, false, false).commit(tc);
       if (t === 'flannel') wv('plaid', [ex, ey], [wx, wy]); else if (t === 'puffer') wv('baffle', [ex, ey], [wx, wy]);
       b.begin().cap(ex, ey, wx, wy, (2.2 + (t === 'puffer' ? 0.3 : 0)) * u, (2 + (t === 'puffer' ? 0.3 : 0)) * u, 0.8, 0.95, false, false).commit(tt, { flat: true, line: null });
     }
@@ -615,18 +620,22 @@ export class Puppet {
     // Otherwise a left-facing lean rotates the shirt away from its shoulders.
     const angle = Math.atan2(nx - hx, hy - ny) * mir;
     const shoulderY = -height;
-    const hemY = -cut.hem + 1.5 + this.cloth.y * .18;
+    const flex=tp==='puffer'?.35:tp==='bigTee'?1.15:tp==='hoodie'?.8:.65;
+    const hemY = -cut.hem + 1.5 + this.cloth.y * .36*flex;
     // Wider front/back and narrower profile, without collapsing at a turn.
     const breadth = 0.85 + 0.15 * (1 - Math.abs(this.cur.turn));
     const widthAt = (y: number) => {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
-      return (t < 0.72 ? lerp(cut.waist, cut.chest, t / 0.72) : lerp(cut.chest, cut.shoulder, (t - 0.72) / 0.28)) * breadth * 1.10;
+      return (t < 0.72 ? lerp(cut.waist, cut.chest, smooth(t / 0.72)) : lerp(cut.chest, cut.shoulder, smooth((t - 0.72) / 0.28))) * breadth;
     };
     const cloth = (x: number, y: number) => y >= shoulderY && y <= hemY && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
       && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
     // Anchor the collar; let the hem lag slightly behind acceleration/landing.
     // Prints and seams use the same deformation as the cloth silhouette.
-    const clothX=(x:number,y:number)=>x-this.cloth.x*.24*clamp((y-shoulderY)/Math.max(1,hemY-shoulderY),0,1)**2;
+    const clothX=(x:number,y:number)=>{
+      const v=clamp((y-shoulderY)/Math.max(1,hemY-shoulderY),0,1);
+      return x-this.cloth.x*.6*flex*v*v-Math.sin(v*Math.PI)*clamp(this.cur.lean,-.7,.7)*1.3;
+    };
     const frame = (pred: (x: number, y: number) => boolean) => b.begin().frame(hx, hy, angle, mir, u, 38, (x, y) => {x=clothX(x,y);return cloth(x,y) && pred(x,y);});
     b.begin().cap(hx,hy,nx,ny,cut.waist*breadth*u,cut.waist*breadth*u,-.10,.02,false,false).commit(l.bottomColor,{line:null});
     if(tp==='tank' || tp==='jersey') b.begin().frame(hx,hy,angle,mir,u,38,(x,y)=>y>=shoulderY && y<shoulderY+1.5 && Math.abs(x)<cut.neck).commit(skin,{line:null});
@@ -634,8 +643,10 @@ export class Puppet {
     // Cloth shadows follow the garment, rather than the screen or animation frame.
     b.ink((x,y) => {
       const dx = (x + .5 - hx) / u, dy = (y + .5 - hy) / u;
-      const lx = (dx * Math.cos(angle) + dy * Math.sin(angle)) * mir;
-      return shade(l.topColor, lx < -widthAt(-height*.5)*.55 ? .70 : lx > 3 ? 1.12 : 1);
+      const lx = dx * mir * Math.cos(angle) + dy * Math.sin(angle);
+      const along=(-dx*Math.sin(angle)*mir+dy*Math.cos(angle));
+      const fold=Math.abs(along-(hemY-3)-lx*.32)<.5 && Math.abs(lx)<widthAt(along)-1;
+      return shade(l.topColor,fold?.87:lx < -widthAt(-height*.5)*.55 ? .78 : lx > 3 ? 1.08 : 1);
     });
     frame((x,y) => y > hemY - 1.2).commit(tp === 'hoodie' ? l.topTrim : shade(l.topColor,.72), {flat:true,line:null});
     if (tp === 'jersey' || tp === 'tank') {
@@ -783,16 +794,17 @@ export class Puppet {
   /** Local head frame point (x forward, y down) to canvas px. */
   private loc(hd: { x: number; y: number; th: number }, sx: number, u: number, lx: number, ly: number): [number, number] {
     const c = Math.cos(hd.th), s = Math.sin(hd.th);
-    return [Math.floor(hd.x + sx * (lx * c - ly * s) * u), Math.floor(hd.y + (lx * s + ly * c) * u)];
+    const width=(sx<0?-1:1)*Math.max(Math.abs(sx),.9);
+    return [Math.floor(hd.x + width * (lx * c - ly * s) * u), Math.floor(hd.y + (lx * s + ly * c) * u)];
   }
 
   private headPiece(b: Brush, hd: { x: number; y: number; th: number }, r: Rig, l: Loadout, skin: Col, u: number, sx: number, mir: number, back: boolean, front: boolean) {
     const th = hd.th;
     const F = (ext: number, pred: (x: number, y: number) => boolean) => b.begin().frame(hd.x, hd.y, th, sx, u, ext, pred);
-    F(9, (x, y) => (x >= -3.4 && x <= 1.8 && y >= 3 && y <= 9.5)).commit(shade(skin, 0.85), { line: null });
+    F(9, (x, y) => (x >= -2.5 && x <= 1.7 && y >= 3 && y <= 6.8)).commit(shade(skin, 0.85), { line: null });
     const skull = (x: number, y: number) => Math.abs(x)<5.8 && y>-6 && y<4.5 && !(y<-4 && Math.abs(x)>4.3);
     const jaw = (x: number, y: number) => y>=1 && y<6 && x>-3.8+(y-1)*.4 && x<5.4-(y-1)*.25;
-    F(10, (x, y) => skull(x, y) || jaw(x, y) || (x >= 4.8 && x <= 6.5 && y >= -0.2 && y <= 1.9 && !front)).commit(skin);
+    F(10, (x, y) => skull(x, y) || jaw(x, y) || (x >= 4.8 && x <= 5.9 && y >= -0.2 && y <= 1.9 && !front)).commit(skin);
     // Chunky shadow planes suggest the photographed sprites of 1990s arcade games.
     F(10, (x,y) => (skull(x,y)||jaw(x,y)) && x < -2.2 && y > -3).commit(shade(skin,.78),{flat:true,line:null});
     F(10, (x,y) => (skull(x,y)||jaw(x,y)) && x > .5 && x < 3.5 && y > -3 && y < 2).commit(shade(skin,1.12),{flat:true,line:null});

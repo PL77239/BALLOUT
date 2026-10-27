@@ -45,6 +45,8 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
   const t = h.tAlive;
   const air = h.h > 4;
   const A = h.anim;
+  if(A.air && !air) A.land=.16;
+  A.land=Math.max(0,A.land-dt);
   const acc = dt > 0.0005 ? (h.vx * f - A.prevV) / dt : 0;
   A.prevV = h.vx * f;
   A.acc += (clamp(acc, -6000, 6000) - A.acc) * Math.min(1, dt * 14);
@@ -116,6 +118,15 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
     hands(34 + A.guard * 8, 4 + sw + A.guard * 62, 22 + A.guard * 4, -6 - sw + A.guard * 54);
     r.head = -0.02 - A.guard * 0.18;
     r.emo = 0;
+  }
+
+  if(air && (h.act==='free'||h.act==='recover')){
+    // A jump has a distinct silhouette; do not keep walking in mid-air.
+    r.hipY=84;r.lean=.10;
+    r.fFx=18;r.bFx=-14;r.fFy=15;r.bFy=10;r.fAnk=.35;r.bAnk=.25;
+    if(!h.hasBall) hands(20,35,-6,24);
+  }else if(h.act==='free' && A.land>0){
+    r.hipY-=Math.sin(A.land/.16*Math.PI)*6;
   }
 
   /* ---------- pregame / points: reactions ---------- */

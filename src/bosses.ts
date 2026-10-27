@@ -10,7 +10,7 @@ export interface Boss {
   stats: BossStats;
 }
 
-const B: Record<CourtId, Boss[]> = {
+const B: Partial<Record<CourtId, Boss[]>> = {
   la: [
     { name: 'EASTSIDE', stats: { speed: 58, accuracy: 62, stamina: 54, defense: 48 }, loadout: { head: 'bandana', headColor: 0x2a4aa0, headTrim: 0xf4f4f0, top: 'bigTee', topColor: 0xf0f0ea, bottom: 'chinoShorts', bottomColor: 0xb9a67e, shoes: 'cortez', shoeColor: 0xf0f0ea, shoeTrim: 0xc0201e, face: 'stache' } },
     { name: 'LOWRIDER', stats: { speed: 52, accuracy: 55, stamina: 60, defense: 56 }, loadout: { head: 'bandana', headColor: 0x18181c, top: 'flannel', topColor: 0x24242a, bottom: 'khakis', bottomColor: 0xb9a67e, shoes: 'cortez', shoeColor: 0x1d1d22, hair: 'waves' } },
@@ -24,7 +24,7 @@ const B: Record<CourtId, Boss[]> = {
     { name: 'WINDY', stats: { speed: 60, accuracy: 60, stamina: 55, defense: 52 }, loadout: { head: 'fullcap', headColor: 0x111111, top: 'tank', topColor: 0xd01c24, bottom: 'shorts', bottomColor: 0x111111, shoes: 'high', hair: 'fade' } },
   ],
   brooklyn: [
-    { name: 'BED-STUY', stats: { speed: 62, accuracy: 54, stamina: 50, defense: 46 }, loadout: { top: 'jersey', topColor: 0xff7a1a, bottom: 'longShorts', head: 'fullcap', headColor: 0x111111, shoes: 'high' } },
+    { name: 'WEST FOURTH', stats: { speed: 62, accuracy: 54, stamina: 50, defense: 46 }, loadout: { top: 'jersey', topColor: 0xff7a1a, bottom: 'longShorts', head: 'fullcap', headColor: 0x111111, shoes: 'high' } },
     { name: 'TIMBER', stats: { speed: 54, accuracy: 57, stamina: 62, defense: 58 }, loadout: { shoes: 'boot', shoeColor: 0xc79a52, shoeSole: 0x6b4a22, bottom: 'jeans', bottomColor: 0x232f52, top: 'hoodie', topColor: 0x1b1b20, head: 'beanie', headColor: 0x22262c, hair: 'fade' } },
   ],
   harlem: [
@@ -80,6 +80,10 @@ const DEFAULT_STATS: BossStats = { speed: 52, accuracy: 52, stamina: 52, defense
 
 export const RIVALS_PER_COURT = 6;
 const TITLES: Record<CourtId,string[]> = {
+ rucker:['155TH','EBC','HOLCOMBE','RUCKER KING'],venice:['BOARDWALK','PACIFIC','SUNSET','BEACH KING'],
+ pigalle:['DUPERRE','MONTMARTRE','PARIS NORD','PIGALLE KING'],dyckman:['NAGLE','INWOOD','UPTOWN','DYCKMAN KING'],
+ tenement:['TAGUIG','VETERANS','BONIFACIO','TENEMENT KING'],mosswood:['WEBSTER','EAST BAY','OAKLAND','MOSSWOOD KING'],
+ kalemegdan:['DORCOL','DANUBE','FORTRESS','BELGRADE KING'],
  brooklyn:['STOOP','FULTON','CONCRETE','KING OF THE CAGE'], queens:['ASTORIA','7 TRAIN','QUEENSBRIDGE','BOROUGH KING'],
  harlem:['125TH','DIPLOMAT','RUCKER','HARLEM KING'], philly:['NORTHSIDE','LIBERTY','CROSSOVER','PHILLY KING'],
  detroit:['ASSEMBLY','WOODWARD','PISTON','MOTOR KING'], chicago:['ENGLEWOOD','SOUTHSIDE','WIND CITY','COURT KING'],
@@ -90,12 +94,13 @@ const TITLES: Record<CourtId,string[]> = {
 };
 export function bossesFor(court: CourtId): Boss[] {
  const originals=B[court];
- const first=originals?.[0] ?? {name:'LOCAL',loadout:{},stats:DEFAULT_STATS};
+ const localNames:Partial<Record<CourtId,string[]>>={rucker:['155TH LOCAL','UPTOWN'],venice:['BEACH LOCAL','PACIFIC GUARD'],pigalle:['ASH','NINTH'],dyckman:['NAGLE LOCAL','UPTOWN GUARD'],tenement:['VETERANS LOCAL','BLOCK GUARD'],mosswood:['WEBSTER LOCAL','TOWN GUARD'],kalemegdan:['DORCOL LOCAL','FORT GUARD']};
+ const first=originals?.[0] ?? {name:localNames[court]?.[0] ?? 'LOCAL',loadout:{top:'jersey' as const,topColor:0x355575,bottom:'shorts' as const},stats:DEFAULT_STATS};
  return Array.from({length:RIVALS_PER_COURT},(_,tier)=>{
   const look=originals?.[tier%originals.length] ?? first;
   const stats={} as BossStats;
   for(const key of ['speed','accuracy','stamina','defense'] as const) stats[key]=Math.min(94,first.stats[key]+tier*5);
-  return {name:tier<2?(originals?.[tier]?.name ?? 'LOCAL'):TITLES[court][tier-2],stats,loadout:{...look.loadout,...(tier>=2?{topGraphic:tier%2?'number' as const:'cross' as const,jerseyNumber:10+tier,head:tier%2?'backcap' as const:'fitted' as const,headColor:[0x292f40,0x743447,0x35564a,0x54386d][tier-2]}:{})}};
+  return {name:tier<2?(originals?.[tier]?.name ?? localNames[court]?.[tier] ?? ['LOCAL','CHALLENGER'][tier]):TITLES[court][tier-2],stats,loadout:{...look.loadout,...(tier>=2?{topGraphic:tier%2?'number' as const:'cross' as const,jerseyNumber:10+tier,head:tier%2?'backcap' as const:'fitted' as const,headColor:[0x292f40,0x743447,0x35564a,0x54386d][tier-2]}:{})}};
  });
 }
 

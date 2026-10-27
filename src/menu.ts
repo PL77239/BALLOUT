@@ -200,8 +200,8 @@ export class MenuScene extends Phaser.Scene {
       if (r === 'START') this.T(96, y, on ? '> GO <' : 'GO', on ? GREEN : GREY, 1, 0.5);
       else this.T(94, y, on ? `< ${vals[i]} >` : vals[i], on ? WHITE : 0xb8b8d0);
     });
-    this.T(14, 116, `${REGIONS[ci.region].name} // ${REGIONS[ci.region].city}`, DIM);
-    COURTS.forEach((cc, i) => this.R(14 + i * 10, 134, 8, 3, cc.id === c.court ? ORANGE : 0x3a3a50));
+    this.T(14, 116, ci.sub.slice(0,27), DIM);
+    COURTS.forEach((cc, i) => this.R(14 + i * (164/COURTS.length), 134, Math.max(3,164/COURTS.length-2), 3, cc.id === c.court ? ORANGE : 0x3a3a50));
     this.panel(6, 146, 178, 40);
     this.T(14, 152, ci.sub, GOLD);
     this.T(14, 164, c.mode === '1p' ? 'YOU EARN CASH FOR BUCKETS, STYLE AND WINS' : c.mode==='online' ? 'PRIVATE ROOM: NO CASH PAYOUT' : 'LOCAL VERSUS: NO CASH PAYOUT', GREY);
