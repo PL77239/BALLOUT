@@ -359,10 +359,10 @@ export class Puppet {
 
     /* ---- head (face + hair on skull; hats drawn later) ---- */
     b.part = 5; this.headPiece(b, head, r, l, skin, hu, sx, mir, back, front);
-    this.chainPiece(b, [hx, hy], [nx, ny], l, u, r.lean, sx);
 
     /* ---- near arm, then headwear on top ---- */
     b.part = 7; this.armPiece(b, armF, l, skin, u, false);
+    this.chainPiece(b, [hx, hy], [nx, ny], l, u, r.lean, sx);
     b.part = 10; this.headWear(b, head, r, l, hu, sx, mir, back, front);
 
     p.outline(OUT);
@@ -449,6 +449,7 @@ export class Puppet {
       b.begin().cap(hx,hy,kx,ky,w0*u,w1*u,0,1,false,true)
         .disc(kx,ky,Math.max(w1,w2)*u)
         .cap(kx,ky,ax,ay,w2*u,w3*u,0,.94,true,false).commit(bc);
+      if(l.bottomTexture==='tile:camo')b.ink((x,y)=>{const ink=sampleTexture('tile:camo',x/1.5,y/1.5);return ink==='1'?shade(bc,.66):ink==='2'?bt:-1;});
       if (bot === 'jeans') {
         b.begin().cap(kx, ky, ax, ay, (w3 + 0.1) * u, (w3 + 0.2) * u, 0.86, 0.95, false, false).commit(shade(l.bottomColor, k * 1.25), { flat: true, line: null });
         stitch(hx, hy, kx, ky, (w0 - 1.2) * u, bt);
@@ -504,7 +505,7 @@ export class Puppet {
       fr(12, (x, y) => y > 1.5 && y <= 2.6 && x >= -3.6 && x <= 6.8).commit(so, { flat: false });
       return;
     }
-    if (kind === 'high') b.begin().cap(L.kn[0], L.kn[1], ax, ay, 2.7 * u, 2.5 * u, 0.74, 1, false, false).commit(sc);
+    if (kind === 'high') b.begin().cap(L.kn[0], L.kn[1], ax, ay, (l.shoeStyle==='supra'?3.1:2.7) * u, 2.5 * u, l.shoeStyle==='supra'?.60:.74, 1, false, false).commit(sc);
     if (kind === 'boot') {
       b.begin().cap(L.kn[0], L.kn[1], ax, ay, 3.0 * u, 2.9 * u, 0.62, 1, false, false).commit(sc);
       b.begin().cap(L.kn[0], L.kn[1], ax, ay, 3.2 * u, 3.1 * u, 0.62, 0.7, false, false).commit(shade(l.shoeTrim, k), { flat: true, line: null });
@@ -528,7 +529,21 @@ export class Puppet {
     fr(12,(x,y)=>x>4.1 && x<6.4 && y>-.4 && y<1.5).commit(shade(sc,.78),{flat:true,line:null});
     if(kind !== 'cortez') fr(12,(x,y)=>x>-2 && x<3.8 && y>-.7 && y<.5 && Math.abs(y-x*.20)<.6).commit(shade(l.shoeTrim,k),{flat:true,line:null});
     fr(12,(x,y)=>x>.2 && x<3 && y>-.9 && y<.6 && Math.floor(x*1.5)%2===0).commit(shade(so,1.25),{flat:true,line:null});
+    if(l.shoeStyle==='aj'){
+      const m=l.shoeModel??1,trim=shade(l.shoeTrim,k);
+      fr(12,(x,y)=>x>-3&&x<6.8&&y>-.8&&y<1.6&&(
+        m===1?(x<-.5||x>4.5):m===2?(x<1&&Math.floor(x+y*2)%2===0):
+        m===3?((x<-.5||x>4)&&Math.floor(x*2+y*3)%3===0):m===4?(x>-.5&&x<3.5&&Math.floor(x+y*2)%2===0):
+        m===5?(y>.4&&Math.abs((x+8)%2-1)<.5):m===6?(x<-.8||x>4.8):
+        m===7?(Math.abs(y-x*.6)<.7):m===8?(Math.abs(y+x*.5)<.6||Math.abs(y-x*.5)<.6):
+        m===9?(Math.floor(x*2+y*3)%4===0):m===10?(y>.4&&Math.floor(x)%2===0):
+        m===11?(y>.25):(Math.floor(x*1.5)%2===0)
+      )).commit(trim,{flat:true,line:null});
+      if(m===6||m===8)fr(12,(x,y)=>x> -3.5&&x< -1.4&&y> -2.4&&y<.2).commit(trim,{flat:true,line:null});
+    }else if(l.shoeStyle==='dunk')fr(12,(x,y)=>x>4&&x<7&&y>-.9&&y<.4).commit(shade(l.shoeTrim,k),{line:null});
+    else if(l.shoeStyle==='supra')b.begin().cap(L.kn[0],L.kn[1],ax,ay,3.2*u,3*u,.7,.78,false,false).commit(shade(l.shoeTrim,k),{line:null});
     fr(12, (x, y) => y > 1.5 && y <= (kind === 'boot' ? 3.3 : kind === 'runner' ? 3 : kind === 'cortez' ? 2 : 2.5) && x >= -3.6 && x <= 7.4).commit(so, { flat: false });
+    if(l.shoeStyle==='af1')fr(12,(x,y)=>y>1.5&&y<3.4&&x>-3.6&&x<7.4).commit(so,{line:null});
     if(kind==='boot') fr(12,(x,y)=>y>2.5 && y<3.6 && x>-3 && x<7 && Math.floor(x)%3!==0).commit(shade(sc,.45),{flat:true,line:null});
   }
 
@@ -568,7 +583,11 @@ export class Puppet {
     if (l.wrist === 'watch') {
       const wc = shade(l.wristColor, k);
       b.begin().cap(ex, ey, wx, wy, 2.0 * u, 1.8 * u, 0.7, 0.8, false, false).commit(wc, { flat: true, line: shade(wc, 0.55) });
-      this.pix.set(Math.floor(ex + (wx - ex) * 0.75), Math.floor(ey + (wy - ey) * 0.75), 0xfff3c8);
+      const x=Math.floor(ex+(wx-ex)*.75),y=Math.floor(ey+(wy-ey)*.75),style=l.watchStyle;
+      if(style){this.pix.rect(x-2,y-2,5,5,shade(wc,.5));this.pix.rect(x-1,y-1,3,3,style==='digital'?0x8ca995:style==='iced'?0xcce5e9:0x263741);
+        if(style==='chrono'){this.pix.set(x-1,y,0xc4c8b6);this.pix.set(x+1,y,0xc4c8b6);}else if(style==='digital')this.pix.hline(x-1,x+1,y,0x263d35);else this.pix.vline(x,y-1,y+1,0xf0dfb3);
+        if(style==='iced')for(const [dx,dy] of [[-2,-2],[2,-2],[-2,2],[2,2]])this.pix.set(x+dx,y+dy,0xffffff);
+      }else this.pix.set(x,y,0xfff3c8);
     }
     if (l.wrist === 'sleeve' && !far) {
       b.begin().cap(sx0, sy0, ex, ey, 2.4 * u, 2.1 * u, 0.55, 1, false, true).commit(l.wristColor);
@@ -701,14 +720,14 @@ export class Puppet {
     const kind = l.chain;
     if (kind === 'none' || this.cur.turn < -.28) return;
     const gold = kind === 'gold' || kind === 'cuban' || kind === 'rope' || kind === 'cross';
-    const col = gold ? 0xf0c040 : kind === 'rosary' ? 0x8a1c24 : 0xdfe6ee, dk = gold ? 0xb88820 : kind === 'rosary' ? 0x4a0e14 : 0x8d99a8;
+    const col = l.chainColor ?? (gold ? 0xf0c040 : kind === 'rosary' ? 0x8a1c24 : 0xdfe6ee), dk = shade(col,.65);
     // Project onto the front plane of the actual, leaning torso. The spine
     // centre is not the chest surface in profile; mirrored lean needs the same frame.
     const length=Math.hypot(n[0]-h[0],n[1]-h[1])||1;
     const direction=sx<0?-1:1;
     const normal=[(h[1]-n[1])/length*direction,(n[0]-h[0])/length*direction];
     const profile=Math.abs(this.cur.turn);
-    const surface=4.2*profile,loop=2.2-1.4*profile;
+    const surface=(GARMENT_CUTS[l.top].chest*.67+this.cloth.x*.1)*profile,loop=2.2-1.4*profile;
     const at=(t:number,off:number)=>[h[0]+(n[0]-h[0])*t+normal[0]*off*u,h[1]+(n[1]-h[1])*t+normal[1]*off*u];
     const low = kind==='rosary'?.43:kind==='rope'?.57:.65;
     const path=[at(.96,surface*.35-loop),at(.83,surface-loop),at(low,surface+.4),at(.83,surface+loop),at(.96,surface*.35+loop)];
@@ -732,19 +751,23 @@ export class Puppet {
         p.line(x0, y0, x1, y1, col);
         const d = Math.hypot(x1 - x0, y1 - y0), steps = Math.max(1, Math.round(d));
         for (let s = 0; s <= steps; s += 2) p.set(Math.round(x0 + ((x1 - x0) * s) / steps), Math.round(y0 + ((y1 - y0) * s) / steps), dk);
-      } else p.line(x0, y0, x1, y1, col);
+      } else {p.line(x0,y0,x1,y1,col);if(kind==='tennis')for(let t=0;t<=1;t+=.25)p.set(x0+(x1-x0)*t,y0+(y1-y0)*t,0xf2ffff);}
+      if((l.chainSize??1)>1)p.line(x0,y0+1,x1,y1+1,col);
     }
     const sw = this.chain;
     const ex = end[0] + clamp(sw.x * sx,-1.2*u,1.2*u), ey = end[1] + clamp(sw.y,-u,u);
-    if (kind === 'rope' || kind === 'cuban') return;
+    if (kind === 'rope' || kind === 'cuban' || kind==='tennis') return;
     const px = Math.round(ex), py = Math.round(ey);
     p.line(end[0], end[1], ex, ey, dk);
     if (kind === 'cross' || kind === 'rosary') {
-      const cc = kind === 'rosary' ? 0xdfe6ee : 0xf0c040, cd = kind === 'rosary' ? 0x8d99a8 : 0xb88820;
+      const cc = l.chainColor ?? (kind === 'rosary' ? 0xdfe6ee : 0xf0c040), cd = kind === 'rosary' ? 0x8d99a8 : 0xb88820;
       const tall = kind === 'rosary' ? 6 : 5;
       for (let i = 0; i < tall; i++) p.set(px, py + i, i === 0 ? 0xffffff : cc);
       p.set(px - 1, py + 1, cc); p.set(px + 1, py + 1, cc); p.set(px - 1, py + 2, cd); p.set(px + 1, py + 2, cd);
       p.set(px, py + tall, cd);
+    } else if(kind==='medallion'){p.circle(px,py+2,3,OUT);p.circle(px,py+2,2,col);p.set(px,py+1,0xfff0c3);
+    } else if(kind==='dogtag'){p.rect(px-2,py,5,7,OUT);p.rect(px-1,py+1,3,5,col);p.vline(px,py+2,py+4,dk);
+    } else if(kind==='star'){for(let y=-3;y<=3;y++)for(let x=-3;x<=3;x++)if(Math.abs(x)+Math.abs(y)<4 || x===0 || y===0)p.set(px+x,py+y+2,Math.abs(x)+Math.abs(y)>2?dk:col);
     } else if (kind === 'ice') {
       p.rect(px - 3, py-1, 7, 7, OUT);
       p.rect(px - 2, py, 5, 5, 0xbfe4f4);
@@ -824,29 +847,40 @@ export class Puppet {
       const [qx, qy] = this.loc(hd, sx, u, -1.5, -4.2); this.pix.set(qx, qy, shade(skin, 1.35));
     }
 
-    if (l.face === 'beard') F(10, (x, y) => jaw(x, y) && y >= 1.4 && x > -2.4 && !(x > 3 && y < 3.6)).commit(l.faceColor, { line: null });
-    if (l.face === 'stache') F(8, (x, y) => x >= -2.4 && x <= 5.8 && y >= 2.2 && y <= 3.1 && (front || x >= 1.6)).commit(l.faceColor, { line: null });
+    if (['beard','fullbeard','beardblunt'].includes(l.face)) F(10, (x, y) => jaw(x, y) && y >= 1.4 && x > -2.4 && !(x > 3 && y < 3.6)).commit(l.faceColor, { line: null });
+    if (l.face === 'stache' || l.face==='handlebar') F(8, (x, y) => x >= -2.4 && x <= 5.8 && y >= 2.2 && y <= 3.1 && (front || x >= 1.6)).commit(l.faceColor, { line: null });
     if (l.face === 'goatee') F(8, (x, y) => x >= 2.0 && x <= 5.2 && y >= 3.0 && y <= 6).commit(l.faceColor, { line: null });
-    if (l.face === 'shades' && !back) {
+    if (['shades','wraps','aviator'].includes(l.face) && !back) {
       F(10, (x, y) => (x >= 0.6 && x <= 6.4 && y >= -2.0 && y <= 0.5) || (x >= -3.6 && x <= 0.8 && y >= -1.4 && y <= -0.6)).commit(l.faceColor, { line: null, flat: true });
       const [qx, qy] = this.loc(hd, sx, u, 4.4, -1.4); this.pix.set(qx, qy, 0x8fb8d8);
     }
-    if (l.face === 'glasses' && !back) {
+    if ((l.face === 'glasses'||l.face==='rectglasses') && !back) {
       for (const [cx, cy] of [[2.6, -0.6], [5.2, -0.6]]) {
         for (let a = 0; a < 8; a++) { const [qx, qy] = this.loc(hd, sx, u, cx + Math.cos(a * 0.785) * 1.7, cy + Math.sin(a * 0.785) * 1.7); this.pix.set(qx, qy, l.faceColor); }
       }
     }
 
+    if(l.face==='fullbeard')F(11,(x,y)=>y>3&&y<8.3&&x> -3+(y-3)*.3&&x<4.8-(y-3)*.35).commit(l.faceColor,{line:null});
+    if(l.face==='chinstrap')F(10,(x,y)=>jaw(x,y)&&y>1.5&&(y>4||x< -1.6)).commit(l.faceColor,{line:null});
+    if(l.face==='handlebar')F(10,(x,y)=>y>2.5&&y<4.5&&(x< -1||x>4)&&x> -3&&x<6).commit(l.faceColor,{line:null});
+    if(!back && l.face==='wraps')F(10,(x,y)=>x>0&&x<6&&y> -1.6&&y<.1).commit(0x7399ad,{flat:true,line:null});
+    if(!back && l.face==='aviator')F(10,(x,y)=>x>1&&x<5.5&&y> -1.5&&y<.7&&(x<2||x>4.4||y>0)).commit(0xc5aa6c,{flat:true,line:null});
+    if(!back && l.face==='rectglasses')F(10,(x,y)=>x>1&&x<6&&y> -1.7&&y<.5&&(y< -1||y>0||x<1.8||x>5.3)).commit(l.faceColor,{flat:true,line:null});
+    if(!back && (l.face==='blunt'||l.face==='beardblunt')){
+      F(13,(x,y)=>x>3.5&&x<10.5&&y>2.6&&y<3.8).commit(0x74533a,{flat:true,line:null});
+      F(13,(x,y)=>x>9&&x<10.8&&y>2.6&&y<3.8).commit(Math.sin(this.t*5)>.3?0xf4a051:0xc55b36,{flat:true,line:null});
+      for(let i=0;i<4;i++){const a=(this.t*.65+i*.24)%1;const [x,y]=this.loc(hd,sx,u,10+Math.sin(a*5+i)*1.5,2.3-a*8);this.pix.set(x,y,a>.7?0x76858d:0xaab3af);}
+    }
     if (back) return;
     const px = (lx: number, ly: number, c: Col) => { const [qx, qy] = this.loc(hd, sx, u, lx, ly); this.pix.set(qx, qy, c); };
     const blinking = this.blink > 0 || r.emo < -0.5;
-    const shadesOn = l.face === 'shades';
+    const shadesOn = ['shades','wraps','aviator'].includes(l.face);
     if (front) {
       for (const ex of [-2, 2]) { if (!shadesOn) { px(ex, -0.5, 0xffffff); px(ex + 1, -0.5, OUT); } px(ex, -1.9, shade(l.hairColor, 0.8)); }
       px(0, 1.5, shade(skin, 0.75));
       return;
     }
-    if (!shadesOn && l.face !== 'glasses') {
+    if (!shadesOn && l.face !== 'glasses' && l.face!=='rectglasses') {
       if (blinking) { px(2.6, -0.2, OUT); px(3.6, -0.2, OUT); } else { px(2.6, -0.6, 0xffffff); px(3.6, -0.6, OUT); px(3.6, 0.4, OUT); }
       const bro = r.emo < -0.3 ? 0.8 : r.emo > 0.4 ? -0.4 : 0;
       px(2.2, -2.3 - bro * 0.4, shade(hc, 0.9)); px(3.3, -2.3 + bro, shade(hc, 0.9)); px(4.4, -2.3 + bro * 1.4, shade(hc, 0.9));
@@ -882,6 +916,10 @@ export class Puppet {
     const hd0 = l.headColor, ht = l.headTrim;
     const crown = (x: number, y: number, ry: number) => ((x + 0.2) ** 2) / 38 + ((y + 0.9) ** 2) / (ry * ry) <= 1;
     switch (l.head) {
+      case 'skimask':
+        F(12,(x,y)=>(skull(x,y)||(y>1&&y<7&&x> -3.8&&x<4.3)) && !(y> -1.7&&y<.5&&(front?Math.abs(x)<4:x>1.4))).commit(hd0);
+        F(12,(x,y)=>y>4.8&&y<6&&x> -3.5&&x<3.8).commit(shade(hd0,.78),{line:null});
+        break;
       case 'fullcap':
       case 'backcap': {
         const dir = l.head === 'fullcap' ? 1 : -1;
@@ -925,6 +963,10 @@ export class Puppet {
         F(10, (x, y) => ((x + 0.2) ** 2) / 36 + ((y + 1.4) ** 2) / 36 <= 1 && y >= -3.8 && y <= -2.6).commit(ht, { flat: true, line: null });
         break;
       default: break;
+    }
+    if(l.headBadge && ['fullcap','backcap','fitted','beanie'].includes(l.head)){
+      const bx=l.head==='backcap'?-2:2;
+      F(12,(x,y)=>x>bx-2&&x<bx+2&&y> -5.7&&y< -2.5&&((Math.floor(x-bx+2)*3+Math.floor(y+6)+l.headBadge!)%4!==0)).commit(ht,{flat:true,line:null});
     }
     void r; void mir; void back; void front;
   }

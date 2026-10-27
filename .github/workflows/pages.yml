@@ -31,6 +31,8 @@ jobs:
           node scripts/check-gameplay.cjs
           node scripts/check-progression-rebounds.cjs
           node scripts/check-bis.cjs
+          node scripts/check-stamina.cjs
+          node scripts/check-streetwear.cjs
           node scripts/check-famous.cjs
           node scripts/check-rim-reward.cjs
           node scripts/check-court-events.cjs

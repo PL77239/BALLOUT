@@ -1,15 +1,16 @@
 import type { Col } from './pixel';
 import type { TopGraphic } from './wardrobe';
+import { streetwearItems } from './streetwear';
 
 export type RegionId = 'bk' | 'chi' | 'chiraq' | 'warsaw' | 'marseille' | 'harlem' | 'queens' | 'philly' | 'detroit' | 'atl' | 'la';
 export type HairKind = 'bald' | 'fade' | 'hightop' | 'waves' | 'afro' | 'braids' | 'locs' | 'twists' | 'crop' | 'cornrows' | 'shortlocs' | 'flattop' | 'mohawk' | 'bun';
-export type HeadKind = 'none' | 'fullcap' | 'backcap' | 'fitted' | 'beanie' | 'headband' | 'durag' | 'bucket' | 'bandana';
-export type FaceKind = 'none' | 'shades' | 'beard' | 'goatee' | 'glasses' | 'stache' | 'grillz';
+export type HeadKind = 'none' | 'fullcap' | 'backcap' | 'fitted' | 'beanie' | 'headband' | 'durag' | 'bucket' | 'bandana' | 'skimask';
+export type FaceKind = 'none' | 'shades' | 'beard' | 'goatee' | 'glasses' | 'stache' | 'grillz' | 'fullbeard' | 'chinstrap' | 'handlebar' | 'wraps' | 'aviator' | 'rectglasses' | 'blunt' | 'beardblunt';
 export type TopKind = 'tank' | 'tee' | 'hoodie' | 'jersey' | 'longsleeve' | 'bigTee' | 'flannel' | 'puffer';
 export type BottomKind = 'shorts' | 'longShorts' | 'sweats' | 'joggers' | 'jeans' | 'jorts' | 'khakis' | 'chinoShorts';
 export type ShoeKind = 'high' | 'low' | 'runner' | 'boot' | 'cortez' | 'slides';
 export type SockKind = 'none' | 'crew' | 'long' | 'stripe';
-export type ChainKind = 'none' | 'gold' | 'silver' | 'cuban' | 'rope' | 'cross' | 'rosary' | 'ice';
+export type ChainKind = 'none' | 'gold' | 'silver' | 'cuban' | 'rope' | 'cross' | 'rosary' | 'ice' | 'medallion' | 'dogtag' | 'star' | 'tennis';
 export type WristKind = 'none' | 'bands' | 'sleeve' | 'watch';
 export type Slot = 'hair' | 'head' | 'face' | 'top' | 'bottom' | 'shoes' | 'socks' | 'chain' | 'wrist';
 
@@ -23,6 +24,9 @@ export interface Loadout {
   /** Optional item-level details; old saves and rivals remain compatible. */
   topGraphic?: TopGraphic; jerseyNumber?: number;
   topTexture?: string; bottomTexture?: string;
+  shoeModel?: number; shoeStyle?: 'aj'|'dunk'|'af1'|'supra';
+  headBadge?: number; watchStyle?: 'square'|'chrono'|'iced'|'digital';
+  chainColor?:Col; chainSize?:number;
   bottom: BottomKind; bottomColor: Col; bottomTrim: Col;
   bottomDetail?: 'none' | 'stitched' | 'crosses' | 'ripped' | 'stripe';
   shoes: ShoeKind; shoeColor: Col; shoeSole: Col; shoeTrim: Col;
@@ -33,13 +37,14 @@ export interface Loadout {
 
 /** Render bulky hair tucked under a covering hat without changing equipped/saved hair. */
 export function hairUnderHeadwear(hair: HairKind, head: HeadKind): HairKind {
+  if(head==='skimask')return 'bald';
   const covers = head==='fullcap' || head==='backcap' || head==='fitted' || head==='beanie' || head==='bucket' || head==='durag';
   return covers && (['afro','hightop','shortlocs','flattop','mohawk','bun'].includes(hair)) ? 'fade' : hair;
 }
 
 /** Item previews must clear item-specific details just like equipping a fresh loadout. */
 export function applyLookPatch(base: Loadout,patch: Partial<Loadout>): Loadout {
- return {...base,...(patch.top?{topGraphic:undefined,jerseyNumber:undefined,topTexture:undefined}:{}),...(patch.bottom?{bottomDetail:undefined,bottomTexture:undefined}:{}),...patch};
+ return {...base,...(patch.top?{topGraphic:undefined,jerseyNumber:undefined,topTexture:undefined}:{}),...(patch.bottom?{bottomDetail:undefined,bottomTexture:undefined}:{}),...(patch.shoes?{shoeModel:undefined,shoeStyle:undefined}:{}),...(patch.head?{headBadge:undefined}:{}),...(patch.wrist?{watchStyle:undefined}:{}),...(patch.chain?{chainColor:undefined,chainSize:undefined}:{}),...patch};
 }
 
 export const SKIN_TONES: Col[] = [0xf2cfa8, 0xd9a273, 0xb87a4b, 0x8a5634, 0x5e3a24, 0x3f2618];
@@ -346,6 +351,7 @@ function buildCatalog() {
     const price = Math.round(ids.reduce((sum, id) => sum + (items.find((i) => i.id === id)?.price ?? 0), 0) * 0.8);
     fits.push({ id: `fit.${reg}${n}`, name, region: reg, items: ids, price });
   }
+  items.push(...streetwearItems());
   return { items, fits };
 }
 

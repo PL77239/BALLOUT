@@ -58,7 +58,7 @@ export function openLobby(cfg:GameCfg,onStart:(cfg:GameCfg)=>void,onCancel:()=>v
     if(!l||typeof l!=='object')return false;
     const look=l as Record<string,unknown>;
     for(const [key,fallback] of Object.entries(cfg.p1)){
-      const v=look[key];if(v===undefined && ['topGraphic','jerseyNumber','bottomDetail','topTexture','bottomTexture'].includes(key))continue;
+      const v=look[key];if(v===undefined && ['topGraphic','jerseyNumber','bottomDetail','topTexture','bottomTexture','shoeModel','shoeStyle','headBadge','watchStyle','chainColor','chainSize'].includes(key))continue;
       if(key==='name'){if(typeof v!=='string'||v.length>40)return false;continue;}
       if(typeof fallback==='number'){if(typeof v!=='number'||!Number.isInteger(v)||v<0||v>0xffffff||key==='skin'&&v>=SKIN_TONES.length)return false;}
       else if(typeof v!=='string'||!(v===fallback||key==='face'&&v==='grillz'||ITEMS.some(i=>(i.patch as any)[key]===v)))return false;

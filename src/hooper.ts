@@ -81,6 +81,19 @@ export class Hooper {
   dribbleMoves = 0;
   stats: BossStats = PLAYER_STATS;
   staminaMax = T.stamina.max;
+  private staminaDelay = 0;
+  private exhausted = false;
+
+  private spendStamina(cost:number,g?:GameScene):boolean {
+    if(this.exhausted || this.stamina+1e-6<cost){
+      this.staminaDelay=Math.max(this.staminaDelay,.4);
+      if(g && this.warnCD<=0){g.popupAt(this,'LOW STAMINA','#ffb56a',20);this.warnCD=.8;}
+      return false;
+    }
+    this.stamina=Math.max(0,this.stamina-cost);this.staminaDelay=.55;
+    if(this.stamina<=.001)this.exhausted=true;
+    return true;
+  }
   private buf: Record<Buffered, number> = { shootDown: 0, a: 0, b: 0, c: 0, shove: 0 };
 
   constructor(scene: Phaser.Scene, public id: number, public loadout: Loadout, stats: BossStats = PLAYER_STATS) {
@@ -109,6 +122,7 @@ export class Hooper {
     this.act = 'free'; this.actT = 0; this.hasBall = hasBall;
     this.meter = 0; this.comboN = 0; this.moveHistory = []; this.comboKind = ''; this.layupStyle = 0; this.dunkStyle = 0; this.protectT = 0; this.pickupLock = 0; this.mood = ''; this.moodT = 0;
     this.shoved = false; this.sprintT = 0; this.dribbleMoves = 0; this.stamina = this.staminaMax;
+    this.staminaDelay=0;this.exhausted=false;
     for (const k of BUFFERED) this.buf[k] = 0;
   }
 
@@ -154,8 +168,10 @@ export class Hooper {
 
   startMove(kind: MoveKind, g: GameScene) {
     if (!this.hasBall) return;
-    const I = this.I;
     const chained = g.gt - this.comboT < T.moves.comboWindow;
+    const nextMoves=chained?this.dribbleMoves+1:1;
+    if(!this.spendStamina(11+nextMoves*6,g))return;
+    const I = this.I;
     const prev = this.comboKind;
     this.comboN = chained ? Math.min(6, this.comboN + 1) : 1;
     this.comboKind = kind; this.comboT = g.gt;
@@ -168,9 +184,7 @@ export class Hooper {
     sfx.squeak();
     this.protectT = T.moves.protect + (kind === 'spin' ? 0.1 : 0);
     this.ankleChecked = false;
-    this.dribbleMoves++;
-    this.stamina = Math.max(0, this.stamina - (11 + this.dribbleMoves * 6));
-    if (this.dribbleMoves >= 3) this.stamina = Math.min(this.stamina, 5);
+    this.dribbleMoves=nextMoves;
     const sp = (kind === 'btb' ? 1.15 : kind === 'spin' ? 0.95 : 1) * (this.comboN > 1 && kind === prev ? 0.8 : 1) * T.moves.dash;
     this.dash = kind === 'btb'
       ? { x: (dirX || 1) * 330 * sp, z: dirZ * 90 }
@@ -225,7 +239,7 @@ export class Hooper {
     if (!this.hasBall || (this.act!=='free' && this.act!=='juke') || this.h>8) return false;
     const dx = T.hoop.x-this.x;
     if(dx < -25 || Math.hypot(dx,this.z*1.2)>T.dunk.range || Math.abs(this.z)>T.dunk.lane) return false;
-    if(this.stamina<T.dunk.cost || (g.needsClear && !g.cleared)) return false;
+    if(this.exhausted || this.stamina<T.dunk.cost || (g.needsClear && !g.cleared)) return false;
     const d = g.opp(this);
     // A beaten or grounded defender does not keep an invisible wall in the lane.
     if(d.act==='fall' || d.act==='stagger' || d.act==='recover') return true;
@@ -245,6 +259,7 @@ export class Hooper {
 
   startDunk(g: GameScene): boolean {
     if (!this.canDunk(g)) return false;
+    if(!this.spendStamina(T.dunk.cost,g))return false;
     this.setAct('dunk', T.dunk.airtime);
     this.dunkFrom = { x: this.x, z: this.z };
     this.dunkHit = false;
@@ -253,27 +268,26 @@ export class Hooper {
     this.trickDunk = this.comboN >= 2 && g.gt - this.comboT < 1.4;
     const vertical=this.I?.mz ?? 0;
     this.dunkStyle = this.trickDunk ? 2 : vertical<-.25 ? 1 : vertical>.25 ? 3 : 0;
-    this.stamina = Math.max(0, this.stamina - T.dunk.cost);
     g.fx.dust(this.x, this.sy, 6, 0);
     return true;
   }
 
   startSwipe() {
+    if(!this.spendStamina(4))return;
     this.setAct('swipe', T.steal.swipe); this.swipeHit = false;
-    this.stamina = Math.max(0, this.stamina - 4);
   }
 
   startBlock() {
+    if(!this.spendStamina(6))return;
     this.setAct('block');
     this.vh = T.jump.vBlock;
-    this.stamina = Math.max(0, this.stamina - 6);
   }
 
   startShove(g: GameScene) {
     if (this.shoveCD > 0) return;
+    if(!this.spendStamina(T.shove.cost,g))return;
     this.setAct('shove', 0.3); this.shoveHit = false;
     this.shoveCD = T.shove.cooldown;
-    this.stamina = Math.max(0, this.stamina - T.shove.cost);
     void g;
   }
 
@@ -302,10 +316,13 @@ export class Hooper {
     this.actT += dt;
 
     const moving = Math.abs(I.mx) + Math.abs(I.mz) > 0.15;
-    const sprinting = I.sprint && moving && this.stamina > 3 && (this.act === 'free');
+    if(this.stamina<=.001)this.exhausted=true;
+    this.staminaDelay=Math.max(0,this.staminaDelay-dt);
+    if(this.exhausted && this.stamina>=18)this.exhausted=false;
+    const sprinting = I.sprint && moving && !this.exhausted && this.stamina > 0 && (this.act === 'free');
     this.sprintT = sprinting ? this.sprintT + dt : 0;
-    if (sprinting) this.stamina = Math.max(0, this.stamina - T.stamina.sprintDrain * dt);
-    else this.stamina = Math.min(this.staminaMax, this.stamina + (T.stamina.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
+    if (sprinting) {this.stamina = Math.max(0, this.stamina - T.stamina.sprintDrain * dt);this.staminaDelay=.55;if(this.stamina===0)this.exhausted=true;}
+    else if(this.staminaDelay===0 && !I.a && !I.b && !I.c && !I.cHeld && !I.shove && !(I.sprint&&moving) && (this.act==='free'||this.act==='recover'))this.stamina = Math.min(this.staminaMax, this.stamina + (T.stamina.regen + (moving ? 0 : T.stamina.regenIdleBonus)) * dt);
 
     for (const k of BUFFERED) this.buf[k] = I[k] ? T.input.buffer : Math.max(0, this.buf[k] - dt);
     if (!I.shootHeld && !I.shootDown) this.buf.shootDown = 0;

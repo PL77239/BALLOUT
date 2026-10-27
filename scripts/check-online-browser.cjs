@@ -26,13 +26,15 @@ export default class Peer extends Emitter {
   for(const p of [a,b]){
    p.on('pageerror',e=>errors.push(e.message));await p.goto(`http://127.0.0.1:${port}/`);
    await p.waitForFunction(()=>window.__phaser?.scene?.getScene('menu')?.sys.isActive());
-   await p.evaluate(()=>{const m=window.__phaser.scene.getScene('menu');m.cfg.mode='online';m.startGame();});
+   await p.evaluate(async host=>{const m=window.__phaser.scene.getScene('menu');if(host){const {buildLoadout,STARTER_EQUIP}=await import('/src/loadout.ts');m.myLook=()=>buildLoadout({...STARTER_EQUIP,top:'sw.hoodie.syrup.black',head:'sw.head.lakers.fullcap',shoes:'sw.aj.12.0',chain:'sw.chain.dogtag.gold',wrist:'sw.watch.iced.steel',face:'sw.face.beardblunt'});}m.cfg.mode='online';m.startGame();},p===a);
   }
   await a.click('#net-host');await a.waitForFunction(()=>document.querySelector('#net-status').textContent.startsWith('ROOM:'));
   const room=(await a.locator('#net-status').textContent()).match(/ROOM: ([A-Z2-9]{6})/)[1];
   await b.fill('#net-code',room);await b.click('#net-join');
   for(const p of [a,b])await p.waitForFunction(()=>window.__g?.cfg.netRole);
   await a.waitForFunction(()=>window.__g.phase==='live');
+  assert.equal(await b.evaluate(()=>window.__g.hoopers[0].loadout.shoeModel),12,'guest receives new item details');
+  assert.equal(await b.evaluate(()=>window.__g.hoopers[0].loadout.watchStyle),'iced');
   const before=await a.evaluate(()=>window.__g.hoopers[1].z);
   await b.keyboard.down('w');await b.waitForTimeout(600);await b.keyboard.up('w');await a.waitForTimeout(250);
   const zA=await a.evaluate(()=>window.__g.hoopers[1].z),zB=await b.evaluate(()=>window.__g.hoopers[1].z);
