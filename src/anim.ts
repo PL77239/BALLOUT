@@ -60,7 +60,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
 
   /* ---------- baseline: locomotion + idle ---------- */
   const dip = gait(r, h.ph, speed, 13, 0);
-  r.hipY = 86 - dip - Math.max(0, -breathe) * 1.4 + breathe * 0.8;
+  r.hipY = 76 - dip - Math.max(0, -breathe) * 1.4 + breathe * 0.8;
   r.lean = 0.05 + 0.2 * S + clamp(A.acc * 0.00005, -0.14, 0.2);
   if (along < -30) r.lean = -0.04 + clamp(A.acc * 0.00004, -0.06, 0.1);
   r.head = -0.04 - 0.1 * S + Math.sin(t * 0.9) * 0.03 * (1 - S);
@@ -82,7 +82,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
   /* ---------- ball handling ---------- */
   const handling = h.hasBall && (h.act === 'free' || h.act === 'juke' || h.act === 'recover' || h.act === 'stagger');
   if (handling) {
-    r.hipY = 80 - dip * 0.6;
+    r.hipY = 72 - dip * 0.6;
     r.lean = (along < -30 ? 0.05 : 0.16) + 0.14 * S + clamp(A.acc * 0.00004, -0.1, 0.12);
     r.head = -0.1 + 0.05 * Math.sin(t * 1.3);
     const ballHand = h.handSide > 0 ? 'f' : 'b';
@@ -104,7 +104,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
     }
   } else if (defending && h.act === 'free') {
     const lat = Math.abs(h.vz) > Math.abs(along) * 0.6;
-    r.hipY = 72 - dip * 0.35;
+    r.hipY = 66 - dip * 0.35;
     r.lean = 0.12 + 0.05 * S;
     const slide = Math.sin(h.ph * (lat ? 1 : 1));
     r.fFx = 17 + slide * 7 * S; r.bFx = -17 - slide * 7 * S;
@@ -122,7 +122,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
   if (h.act === 'free' && !h.hasBall && g.phase !== 'live' && g.phase !== 'intro') {
     celebrate(h, r, t, hands, sh);
   } else if (g.phase === 'intro') {
-    r.hipY = 79 + breathe; r.lean = 0.12;
+    r.hipY = 73 + breathe; r.lean = 0.12;
     if (!h.hasBall) hands(30, 4, 20, -4);
   }
 
@@ -139,6 +139,15 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
       hands(lerp(24, 14, u) - 4 * load * gather, lerp(-34, 62, u) - 8 * Math.sin(load * Math.PI) * gather, lerp(30, 24, u), lerp(-28, 46, u));
       r.fFx = air ? 12 : 12 + 4 * load; r.bFx = air ? -9 : -12 - 4 * load; r.fFy = r.bFy = air ? 12 + 8 * u : 0;
       r.fAnk = r.bAnk = air ? 0.62 : 0;
+      if(h.layupStyle) {
+        // Two distinct close finishes use the same timing and collision rules.
+        const gather=smooth(m/.45), reach=smooth((m-.35)/.4);
+        r.lean=.17+.15*gather; r.hipY=78+15*reach;
+        r.fFx=lerp(10,30,gather);r.bFx=lerp(-10,-24,gather);
+        r.fFy=air?10+22*gather:0;r.bFy=air?8:0;
+        if(h.layupStyle===2){r.turn=1-.30*Math.sin(m*Math.PI);hands(lerp(16,37,reach),lerp(-30,67,reach),lerp(20,4,reach),lerp(-25,10,reach));}
+        else hands(lerp(18,32,reach),lerp(-28,74,reach),lerp(22,8,reach),lerp(-25,18,reach));
+      }
       r.head = m > 0.4 ? -0.28 * u : 0;
       r.mouth = u > 0.5 ? 1 : 0; r.emo = 0;
       break;
@@ -150,6 +159,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
       r.lean = 0.02 + 0.04 * tt;
       hands(lerp(14, 30, flick), lerp(62, 50, flick) - 18 * ease(seg(tt, 0.4, 1)), lerp(24, 36, tt), lerp(46, 6, ease(tt)));
       r.fFx = 14; r.bFx = -8; r.fFy = r.bFy = air ? 12 : 0; r.fAnk = r.bAnk = air ? 0.55 : 0;
+      if(h.layupStyle){r.lean=.16;hands(lerp(30,39,flick),lerp(70,47,tt),10,8);r.fFx=30;r.bFx=-18;r.fFy=air?24:0;r.bFy=air?8:0;}
       r.head = -0.2 * (1 - tt);
       break;
     }
@@ -209,7 +219,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
     case 'dunk': {
       const u = clamp(h.actT / T.dunk.airtime, 0, 1);
       r.fFx = 18; r.bFx = -14; r.fFy = r.bFy = air ? 16 : 0; r.fAnk = r.bAnk = air ? 0.5 : 0;
-      const sx = h.trickDunk;
+      const sx = h.dunkStyle===2 || h.trickDunk;
       if (u < 0.16) {
         const c = ease(u / 0.16);
         r.hipY = 86 - 18 * c; r.lean = 0.12 + 0.18 * c; hands(lerp(20, 26, c), lerp(-30, -32, c), lerp(18, 22, c), lerp(-28, -30, c));
@@ -218,6 +228,8 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
         const k = ease((u - 0.16) / 0.38);
         r.hipY = 94; r.lean = 0.1 + 0.1 * k;
         if (sx) { const a = -Math.PI / 2 + k * Math.PI * 2.2; hands(Math.cos(a) * 56, Math.sin(a) * 56 + 6, 14, 42); r.lean = 0.1 - 0.06 * Math.sin(k * Math.PI * 2); }
+        else if(h.dunkStyle===1){r.turn=lerp(1,-.7,k);r.lean=-.12;hands(lerp(20,32,k),lerp(-30,76,k),lerp(20,8,k),lerp(-24,42,k));}
+        else if(h.dunkStyle===3){r.lean=.24;hands(lerp(20,45,k),lerp(-30,80,k),lerp(20,4,k),lerp(-24,16,k));}
         else hands(lerp(20, 38, k), lerp(-30, 76, k), lerp(20, 22, k), lerp(-24, 62, k));
         r.fFy = 10 + 14 * k; r.bFy = 16 + 14 * k; r.head = -0.2;
       } else if (u < 0.74) {
@@ -228,6 +240,7 @@ export function poseOf(h: Hooper, g: GameScene, dt: number): Pose {
       } else {
         r.hipY = 90; hands(32, 60, 26, 54);
       }
+      if(h.dunkStyle===1 && u>=.54)r.turn=lerp(-.7,1,smooth((u-.70)/.30));
       r.emo = 1;
       break;
     }
@@ -274,6 +287,12 @@ function juke(h: Hooper, r: Rig, p: number, hands: Hands) {
     hands(lerp(14, 6, burst), lerp(-26, -34, burst), -4, -34);
     r.head = -0.08;
   }
+  if(h.comboN>=2) {
+    const snap=Math.sin(p*Math.PI)*(1-rise);
+    r.lean+=.12*snap*dir;r.head-=.10*snap*dir;
+    r.fFy+=Math.max(0,10*snap);r.bFy+=Math.max(0,4*snap);
+    r.fAnk+=.16*snap;r.bAnk-=.12*snap;
+  }
 }
 
 function celebrate(h: Hooper, r: Rig, t: number, hands: Hands, sh: () => { x: number; y: number }) {
@@ -282,7 +301,8 @@ function celebrate(h: Hooper, r: Rig, t: number, hands: Hands, sh: () => { x: nu
     const k = h.celeb;
     const bounce = Math.abs(Math.sin(t * 8));
     r.emo = 1; r.mouth = 1;
-    if (k === 0) { r.hipY = 84 + bounce * 6; r.lean = -0.04; hands(16, 62 + bounce * 6, -4, 66 + bounce * 6); r.head = -0.2; }
+    if (k === 3) { r.hipY=82+bounce*4;r.lean=-.12;hands(48,44,12,22);r.head=-.16; }
+    else if (k === 0) { r.hipY = 84 + bounce * 6; r.lean = -0.04; hands(16, 62 + bounce * 6, -4, 66 + bounce * 6); r.head = -0.2; }
     else if (k === 1) { r.hipY = 82 + bounce * 3; r.lean = 0.12; hands(58, -6, 10, -36); r.head = 0.05; }
     else { r.hipY = 80; r.lean = 0.05; const s = sh(); void s; hands(18, 6 + Math.sin(t * 10) * 3, 4, 14 + Math.sin(t * 10 + 1) * 3); r.head = Math.sin(t * 6) * 0.1; }
   } else if (down) {

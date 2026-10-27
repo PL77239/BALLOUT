@@ -241,7 +241,7 @@ export class GameScene extends Phaser.Scene {
     b.launch(vx, vz, vh, info);
     h.hasBall = false; b.lastOwner = h;
     h.pickupLock = 0.4;
-    if (q.perfect) this.perfectMoment(h, h.meterInfo.contest > 0.3);
+    if (q.perfect) this.popupAt(h, 'GREEN RELEASE', '#4dff88', 24);
     else if (q.willMake && q.grade === 'good') this.popupAt(h, 'GOOD!', '#9dffc4', 28);
     else if (!q.willMake) this.popupAt(h, timingLabel(q.grade), q.grade.startsWith('very') ? '#ff4a4a' : '#ff8a5a', 22);
   }
@@ -250,6 +250,7 @@ export class GameScene extends Phaser.Scene {
     if (this.phase !== 'live') return;
     const h = info.shooter, o = this.opp(h);
     h.score += info.pts;
+    if(info.perfect) this.perfectMoment(h,h.meterInfo.contest>0.3);
     this.buckets[h.id] += info.pts;
     h.gainHeat(14 + (info.perfect ? 10 : 0));
     if (o.fireOn) { o.fireT = 0; o.heat = 0; this.popupAt(o, 'COOLED OFF', '#9fe8ff', 22); }
@@ -261,7 +262,7 @@ export class GameScene extends Phaser.Scene {
     this.fx.popup(sx - 40, sy - 60, `${lab}  +${info.pts}`, info.pts > 1 ? '#ffd24a' : '#ffffff', 40, 60);
     for (const [re, pay] of STYLE_PAY) if (re.test(lab)) { this.style[h.id] += pay; break; }
     this.shake(info.pts > 1 ? 160 : 90, info.pts > 1 ? 0.008 : 0.004);
-    h.mood = 'hype'; h.moodT = 2.4; h.celeb = Math.floor(this.rand() * 3);
+    h.mood = 'hype'; h.moodT = info.perfect ? 1.2 : 2.4; h.celeb = info.perfect ? 3 : Math.floor(this.rand() * 3);
     o.mood = 'down'; o.moodT = 2.4;
     this.court.cheer(info.pts > 1 || info.perfect ? 1 : 0.6);
     this.afterPoint(h);
@@ -340,10 +341,17 @@ export class GameScene extends Phaser.Scene {
     h.mood = 'down'; h.moodT = 1.2;
   }
 
+  private greenSpark(h:Hooper) {
+    this.fx.ring(h.x,h.sy-h.h-130,0x66ffb0,16,280,.32);
+    this.fx.sparks(h.x,h.sy-h.h-130,12,0xb1ffdb,200);
+  }
+
   private perfectMoment(h: Hooper, contested = false) {
     const tag = GameScene.PERFECT_TAGS[Math.floor(this.rand() * GameScene.PERFECT_TAGS.length)];
     const text = contested ? `${tag}!  (CONTESTED)` : `${tag}!`;
     this.popupAt(h, text, '#4dff88', 44);
+    this.greenSpark(h);
+    if(this.cfg.netRole==='host')net?.send({type:'event',kind:'green',id:h.id});
     this.hitstop(0.05);
     this.slowmo(0.55, 0.18);
   }
@@ -375,7 +383,6 @@ export class GameScene extends Phaser.Scene {
     b.setHeld(hp.x, 0, hp.rimH - 4);
     b.mode = 'loose'; b.owner = null; b.lastOwner = h; b.noRim = 0.5;
     b.vx = 20; b.vh = -520; b.vz = 0;
-    if (perfect) this.perfectMoment(h);
     const info: ShotInfo = { shooter: h, perfect, pts: T.rules.dunkPts, age: 0, scored: true, dunk: true, green: 0, touchedRim: false, willMake: true };
     b.info = info; b.netKick = 1.3;
     h.gainHeat(24 + (h.trickDunk ? 12 : 0));
@@ -387,6 +394,8 @@ export class GameScene extends Phaser.Scene {
       this.popupAt(h, h.trickDunk ? 'WINDMILL POSTER!' : 'POSTERIZED!', '#ff4fa0', 40);
       o.knock('fall', -o.facing, 220); h.gainHeat(10);
     } else if (h.trickDunk) this.popupAt(h, 'WINDMILL!', '#ff4fa0', 36);
+    else if(h.dunkStyle===1) this.popupAt(h,'REVERSE!', '#ffcd6b',32);
+    else if(h.dunkStyle===3) this.popupAt(h,'ONE HAND!', '#ffcd6b',32);
     this.punch(hp.x - 60, T.court.floorY - 160);
     this.onScore(info, true);
   }
@@ -645,7 +654,17 @@ export class GameScene extends Phaser.Scene {
         this.pointCountShown = n;
         this.showBanner(String(n), 'INBOUND', 0.55);
       }
-      if (this.pointCountdown > 0) return;
+      if (this.pointCountdown > 0) {
+        // Physics stays frozen between possessions; scorer gets a short,
+        // cosmetic celebration and settles to the floor before the reset.
+        for(const h of this.hoopers) if(h.mood==='hype' || (h.mood==='' && (h.act==='release'||h.act==='dunk'))) {
+          h.tAlive+=dt;h.moodT=Math.max(0,h.moodT-dt);
+          h.h=Math.max(0,h.h-dt*300);
+          const act=h.act;h.act='free';h.simPose(dt,this);h.act=act;
+          if(h.moodT===0)h.mood='';
+        }
+        return;
+      }
       this.resetPositions(this.nextOffense);
       this.phase = 'live';
       this.pointCountShown = -1;
@@ -722,7 +741,8 @@ export class GameScene extends Phaser.Scene {
       ['MOVE  WASD / STICK      SPRINT  SHIFT / R1', 0xc8c8d8, 1],
       ['SHOOT  SPACE / X: HOLD, RELEASE IN GREEN, TAP = PUMP FAKE', 0xc8c8d8, 1],
       ['CROSSOVER  J / SQUARE      SPIN  K / CIRCLE', 0xc8c8d8, 1],
-      ['DUNK  L / TRIANGLE   TAP SHOOT IN GREEN AT RIM', 0xc8c8d8, 1],
+      ['DUNK  L / TRIANGLE + UP / DOWN FOR STYLE', 0xc8c8d8, 1],
+      ['TAP SHOOT IN GREEN AT RIM  //  CLOSE SHOT = LAYUP', 0xc8c8d8, 1],
       ['DEFENSE  STEAL J   BLOCK SPACE   HAND-CHECK R / L2', 0xc8c8d8, 1],
       ['REBOUND  JUMP THEN STEAL IN AIR: SPACE + J / X + SQUARE', 0xc8c8d8, 1],
       ['DIRTY SHOVE  E / L1', 0xc8c8d8, 1],
@@ -747,7 +767,7 @@ export class GameScene extends Phaser.Scene {
     };
     if(this.cfg.netRole==='guest') {
       session.onState=s=>this.receiveNetworkState(s);
-      session.onEvent=e=>{if(e.kind==='sound'&&['rim','board','bounce'].includes(e.sound))(sfx as any)[e.sound]();if(e.kind==='banner')this.showBanner(String(e.main).slice(0,100),String(e.sub).slice(0,150),1.2);if(e.kind==='popup'&&(e.id===0||e.id===1))this.fx.popup(this.hoopers[e.id].x,this.hoopers[e.id].sy-205,String(e.text).slice(0,80),'#ffe45e',24);};
+      session.onEvent=e=>{if(e.kind==='green'&&(e.id===0||e.id===1))this.greenSpark(this.hoopers[e.id]);if(e.kind==='sound'&&['rim','board','bounce'].includes(e.sound))(sfx as any)[e.sound]();if(e.kind==='banner')this.showBanner(String(e.main).slice(0,100),String(e.sub).slice(0,150),1.2);if(e.kind==='popup'&&(e.id===0||e.id===1))this.fx.popup(this.hoopers[e.id].x,this.hoopers[e.id].sy-205,String(e.text).slice(0,80),'#ffe45e',24);};
       if(session.latest)this.receiveNetworkState(session.latest);
       session.send({type:'ready'});
       this.showBanner('YOU ARE P2','WAITING FOR HOST',1);
@@ -755,7 +775,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private networkState() {
-    const keys=['x','z','vx','vz','h','vh','facing','stamina','heat','fireT','score','act','actT','actDur','hasBall','meter','fade','shoved','comboN','moveKind','protectT','pickupLock','handSide','dunkHit','trickDunk','ph','mood','moodT','celeb','tAlive','reboundT'] as const;
+    const keys=['x','z','vx','vz','h','vh','facing','stamina','heat','fireT','score','act','actT','actDur','hasBall','meter','fade','shoved','comboN','moveKind','protectT','pickupLock','handSide','dunkHit','trickDunk','dunkStyle','layupStyle','ph','mood','moodT','celeb','tAlive','reboundT'] as const;
     return {seq:this.netSeq++,time:this.time_,phase:this.phase,needsClear:this.needsClear,cleared:this.cleared,
       players:this.hoopers.map(h=>({...Object.fromEntries(keys.map(k=>[k,h[k]])),rig:{...h.puppet.cur},carried:{...h.carried},meterInfo:{...h.meterInfo}})),
       ball:{x:this.ball.x,z:this.ball.z,h:this.ball.h,mode:this.ball.mode,fire:this.ball.fire,spin:this.ball.spin,netKick:this.ball.netKick,owner:this.ball.owner?.id??-1},
@@ -778,7 +798,7 @@ export class GameScene extends Phaser.Scene {
       this.hoopers.forEach((h,i)=>{
         const p=s.players[i];const oldScore=h.score;
         for(const key of ['x','z','h'] as const)h[key]+=(p[key]-h[key])*k;
-        for(const key of ['vx','vz','vh','facing','stamina','heat','fireT','score','act','actT','actDur','hasBall','meter','fade','shoved','comboN','moveKind','protectT','pickupLock','handSide','dunkHit','trickDunk','ph','mood','moodT','celeb','tAlive','reboundT'])if(p[key]!==undefined)(h as any)[key]=p[key];
+        for(const key of ['vx','vz','vh','facing','stamina','heat','fireT','score','act','actT','actDur','hasBall','meter','fade','shoved','comboN','moveKind','protectT','pickupLock','handSide','dunkHit','trickDunk','dunkStyle','layupStyle','ph','mood','moodT','celeb','tAlive','reboundT'])if(p[key]!==undefined)(h as any)[key]=p[key];
         for(const key of Object.keys(h.puppet.cur))if(typeof p.rig[key]==='number')(h.puppet.cur as any)[key]=p.rig[key];Object.assign(h.carried,p.carried);Object.assign(h.meterInfo,p.meterInfo);
         if(h.score>oldScore){sfx.net();this.court.cheer(.8);}
       });

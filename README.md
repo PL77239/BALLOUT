@@ -128,3 +128,6 @@ Adding tracks under `public/audio/bgm/courts/<court>/` is indexed automatically 
 Press or hold Triangle / L near the hoop to dunk. Holding retries when entering the close area. Possession, enough stamina and clearing the arc after a defensive rebound still apply. A nearby defender only prevents takeoff while actively guarding your lane; airborne blocks can still stop a dunk. Close-range failed attempts display a reason.
 
 Marseille's MASSILIA court is a fictional waterfront blacktop with a dusk Vieux-Port skyline, Fort Saint-Jean and Notre-Dame de la Garde. Landmark references: [Marseille tourism](https://www.marseille-tourisme.com/decouvrez-marseille/culture-et-patrimoine/sites-et-monuments/le-vieux-port/).
+
+### `bis` character art
+The experimental `bis` look uses recolourable 7x7 PNG-derived garment motifs and repeatable fabric tiles. See [the art workflow](docs/bis-character-workflow.md) for creating and assigning an outfit. Close shots display layup poses; dunk style can be selected with up/down during takeoff. A made green-timed shot gets a short celebration. Online testers need the same `bis` version on both sides.

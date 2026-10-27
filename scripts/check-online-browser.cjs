@@ -38,13 +38,16 @@ export default class Peer extends Emitter {
   const zA=await a.evaluate(()=>window.__g.hoopers[1].z),zB=await b.evaluate(()=>window.__g.hoopers[1].z);
   assert(Math.abs(zA-before)>10,'guest movement reaches host physics');assert(Math.abs(zA-zB)<20,'guest converges to host');
   assert.deepEqual(await a.evaluate(()=>window.__g.hoopers.map(h=>h.isCpu)),[false,false]);
+  // A green score must also deliver its short visual reward to the guest.
+  await b.evaluate(()=>{const fx=window.__g.fx,ring=fx.ring.bind(fx);window.__greenPulse=false;fx.ring=(...args)=>{if(args[2]===0x66ffb0)window.__greenPulse=true;return ring(...args);};});
   // Force a real winning bucket through the host score handler; guest must see it.
-  await a.evaluate(()=>{const g=window.__g;g.hoopers[0].score=g.cfg.target-1;g.onScore({shooter:g.hoopers[0],pts:1,perfect:false,dunk:false,touchedRim:false},true);});
+  await a.evaluate(()=>{const g=window.__g;g.hoopers[0].score=g.cfg.target-1;g.onScore({shooter:g.hoopers[0],pts:1,perfect:true,dunk:false,touchedRim:false},true);});
   await b.waitForFunction(()=>window.__g.phase==='over'&&window.__g.hoopers[0].score>=window.__g.cfg.target);
+  await b.waitForFunction(()=>window.__greenPulse);
   assert.equal(await a.evaluate(()=>window.__g.result),null,'online match pays no campaign cash');
   await b.click('button:has-text("LEAVE ROOM")');
   await a.waitForFunction(()=>document.body.textContent.includes('Opponent left')||document.body.textContent.includes('Connection closed'));
   assert.deepEqual(errors,[]);
-  console.log('Online browser integration passed (test transport): lobby, P2 input, snapshots, score, no rewards, disconnect');
+  console.log('Online browser integration passed (test transport): lobby, P2 input, snapshots, score, shared green reward, no rewards, disconnect');
  } finally {await browser?.close();server.kill();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

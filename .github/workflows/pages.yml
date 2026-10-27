@@ -30,6 +30,7 @@ jobs:
         run: |
           node scripts/check-gameplay.cjs
           node scripts/check-progression-rebounds.cjs
+          node scripts/check-bis.cjs
       - name: Check online input and state protocol
         run: node scripts/check-network.cjs
       - name: Index court music folders

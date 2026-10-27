@@ -22,6 +22,7 @@ export interface Loadout {
   top: TopKind; topColor: Col; topTrim: Col;
   /** Optional item-level details; old saves and rivals remain compatible. */
   topGraphic?: TopGraphic; jerseyNumber?: number;
+  topTexture?: string; bottomTexture?: string;
   bottom: BottomKind; bottomColor: Col; bottomTrim: Col;
   bottomDetail?: 'none' | 'stitched' | 'crosses' | 'ripped' | 'stripe';
   shoes: ShoeKind; shoeColor: Col; shoeSole: Col; shoeTrim: Col;
@@ -38,7 +39,7 @@ export function hairUnderHeadwear(hair: HairKind, head: HeadKind): HairKind {
 
 /** Item previews must clear item-specific details just like equipping a fresh loadout. */
 export function applyLookPatch(base: Loadout,patch: Partial<Loadout>): Loadout {
- return {...base,...(patch.top?{topGraphic:undefined,jerseyNumber:undefined}:{}),...(patch.bottom?{bottomDetail:undefined}:{}),...patch};
+ return {...base,...(patch.top?{topGraphic:undefined,jerseyNumber:undefined,topTexture:undefined}:{}),...(patch.bottom?{bottomDetail:undefined,bottomTexture:undefined}:{}),...patch};
 }
 
 export const SKIN_TONES: Col[] = [0xf2cfa8, 0xd9a273, 0xb87a4b, 0x8a5634, 0x5e3a24, 0x3f2618];
@@ -186,23 +187,25 @@ function buildCatalog() {
   add('top', 'top.tee.white', 'WHITE TEE', 0, 'any', { top: 'tee', topColor: 0xf0f0ea, topTrim: 0x222222 });
   add('top', 'top.tank.black', 'BLACK TANK', 0, 'any', { top: 'tank', topColor: 0x1d1d22, topTrim: 0xf0f0ea });
   // Original streetwear pieces: gothic hardware, embroidered denim and bold rap-era graphics.
-  add('top','top.tee.gothic','GOTHIC CROSS TEE',145,'any',{top:'tee',topColor:0x17191f,topTrim:0xd5d9e0,topGraphic:'cross'});
+  add('top','top.bigtee.starfield','STARFIELD OVERSIZE',185,'any',{top:'bigTee',topColor:0x202c47,topTrim:0xc7d6ee,topTexture:'tile:stars'});
+  add('bottom','bottom.jeans.starfield','STARFIELD DENIM',225,'any',{bottom:'jeans',bottomColor:0x304866,bottomTrim:0xd4d8db,bottomTexture:'tile:stars'});
+  add('top','top.tee.gothic','GOTHIC CROSS TEE',145,'any',{top:'tee',topColor:0x17191f,topTrim:0xd5d9e0,topTexture:'crest'});
   add('top','top.bigtee.stacked','STACKED TYPE BIG TEE',155,'any',{top:'bigTee',topColor:0xf1e4cb,topTrim:0xa52643,topGraphic:'stacked'});
   add('top','top.hoodie.gothic','SILVER CROSS HOODIE',220,'any',{top:'hoodie',topColor:0x20212b,topTrim:0xd4dae5,topGraphic:'cross'});
-  add('top','top.hoodie.stars','STAR PATCH HOODIE',195,'any',{top:'hoodie',topColor:0x5a355f,topTrim:0xf3c875,topGraphic:'stars'});
+  add('top','top.hoodie.stars','STAR PATCH HOODIE',195,'any',{top:'hoodie',topColor:0x5a355f,topTrim:0xf3c875,topTexture:'stars'});
   add('top','top.bigtee.washed','WASHED STAR BIG TEE',165,'any',{top:'bigTee',topColor:0x626862,topTrim:0xe0cf9e,topGraphic:'stars'});
   add('top','top.longsleeve.racing','RACING STRIPE LS',155,'any',{top:'longsleeve',topColor:0x344c61,topTrim:0xf0dfba,topGraphic:'stripe'});
   add('top','top.jersey.8','GOLD COURT 08',175,'any',{top:'jersey',topColor:0xdda52f,topTrim:0x613e91,topGraphic:'number',jerseyNumber:8});
   add('top','top.jersey.1','SKYLINE 01',175,'any',{top:'jersey',topColor:0x78b5d5,topTrim:0xf4efdf,topGraphic:'number',jerseyNumber:1});
   add('top','top.puffer.cream','CREAM PANEL PUFFER',230,'any',{top:'puffer',topColor:0xd8c9a6,topTrim:0x343744,topGraphic:'box'});
   add('bottom','bottom.jeans.flap','FLAP STITCH DENIM',205,'any',{bottom:'jeans',bottomColor:0x354a6b,bottomTrim:0xe4ca8f,bottomDetail:'stitched'});
-  add('bottom','bottom.jeans.cross','SILVER PATCH DENIM',235,'any',{bottom:'jeans',bottomColor:0x242832,bottomTrim:0xcbd0db,bottomDetail:'crosses'});
+  add('bottom','bottom.jeans.cross','SILVER PATCH DENIM',235,'any',{bottom:'jeans',bottomColor:0x242832,bottomTrim:0xcbd0db,bottomDetail:'crosses',bottomTexture:'stitch'});
   add('bottom','bottom.jeans.distressed','DISTRESSED WASH DENIM',210,'any',{bottom:'jeans',bottomColor:0x6486a0,bottomTrim:0xd8d4c8,bottomDetail:'ripped'});
   add('bottom','bottom.sweats.track','SIDE STRIPE SWEATS',160,'any',{bottom:'sweats',bottomColor:0x263a37,bottomTrim:0xe3d6ad,bottomDetail:'stripe'});
   add('bottom','bottom.longshorts.court','VARSITY LONG SHORTS',150,'any',{bottom:'longShorts',bottomColor:0x613e91,bottomTrim:0xdda52f,bottomDetail:'stripe'});
   add('head','head.fitted.star','STAR FITTED',130,'any',{head:'fitted',headColor:0x613e91,headTrim:0xdda52f});
   add('shoes','shoes.high.cream','CREAM COURT HIGHS',180,'any',{shoes:'high',shoeColor:0xe2d6b8,shoeTrim:0x8b2637,shoeSole:0xa99b7f});
-  add('top', 'top.tee.court', 'COURT LOGO TEE', 95, 'any', { top: 'tee', topColor: 0x222630, topTrim: 0xf0c55a, topGraphic: 'box' });
+  add('top', 'top.tee.court', 'COURT LOGO TEE', 95, 'any', { top: 'tee', topColor: 0x222630, topTrim: 0xf0c55a, topTexture: 'court' });
   add('top', 'top.jersey.23', 'VARSITY 23', 150, 'any', { top: 'jersey', topColor: 0x9e2937, topTrim: 0xffe6b1, topGraphic: 'number', jerseyNumber: 23 });
   add('top', 'top.bigtee.diagonal', 'DIAGONAL OVERSIZE', 135, 'any', { top: 'bigTee', topColor: 0x263c55, topTrim: 0x78d7ce, topGraphic: 'diagonal' });
   add('top', 'top.tee.black', 'BLACK TEE', 40, 'any', { top: 'tee', topColor: 0x1d1d22, topTrim: 0x4a4a54 });

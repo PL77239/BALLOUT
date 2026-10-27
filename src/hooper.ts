@@ -42,6 +42,7 @@ export class Hooper {
   shoved = false;
   comboN = 0;
   comboKind: MoveKind | '' = '';
+  moveHistory: MoveKind[] = [];
   comboT = -9;
   moveKind: MoveKind = 'cross';
   dash = { x: 0, z: 0 };
@@ -54,6 +55,8 @@ export class Hooper {
   ballOx = 32;
   bouncePhase = 0;
   trickDunk = false;
+  dunkStyle: 0|1|2|3 = 0;
+  layupStyle: 0|1|2 = 0;
   dunkFrom = { x: 0, z: 0 };
   dunkHit = false;
   dunkSlam = false;
@@ -104,7 +107,7 @@ export class Hooper {
   reset(x: number, z: number, hasBall: boolean) {
     this.x = x; this.z = z; this.vx = this.vz = 0; this.h = this.vh = 0;
     this.act = 'free'; this.actT = 0; this.hasBall = hasBall;
-    this.meter = 0; this.comboN = 0; this.protectT = 0; this.pickupLock = 0; this.mood = ''; this.moodT = 0;
+    this.meter = 0; this.comboN = 0; this.moveHistory = []; this.comboKind = ''; this.layupStyle = 0; this.dunkStyle = 0; this.protectT = 0; this.pickupLock = 0; this.mood = ''; this.moodT = 0;
     this.shoved = false; this.sprintT = 0; this.dribbleMoves = 0; this.stamina = this.staminaMax;
     for (const k of BUFFERED) this.buf[k] = 0;
   }
@@ -156,6 +159,7 @@ export class Hooper {
     const prev = this.comboKind;
     this.comboN = chained ? Math.min(6, this.comboN + 1) : 1;
     this.comboKind = kind; this.comboT = g.gt;
+    this.moveHistory = chained ? [...(this.moveHistory??[]),kind].slice(-3) : [kind];
     const dirZ = Math.abs(I.mz) > 0.25 ? Math.sign(I.mz) : (this.lastDirZ *= -1);
     this.lastDirZ = dirZ;
     const dirX = Math.abs(I.mx) > 0.25 ? Math.sign(I.mx) : 0;
@@ -176,6 +180,8 @@ export class Hooper {
     this.handSide = kind === 'cross' || kind === 'btb' ? -this.handSide : this.handSide;
     let label = kind === 'cross' ? 'CROSSOVER' : kind === 'spin' ? 'SPIN' : 'BEHIND THE BACK';
     if (chained && prev) label = COMBO_NAMES[`${prev}>${kind}`] ?? 'COMBO';
+    const triples:Record<string,string>={'cross>btb>spin':'AROUND THE WORLD','spin>cross>btb':'GHOST STEP','btb>cross>spin':'FULL CIRCLE','cross>spin>cross':'DOUBLE TAKE'};
+    if(this.moveHistory.length===3) label=triples[this.moveHistory.join('>')] ?? label;
     g.popupAt(this, this.comboN > 1 ? `${label} x${this.comboN}` : label, this.comboN > 2 ? '#ff7a1a' : '#ffe45e', this.comboN > 1 ? 30 : 24);
     if (this.comboN > 1) this.gainHeat(4 * this.comboN);
     g.fx.dust(this.x, this.sy, 5, -Math.sign(this.dash.x));
@@ -188,6 +194,7 @@ export class Hooper {
       return;
     }
     this.fade = this.I.mx * this.facing < -0.35 && this.act === 'free';
+    this.layupStyle = !this.fade && g.distToHoop(this.x,this.z)<240 ? (this.I.mz<-.25?2:1) : 0;
     this.shoved = false;
     this.meter = 0;
     this.setAct('shoot');
@@ -244,6 +251,8 @@ export class Hooper {
     this.dunkSlam = false;
     this.dunkSlamAt = 0;
     this.trickDunk = this.comboN >= 2 && g.gt - this.comboT < 1.4;
+    const vertical=this.I?.mz ?? 0;
+    this.dunkStyle = this.trickDunk ? 2 : vertical<-.25 ? 1 : vertical>.25 ? 3 : 0;
     this.stamina = Math.max(0, this.stamina - T.dunk.cost);
     g.fx.dust(this.x, this.sy, 6, 0);
     return true;

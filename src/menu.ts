@@ -115,7 +115,7 @@ export class MenuScene extends Phaser.Scene {
 
   private idle(t: number): Rig {
     const r = restRig();
-    r.hipY += Math.sin(t * 2.4) * 1.4; r.lean = 0.05 + Math.sin(t * 1.2) * 0.012;
+    r.hipY = 78 + Math.sin(t * 2.4) * 1.4; r.fHy -= 10; r.bHy -= 10; r.lean = 0.05 + Math.sin(t * 1.2) * 0.012;
     r.head = Math.sin(t * 0.7) * 0.05;
     return r;
   }

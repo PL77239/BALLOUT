@@ -1,5 +1,14 @@
 import Phaser from 'phaser';
 import { GARMENT_CUTS } from './wardrobe';
+import textureData from './garment-textures.json';
+const textures:Record<string,string[]> = textureData;
+const sampleTexture=(id:string|undefined,x:number,y:number)=>{
+  const tiled=id?.startsWith('tile:') ?? false;
+  const rows=id?textures[tiled?id.slice(5):id]:undefined;if(!rows?.length)return '.';
+  let ix=Math.floor(x),iy=Math.floor(y);
+  if(tiled){iy=((iy%rows.length)+rows.length)%rows.length;const w=rows[iy].length;ix=((ix%w)+w)%w;}
+  return rows[iy]?.[ix] ?? '.';
+};
 import { Col, PX, Pix, clamp, lerp, mix, pixTexture, shade } from './pixel';
 import { Loadout, SKIN_TONES, hairUnderHeadwear } from './loadout';
 
@@ -318,12 +327,14 @@ export class Puppet {
     }
 
     const headTh = r.lean * 0.5 + r.head;
+    // A slightly larger, compact head and clearer limbs read at the fixed camera scale.
+    const hu=u*1.5;
     const hcW = [neckW[0] + Math.sin(headTh) * 19, neckW[1] + Math.cos(headTh) * 19];
     const head = { x: X(hcW[0]), y: Y(hcW[1]), th: headTh };
 
     /* ---- hair bulk behind the body ---- */
     b.part = 8;
-    this.hairBack(b, head, mir, u, back, l, sx);
+    this.hairBack(b, head, mir, hu, back, l, sx);
 
     /* ---- far limbs, torso, near leg ---- */
     b.part = 1; this.legPiece(b, legB, l, skin, u, sx);
@@ -337,12 +348,12 @@ export class Puppet {
     }
 
     /* ---- head (face + hair on skull; hats drawn later) ---- */
-    b.part = 5; this.headPiece(b, head, r, l, skin, u, sx, mir, back, front);
+    b.part = 5; this.headPiece(b, head, r, l, skin, hu, sx, mir, back, front);
     this.chainPiece(b, [hx, hy], [nx, ny], l, u, r.lean, sx);
 
     /* ---- near arm, then headwear on top ---- */
     b.part = 7; this.armPiece(b, armF, l, skin, u, false);
-    b.part = 10; this.headWear(b, head, r, l, u, sx, mir, back, front);
+    b.part = 10; this.headWear(b, head, r, l, hu, sx, mir, back, front);
 
     p.outline(OUT);
     p.upload(this.tex.getContext());
@@ -425,6 +436,11 @@ export class Puppet {
       } else {
         b.begin().cap(kx, ky, ax, ay, (w3 + 0.1) * u, (w3 + 0.2) * u, 0.78, 0.96, false, false).commit(bt, { flat: true, line: bot === 'joggers' ? shade(bt, 0.6) : null });
       }
+    }
+    if(l.bottomTexture) {
+      const dx=kx-hx,dy=ky-hy,angle=Math.atan2(-dx,dy),end=Math.hypot(dx,dy)/u;
+      for(const [ink,color] of [['1',bt],['2',shade(bt,1.3)]] as const)
+        b.begin().frame(hx,hy,angle,1,u,30,(x,y)=>sampleTexture(l.bottomTexture,x+3.5,y-2)===ink && Math.abs(x)<3.7 && y>=2 && y<end-.5).commit(color,{flat:true,line:null});
     }
     if (bot === 'khakis' || bot === 'chinoShorts') {
       const px = hx + (kx-hx)*.6, py = hy + (ky-hy)*.6;
@@ -576,10 +592,10 @@ export class Puppet {
     const shoulderY = -height;
     const hemY = -cut.hem + 1.5;
     // Wider front/back and narrower profile, without collapsing at a turn.
-    const breadth = 0.78 + 0.22 * (1 - Math.abs(this.cur.turn));
+    const breadth = 0.85 + 0.15 * (1 - Math.abs(this.cur.turn));
     const widthAt = (y: number) => {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
-      return (t < 0.72 ? lerp(cut.waist, cut.chest, t / 0.72) : lerp(cut.chest, cut.shoulder, (t - 0.72) / 0.28)) * breadth;
+      return (t < 0.72 ? lerp(cut.waist, cut.chest, t / 0.72) : lerp(cut.chest, cut.shoulder, (t - 0.72) / 0.28)) * breadth * 1.08;
     };
     const cloth = (x: number, y: number) => y >= shoulderY && y <= hemY && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
       && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
@@ -614,6 +630,13 @@ export class Puppet {
       frame((x,y) => (Math.abs(x-2)<.5 || Math.abs(x+2)<.5) && y<shoulderY+8).commit(l.topTrim,{flat:true,line:null});
     }
     if (tp === 'longsleeve') frame((x,y) => y>shoulderY+4 && y<shoulderY+6).commit(l.topTrim,{flat:true,line:null});
+    // Each printable texture is anchored in garment coordinates: 1 = trim,
+    // 2 = highlight, . = transparent. It follows the torso during animation.
+    if(l.topTexture) {
+      const tx=(x:number,y:number)=>sampleTexture(l.topTexture,x+5,y-(shoulderY+9));
+      frame((x,y)=>tx(x,y)==='1').commit(l.topTrim,{flat:true,line:null});
+      frame((x,y)=>tx(x,y)==='2').commit(shade(l.topTrim,1.28),{flat:true,line:null});
+    }
     const graphic = l.topGraphic ?? (tp === 'jersey' ? 'number' : 'none');
     const gy = shoulderY + 6;
     if (graphic === 'cross') frame((x,y) => (Math.abs(x+2)<1 && y>gy-1 && y<gy+7) || (Math.abs(y-gy-2)<1 && x>-5 && x<1)).commit(l.topTrim,{flat:true,line:null});

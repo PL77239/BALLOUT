@@ -1,5 +1,5 @@
 import { emptyIntent, type Intent } from './input';
-export const NET_VERSION='ballout-private-2';
+export const NET_VERSION='ballout-private-3';
 export const EDGES=['shootDown','shootUp','a','b','c','shove'] as const;
 export function cleanIntent(value:unknown):Intent|null {
   if(!value || typeof value!=='object')return null;
