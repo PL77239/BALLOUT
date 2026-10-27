@@ -1,0 +1,71 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches: [main, cursor/pixel-art-overhaul-24cd]
+  pull_request:
+    branches: [main, cursor/pixel-art-overhaul-24cd, codex/character-redesign]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'production' }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Check gameplay, skill moves and dunk input
+        run: |
+          node scripts/check-gameplay.cjs
+          node scripts/check-progression-rebounds.cjs
+          node scripts/check-bis.cjs
+          node scripts/check-stamina.cjs
+          node scripts/check-skill-moves.cjs
+          node scripts/check-skill-input.cjs
+          node scripts/check-career.cjs
+          node scripts/check-air-dunks.cjs
+          node scripts/check-hem-drape.cjs
+          node scripts/check-streetwear.cjs
+          node scripts/check-famous.cjs
+          node scripts/check-rim-reward.cjs
+          node scripts/check-court-events.cjs
+      - name: Check online input and state protocol
+        run: node scripts/check-network.cjs
+      - name: Index court music folders
+        run: node scripts/audio-manifest.mjs --scan-only
+      - name: Build for the repository subdirectory
+        run: npm run build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+      - name: Check the published entry point and assets
+        run: node scripts/check-pages.mjs
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy the compiled game
+        id: deployment
+        uses: actions/deploy-pages@v4
