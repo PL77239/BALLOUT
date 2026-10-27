@@ -350,7 +350,7 @@ export class Puppet {
     b.begin().cap(legB.hp[0],legB.hp[1],legF.hp[0],legF.hp[1],5.1*u,5.1*u,0,1,true,true)
       .commit(l.bottomColor,{line:null});
     b.part = 4; this.legPiece(b, legF, l, skin, u, sx);
-    b.part = 3; this.torsoPiece(b, [hx, hy], [nx, ny], l, skin, u, r.lean, sx, mir);
+    b.part = 3; this.torsoPiece(b, [hx, hy], [nx, ny], l, skin, u, r.lean, sx, mir, [legF.kn,legB.kn]);
 
     if (l.top === 'hoodie') {
       b.part = 9;
@@ -640,7 +640,7 @@ export class Puppet {
     b.begin().cap(hx, hy, nx, ny, (4.45 + e) * u, (5.85 + e) * u, -0.3, -0.22, false, false).commit(shade(l.topColor, 0.84), { flat: true, line: null });
   }
 
-  private torsoPiece(b: Brush, h: number[], n: number[], l: Loadout, skin: Col, u: number, lean: number, sx: number, mir: number) {
+  private torsoPiece(b: Brush, h: number[], n: number[], l: Loadout, skin: Col, u: number, lean: number, sx: number, mir: number, knees?: number[][]) {
     const [hx, hy] = h, [nx, ny] = n;
     // The shoulder line ends below the neck; a capsule extending past the
     // neck made every shirt look like a padded tube around the face.
@@ -656,28 +656,46 @@ export class Puppet {
     // Otherwise a left-facing lean rotates the shirt away from its shoulders.
     const angle = Math.atan2(nx - hx, hy - ny) * mir;
     const shoulderY = -height;
-    const flex=tp==='puffer'?.35:tp==='bigTee'?1.15:tp==='hoodie'?.8:.65;
+    const flex=tp==='puffer'?.38:tp==='bigTee'?1.2:tp==='hoodie'?1.05:tp==='tee'?.95:.75;
     const lift=clamp(((this.cur.fHy+this.cur.bHy)*.5-this.cur.hipY-SHOULDER)/65,0,1);
     const stride=clamp((this.cur.fFx-this.cur.bFx-30)/55,-1,1);
-    const hemY = -cut.hem + 1.5 + this.cloth.y * .5*flex-lift*2.6;
+    const crouch=clamp((83-this.cur.hipY)/48,0,1);
+    const hemY = -cut.hem + 1.5 + this.cloth.y*.35*flex-lift*2.6-crouch*1.4*flex;
+    // Follow the actual trouser thighs, in the same local frame as the torso.
+    // This is geometric drape, not a time-based wobble: it also works in a static crouch.
+    let pantFollow=0;
+    if(knees){
+      const dx=(knees[0][0]*.65+knees[1][0]*.35-hx)*mir/u;
+      const dy=(knees[0][1]*.65+knees[1][1]*.35-hy)/u;
+      const kx=dx*Math.cos(angle)+dy*Math.sin(angle),ky=-dx*Math.sin(angle)+dy*Math.cos(angle);
+      pantFollow=clamp(kx*Math.min(.65,(Math.max(0,hemY)+4)/Math.max(5,ky)),-4.2,4.2);
+    }
+    const bend=pantFollow*flex+this.cloth.x*.65*flex;
+    const kneeLift=clamp((this.cur.fFy-this.cur.bFy)/36,-1,1);
+    const hemTilt=clamp(kneeLift*.95+stride*.65,-1.35,1.35)*flex;
     // Wider front/back and narrower profile, without collapsing at a turn.
     const breadth = 0.85 + 0.15 * (1 - Math.abs(this.cur.turn));
     const widthAt = (y: number) => {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
       return (t < 0.72 ? lerp(cut.waist, cut.chest, smooth(t / 0.72)) : lerp(cut.chest, cut.shoulder, smooth((t - 0.72) / 0.28))) * breadth+Math.sin(t*Math.PI)*Math.abs(this.cloth.x)*flex*.15;
     };
-    const hemAt=(x:number)=>hemY-.18*flex*x*x/Math.max(1,cut.waist)+flex*(Math.sin(x*.4+this.t*5)*.3+this.cloth.x*x*.075);
+    const hemAt=(x:number)=>hemY-.32*flex*x*x/Math.max(1,cut.waist)+Math.sin(x*.42+this.t*4)*.18*flex;
     const cloth = (x: number, y: number) => y >= shoulderY && y <= hemAt(x) && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
       && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
-    // Anchor the collar; let the hem lag slightly behind acceleration/landing.
-    // Prints and seams use the same deformation as the cloth silhouette.
-    const clothX=(x:number,y:number)=>{
+    // Collar/shoulders stay fixed. The lower half curves toward the trousers;
+    // the lifted knee pulls its corner up, while the other corner hangs down.
+    const unDrape=(x:number,y:number):[number,number]=>{
       const v=clamp((y-shoulderY)/Math.max(1,hemY-shoulderY),0,1);
-      return x-this.cloth.x*.85*flex*v*v-Math.sin(v*Math.PI)*(clamp(this.cur.lean,-.7,.7)*2.5+stride*flex*1.4);
+      const lower=smooth(clamp((v-.38)/.62,0,1));
+      const center=bend*lower+Math.sin(v*Math.PI)*clamp(this.cur.lean,-.7,.7)*1.5;
+      x-=center;
+      y-=hemTilt*x/Math.max(1,cut.waist)*lower;
+      // Soft compression above the waistband rounds the lower corners.
+      y+=crouch*flex*Math.sin(x*.24)*.55*lower;
+      return [x,y];
     };
     const frame = (pred: (x: number, y: number) => boolean) => b.begin().frame(hx, hy, angle, mir, u, 38, (x, y) => {
-      const v=clamp((y-shoulderY)/Math.max(1,hemY-shoulderY),0,1);
-      y-=x*stride*.16*flex*v*v;x=clothX(x,y);return cloth(x,y) && pred(x,y);
+      [x,y]=unDrape(x,y);return cloth(x,y) && pred(x,y);
     });
     b.begin().cap(hx,hy,nx,ny,cut.waist*breadth*u,cut.waist*breadth*u,-.10,.02,false,false).commit(l.bottomColor,{line:null});
     if(tp==='tank' || tp==='jersey') b.begin().frame(hx,hy,angle,mir,u,38,(x,y)=>y>=shoulderY && y<shoulderY+1.5 && Math.abs(x)<cut.neck).commit(skin,{line:null});
@@ -685,8 +703,7 @@ export class Puppet {
     // Cloth shadows follow the garment, rather than the screen or animation frame.
     b.ink((x,y) => {
       const dx = (x + .5 - hx) / u, dy = (y + .5 - hy) / u;
-      const lx = dx * mir * Math.cos(angle) + dy * Math.sin(angle);
-      const along=(-dx*Math.sin(angle)*mir+dy*Math.cos(angle));
+      const [lx,along]=unDrape(dx * mir * Math.cos(angle) + dy * Math.sin(angle),-dx*Math.sin(angle)*mir+dy*Math.cos(angle));
       const fold=Math.abs(along-(hemY-3)-lx*.32)<.5 && Math.abs(lx)<widthAt(along)-1;
       return shade(l.topColor,fold?.87:lx < -widthAt(-height*.5)*.55 ? .78 : lx > 3 ? 1.08 : 1);
     });

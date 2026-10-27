@@ -36,6 +36,7 @@ jobs:
           node scripts/check-skill-input.cjs
           node scripts/check-career.cjs
           node scripts/check-air-dunks.cjs
+          node scripts/check-hem-drape.cjs
           node scripts/check-streetwear.cjs
           node scripts/check-famous.cjs
           node scripts/check-rim-reward.cjs
