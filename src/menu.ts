@@ -15,11 +15,11 @@ import { label } from './font';
 import { buyFit, buyItem, equip, fitCost, owns, persist, save } from './save';
 import type { GameCfg } from './game';
 
-type Screen = 'main' | 'play' | 'locker' | 'shop' | 'career';
+type Screen = 'main' | 'play' | 'locker' | 'shop' | 'career' | 'map';
 const MODES: GameCfg['mode'][] = ['1p', '2p', 'online'];
 const LEVELS: AiLevel[] = ['rookie', 'hooper', 'legend'];
 const TARGETS = [7, 11, 15, 21];
-const MAIN_ROWS = ['PLAY', 'MYPLAYER', 'LOCKER', 'SHOP'] as const;
+const MAIN_ROWS = ['PLAY', 'MYPLAYER', 'LOCKER', 'SHOP', 'MAP'] as const;
 const PLAY_ROWS = ['COURT', 'MODE', 'GLOBAL AI', 'FIRST TO', 'RIVAL', 'START'] as const;
 const SHOP_TABS = ['FITS', ...SLOTS] as const;
 type Tab = (typeof SHOP_TABS)[number];
@@ -164,6 +164,7 @@ export class MenuScene extends Phaser.Scene {
     else if (this.screen === 'play') this.buildPlay();
     else if (this.screen === 'locker') this.buildLocker();
     else if (this.screen === 'career') this.buildCareer();
+    else if (this.screen === 'map') this.buildMap();
     else this.buildShop();
   }
 
@@ -215,6 +216,53 @@ export class MenuScene extends Phaser.Scene {
     this.T(336, 112, this.rival.name, 0x7fd4ff, 1, 0.5);
     if(c.mode==='1p') { const next=bossesFor(c.court)[unlockedRival(c.court)+1]; this.T(336,122,next?`LOCKED: ${next.name}`:'COURT CLEARED',DIM,1,.5); }
     this.footer('UP/DOWN SELECT   LEFT/RIGHT CHANGE   ENTER GO   BACKSPACE BACK');
+  }
+
+  private buildMap() {
+    this.header('COURT MAP');
+    this.R(0, 24, GW, GH - 24, 0x0a0a14, 0.95);
+    // Simple world map outline
+    const continents = [
+      // North America
+      { x: 60, y: 40, w: 80, h: 60 },
+      // South America
+      { x: 90, y: 100, w: 40, h: 50 },
+      // Europe
+      { x: 170, y: 35, w: 50, h: 40 },
+      // Africa
+      { x: 180, y: 75, w: 45, h: 60 },
+      // Asia
+      { x: 220, y: 30, w: 90, h: 70 },
+      // Australia
+      { x: 310, y: 110, w: 40, h: 30 },
+    ];
+    for (const c of continents) {
+      this.R(c.x, c.y, c.w, c.h, 0x1a2a1a, 0.6);
+      this.R(c.x - 1, c.y - 1, c.w + 2, 1, 0x2a4a2a, 0.4);
+    }
+    // Court markers
+    const courtPositions: Record<string, [number, number]> = {
+      brooklyn: [110, 55], rucker: [112, 52], queens: [115, 50],
+      harlem: [113, 53], dyckman: [111, 48],
+      philly: [118, 58], fairmount: [120, 60],
+      chicago: [100, 52], chiraq: [102, 54],
+      detroit: [108, 50], atl: [115, 62], la: [75, 55],
+      venice: [72, 58], mosswood: [65, 50],
+      warsaw: [195, 42], kalemegdan: [200, 48],
+      marseille: [185, 50], pigalle: [183, 48],
+      tenement: [270, 75],
+    };
+    const ci = courtInfo(this.cfg.court);
+    COURTS.forEach((cc) => {
+      const pos = courtPositions[cc.id];
+      if (!pos) return;
+      const on = cc.id === this.cfg.court;
+      const col = on ? ORANGE : 0x7fd4ff;
+      this.R(pos[0] - 3, pos[1] - 3, 6, 6, col, on ? 1 : 0.7);
+      if (on) this.T(pos[0] - 2, pos[1] - 12, ci.name, WHITE, 1, 0.5);
+    });
+    this.T(GW / 2, GH - 30, 'LEFT/RIGHT: CHANGE COURT   ENTER: SELECT   BACKSPACE: BACK', DIM, 1, 0.5);
+    this.footer('ARROWS NAVIGATE   ENTER SELECT   BACKSPACE BACK');
   }
 
   private ownedIn(slot: Slot) { return itemsFor(slot).filter((i) => owns(i.id)); }
@@ -378,12 +426,13 @@ export class MenuScene extends Phaser.Scene {
     else if (this.screen === 'play') this.inPlay(n);
     else if (this.screen === 'locker') this.inLocker(n);
     else if (this.screen === 'career') this.inCareer(n);
+    else if (this.screen === 'map') this.inMap(n);
     else this.inShop(n);
   }
 
   private inMain(n: { dx: number; dy: number; ok: boolean }) {
     if (n.dy) { this.sel = (this.sel + n.dy + MAIN_ROWS.length) % MAIN_ROWS.length; this.build(); }
-    if (n.ok) this.go(['play', 'career', 'locker', 'shop'][this.sel] as Screen);
+    if (n.ok) this.go(['play', 'career', 'locker', 'shop', 'map'][this.sel] as Screen);
   }
 
   private inPlay(n: { dx: number; dy: number; ok: boolean; back: boolean }) {
@@ -406,6 +455,20 @@ export class MenuScene extends Phaser.Scene {
       else if (PLAY_ROWS[this.sel] === 'RIVAL') { this.cycleRival(1); this.pups[1]?.dress(this.rival); }
       else this.sel = PLAY_ROWS.length - 1;
     }
+    this.build();
+  }
+
+  private inMap(n: { dx: number; dy: number; ok: boolean; back: boolean }) {
+    if (n.back) { this.go('main'); return; }
+    if (n.dx) {
+      const c = this.cfg;
+      c.court = COURTS[(COURTS.findIndex((x) => x.id === c.court) + n.dx + COURTS.length) % COURTS.length].id;
+      this.setCourt(c.court);
+      this.rivalIdx = unlockedRival(c.court);
+      this.pickRival();
+      this.makePups();
+    }
+    if (n.ok) { this.go('play'); }
     this.build();
   }
 
