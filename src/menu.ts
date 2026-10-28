@@ -220,37 +220,68 @@ export class MenuScene extends Phaser.Scene {
 
   private buildMap() {
     this.header('COURT MAP');
-    this.R(0, 24, GW, GH - 24, 0x0a0a14, 0.95);
-    // Simple world map outline
-    const continents = [
-      // North America
-      { x: 60, y: 40, w: 80, h: 60 },
-      // South America
-      { x: 90, y: 100, w: 40, h: 50 },
-      // Europe
-      { x: 170, y: 35, w: 50, h: 40 },
-      // Africa
-      { x: 180, y: 75, w: 45, h: 60 },
-      // Asia
-      { x: 220, y: 30, w: 90, h: 70 },
-      // Australia
-      { x: 310, y: 110, w: 40, h: 30 },
+    this.R(0, 24, GW, GH - 36, 0x080810, 0.96);
+    // Pixel-art style world map: continents drawn as blocky shapes
+    const continents: [number, number, number, number][] = [
+      // North America (blocky silhouette)
+      [52, 36, 6, 2], [58, 36, 4, 1], [64, 36, 6, 2], [70, 36, 8, 2], [78, 36, 6, 2], [84, 36, 10, 3], [94, 36, 8, 2],
+      [52, 38, 8, 2], [60, 38, 12, 2], [72, 38, 14, 2], [86, 38, 10, 2], [96, 38, 6, 2],
+      [56, 40, 6, 2], [62, 40, 16, 2], [78, 40, 12, 2], [90, 40, 8, 2],
+      [54, 42, 8, 2], [62, 42, 12, 2], [74, 42, 14, 2], [88, 42, 6, 2],
+      [58, 44, 6, 2], [64, 44, 10, 2], [74, 44, 12, 2], [86, 44, 4, 2],
     ];
-    for (const c of continents) {
-      this.R(c.x, c.y, c.w, c.h, 0x1a2a1a, 0.6);
-      this.R(c.x - 1, c.y - 1, c.w + 2, 1, 0x2a4a2a, 0.4);
+    // South America
+    const sa: [number, number, number, number][] = [
+      [92, 78, 8, 2], [100, 78, 6, 2], [106, 78, 4, 2],
+      [90, 80, 10, 2], [100, 80, 8, 2], [108, 80, 4, 2],
+      [88, 82, 12, 2], [100, 82, 10, 2], [110, 82, 4, 2],
+      [92, 84, 8, 2], [100, 84, 6, 2], [106, 84, 4, 2],
+      [94, 86, 6, 2], [100, 86, 4, 2],
+    ];
+    // Europe
+    const eu: [number, number, number, number][] = [
+      [176, 38, 6, 2], [182, 38, 4, 1], [186, 38, 8, 2],
+      [174, 40, 10, 2], [184, 40, 10, 2],
+      [172, 42, 14, 2], [186, 42, 6, 2],
+      [174, 44, 12, 2], [186, 44, 4, 2],
+    ];
+    // Africa
+    const af: [number, number, number, number][] = [
+      [182, 62, 6, 2], [188, 62, 4, 2], [192, 62, 8, 2],
+      [180, 64, 12, 2], [192, 64, 10, 2],
+      [178, 66, 16, 2], [194, 66, 8, 2],
+      [180, 68, 12, 2], [192, 68, 6, 2],
+      [184, 70, 8, 2], [192, 70, 4, 2],
+    ];
+    // Asia
+    const asia: [number, number, number, number][] = [
+      [226, 34, 8, 2], [234, 34, 10, 2], [244, 34, 12, 2], [256, 34, 14, 2],
+      [224, 36, 12, 2], [236, 36, 14, 2], [250, 36, 16, 2],
+      [222, 38, 16, 2], [238, 38, 16, 2], [254, 38, 12, 2],
+      [220, 40, 18, 2], [238, 40, 18, 2], [256, 40, 10, 2],
+      [222, 42, 16, 2], [238, 42, 14, 2], [254, 42, 8, 2],
+    ];
+    // Australia
+    const au: [number, number, number, number][] = [
+      [312, 92, 8, 2], [320, 92, 6, 2],
+      [310, 94, 10, 2], [320, 94, 4, 2],
+      [312, 96, 8, 2], [320, 96, 4, 2],
+    ];
+    const allConts = [...continents, ...sa, ...eu, ...af, ...asia, ...au];
+    for (const [x, y, w, h] of allConts) {
+      this.R(x, y, w, h, 0x162020, 0.8);
     }
-    // Court markers
-    const courtPositions: Record<string, [number, number]> = {
-      brooklyn: [110, 55], rucker: [112, 52], queens: [115, 50],
-      harlem: [113, 53], dyckman: [111, 48],
-      philly: [118, 58], fairmount: [120, 60],
-      chicago: [100, 52], chiraq: [102, 54],
-      detroit: [108, 50], atl: [115, 62], la: [75, 55],
-      venice: [72, 58], mosswood: [65, 50],
-      warsaw: [195, 42], kalemegdan: [200, 48],
-      marseille: [185, 50], pigalle: [183, 48],
-      tenement: [270, 75],
+    // Court markers as small colored dots with labels
+    const courtPositions: Record<string, [number, number, string]> = {
+      brooklyn: [134, 45, 'THE CAGE'], rucker: [136, 43, 'RUCKER'], queens: [139, 42, 'THE BRIDGE'],
+      harlem: [137, 44, 'THE PARK'], dyckman: [135, 41, 'DYCKMAN'],
+      philly: [144, 48, 'BROAD & ERIE'], fairmount: [146, 50, 'THE WOODS'],
+      chicago: [122, 42, 'SOUTH SIDE'], chiraq: [124, 44, 'CHIRAQ'],
+      detroit: [132, 40, 'THE PLANT'], atl: [141, 52, 'UNDER THE PASS'], la: [89, 46, 'SOUTH CENTRAL'],
+      venice: [86, 49, 'VENICE'], mosswood: [79, 41, 'MOSSWOOD'],
+      warsaw: [240, 37, 'CENTRUM'], kalemegdan: [246, 43, 'KALEMEGDAN'],
+      marseille: [230, 44, 'VIEUX-PORT'], pigalle: [228, 42, 'PIGALLE'],
+      tenement: [334, 66, 'THE TENEMENT'],
     };
     const ci = courtInfo(this.cfg.court);
     COURTS.forEach((cc) => {
@@ -258,10 +289,13 @@ export class MenuScene extends Phaser.Scene {
       if (!pos) return;
       const on = cc.id === this.cfg.court;
       const col = on ? ORANGE : 0x7fd4ff;
-      this.R(pos[0] - 3, pos[1] - 3, 6, 6, col, on ? 1 : 0.7);
-      if (on) this.T(pos[0] - 2, pos[1] - 12, ci.name, WHITE, 1, 0.5);
+      this.R(pos[0] - 2, pos[1] - 2, 4, 4, col, on ? 1 : 0.6);
+      if (on) {
+        this.T(pos[0] + 5, pos[1] - 2, pos[2], WHITE, 1, 0);
+        this.T(pos[0] + 5, pos[1] + 8, ci.sub.split(' // ')[1], GOLD, 1, 0);
+      }
     });
-    this.T(GW / 2, GH - 30, 'LEFT/RIGHT: CHANGE COURT   ENTER: SELECT   BACKSPACE: BACK', DIM, 1, 0.5);
+    this.T(GW / 2, GH - 22, 'LEFT/RIGHT: CHANGE COURT   ENTER: SELECT   BACKSPACE: BACK', DIM, 1, 0.5);
     this.footer('ARROWS NAVIGATE   ENTER SELECT   BACKSPACE BACK');
   }
 

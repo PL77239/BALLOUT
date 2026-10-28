@@ -560,18 +560,20 @@ export class Puppet {
         m===9?(Math.floor(x*2+y*3)%4===0):m===10?(y>.4&&Math.floor(x)%2===0):
         m===11?(y>.25):(Math.floor(x*1.5)%2===0)
       )).commit(trim,{flat:true,line:null});
-      if(m===6||m===8)fr(12,(x,y)=>x> -3.5&&x< -1.4&&y> -2.4&&y<.2).commit(trim,{flat:true,line:null});
-      if(m===1)fr(12,(x,y)=>x>4.5&&x<6.8&&y>-.2&&y<.8).commit(shade(l.shoeTrim,k),{flat:true,line:null});
-      if(m===3)fr(12,(x,y)=>x>3&&x<6&&y>.2&&y<1.4&&Math.floor(x+y)%2===0).commit(shade(l.shoeTrim,k*0.7),{flat:true,line:null});
-      if(m===4)fr(12,(x,y)=>x>-1&&x<4&&y>-.3&&y<.6&&Math.floor(x*2+y*3)%3===0).commit(shade(l.shoeTrim,k),{flat:true,line:null});
-      if(m===5)for(let sx=-2;sx<5;sx+=1.2)fr(12,(x,y)=>Math.abs(x-sx)<.4&&y>.8&&y<1.5).commit(shade(l.shoeTrim,k),{flat:true,line:null});
-      if(m===6)fr(12,(x,y)=>x>4.5&&x<6.8&&y>-.6&&y<.2).commit(shade(l.shoeTrim,k),{flat:true,line:null});
-      if(m===7)fr(12,(x,y)=>Math.abs(x-1.5)<.6&&y>-.8&&y<.2).commit(shade(l.shoeTrim,k),{flat:true,line:null});
-      if(m===8)fr(12,(x,y)=>Math.abs(y-.2)<.3&&x>-2&&x<5).commit(shade(l.shoeTrim,k),{flat:true,line:null});
-      if(m===9)fr(12,(x,y)=>x>4&&x<6&&y>-.8&&y<-.2).commit(shade(l.shoeTrim,k),{flat:true,line:null});
-      if(m===10)fr(12,(x,y)=>x>3&&x<6&&y>-.9&&y<-.3).commit(shade(l.shoeTrim,k),{flat:true,line:null});
-      if(m===11)fr(12,(x,y)=>x>-2&&x<6.8&&y>.9&&y<1.6).commit(shade(l.shoeTrim,k*0.5),{flat:true,line:null});
-      if(m===12)fr(12,(x,y)=>x>0&&x<3&&y>-.4&&y<.8).commit(shade(l.shoeTrim,k),{flat:true,line:null});
+      // AJ model-specific details: larger blocks visible at game scale
+      if(m===1)fr(12,(x,y)=>x>4&&x<7&&y>0&&y<1).commit(shade(l.shoeTrim,k),{flat:true,line:null}); // AJ1: wing logo block
+      if(m===2)fr(12,(x,y)=>x>4&&x<7&&y>-.2&&y<.2).commit(shade(l.shoeTrim,k),{flat:true,line:null}); // AJ2: strap
+      if(m===3)fr(12,(x,y)=>x>3&&x<7&&y>.4&&y<.8&&Math.floor(x*2+y)%2===0).commit(shade(l.shoeTrim,k),{flat:true,line:null}); // AJ3: elephant print
+      if(m===4)fr(12,(x,y)=>x>3&&x<6&&y>0&&y<.5).commit(shade(l.shoeTrim,k),{flat:true,line:null}); // AJ4: mesh panel
+      if(m===5)fr(12,(x,y)=>x>4&&x<7&&y>.6&&y<1).commit(shade(l.shoeTrim,k),{flat:true,line:null}); // AJ5: shark teeth
+      if(m===6)fr(12,(x,y)=>x>5&&x<7&&y>-1&&y<.4).commit(shade(l.shoeTrim,k),{flat:true,line:null}); // AJ6: finger loop
+      if(m===7)fr(12,(x,y)=>x>1&&x<5&&y>.4&&y<.8&&Math.floor(x+y)%2===0).commit(shade(l.shoeTrim,k),{flat:true,line:null}); // AJ7: Huarache
+      if(m===8)fr(12,(x,y)=>x>4&&x<7&&y>-.4&&y<0).commit(shade(l.shoeTrim,k),{flat:true,line:null}); // AJ8: cross strap
+      if(m===9)fr(12,(x,y)=>x>4&&x<7&&y>-1&&y<-.5).commit(shade(l.shoeTrim,k),{flat:true,line:null}); // AJ9: pull tab
+      if(m===10)fr(12,(x,y)=>x>4&&x<7&&y>-.5&&y<0).commit(shade(l.shoeTrim,k),{flat:true,line:null}); // AJ10: toe cap
+      if(m===11)fr(12,(x,y)=>x>-2&&x<7&&y>1&&y<1.4).commit(shade(l.shoeTrim,k*0.6),{flat:true,line:null}); // AJ11: patent mudguard
+      if(m===12)fr(12,(x,y)=>x>0&&x<4&&y>-1&&y<.3).commit(shade(l.shoeTrim,k),{flat:true,line:null}); // AJ12: two-tone
+      if(m===6||m===8)fr(12,(x,y)=>x> -3&&x< -1&&y> -2&&y<0).commit(trim,{flat:true,line:null});
     }else if(l.shoeStyle==='dunk')fr(12,(x,y)=>x>4&&x<7&&y>-.9&&y<.4).commit(shade(l.shoeTrim,k),{line:null});
     else if(l.shoeStyle==='supra')b.begin().cap(L.kn[0],L.kn[1],ax,ay,3.2*u,3*u,.7,.78,false,false).commit(shade(l.shoeTrim,k),{line:null});
     fr(12, (x, y) => y > 1.5 && y <= (kind === 'boot' ? 3.3 : kind === 'runner' ? 3 : kind === 'cortez' ? 2 : 2.5) && x >= -3.6 && x <= 7.4).commit(so, { flat: false });
@@ -697,16 +699,16 @@ export class Puppet {
       let w = t < 0.72 ? lerp(cut.waist, cut.chest, smooth(t / 0.72)) : lerp(cut.chest, cut.shoulder, smooth((t - 0.72) / 0.28));
       // Keep the waist from pinching: the shirt must stay wide enough at the bottom
       // to sit cleanly over the trousers instead of looking tucked in or too narrow.
-      const minWaist = cut.waist * (tp === 'bigTee' ? 1.02 : tp === 'hoodie' ? 0.98 : tp === 'puffer' ? 0.98 : 0.92);
+      const minWaist = cut.waist * (tp === 'bigTee' ? 1.15 : tp === 'hoodie' ? 1.10 : tp === 'puffer' ? 1.10 : 1.05);
       w = Math.max(w, minWaist);
       return w * breadth + Math.sin(t * Math.PI) * Math.abs(this.cloth.x) * flex * 0.15;
     };
     const hemAt=(x:number)=>{
       const rear=1-smooth(clamp((x+cut.waist*.3)/(cut.waist*.65),0,1));
-      const curved=hemY-.04*flex*x*x/Math.max(1,cut.waist);
-      const frontOverlap = tp === 'bigTee' ? 4.0 : tp === 'hoodie' ? 3.5 : tp === 'puffer' ? 3.5 : 3.0;
-      const rearOverlap = tp === 'bigTee' ? 3.0 : tp === 'hoodie' ? 2.5 : tp === 'puffer' ? 2.5 : 2.5;
-      return Math.max(curved, rear * rearOverlap + (1 - rear) * frontOverlap); // shirt always overlaps the trouser waistband
+      // Both front and back hem curve naturally toward trousers; rear isn't stiff/perpendicular.
+      const curved=hemY-.05*flex*x*x/Math.max(1,cut.waist);
+      const overlap = rear > 0.5 ? 3.5 : 4.0;
+      return Math.max(curved, overlap); // shirt always overlaps the trouser waistband
     };
     const cloth = (x: number, y: number) => y >= shoulderY && y <= hemAt(x) && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
       && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
