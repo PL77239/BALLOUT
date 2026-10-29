@@ -1,6 +1,7 @@
 import { GW, PX, shade } from './pixel';
 import { sky, tree, palm, chainFence, sign, bench, boombox, paintHoop, paintFloor, brick, lamp, type Scene2D, type FloorStyle } from './courtkit';
 import { building, laundry, spots, BOOM_X, type CourtArt } from './court_common';
+import { strokeParkedBike } from './art_bike';
 
 // Photo studies and dates are recorded in docs/famous-courts.md. These are
 // original pixel drawings, with the same playable projection on every court.
@@ -193,12 +194,15 @@ for(const [id,art] of Object.entries(places))art.live=(L)=>{
    }
    for(let i=0;i<14;i++)dot((i*37+t*5)%427,121+i%3*3,0xc4d4c8);
   }else if(id==='tenement'||id==='pigalle'){
-   const x0=id==='tenement'?76:12,y0=id==='tenement'?58:75;
-   const count=id==='tenement'?5:4,spacing=id==='tenement'?17:18;
+   const x0=id==='tenement'?70:8,y0=id==='tenement'?52:70;
+   const count=id==='tenement'?4:3,spacing=id==='tenement'?28:30;
+   const colors=[0x3a4a52,0x5a3a38,0x2f4a46,0x4a4034];
+   const accents=[0xb36665,0xc9bc9e,0x668f9c,0xc49d62];
+   const put=(x:number,y:number,c:number)=>{g.fillStyle(c,1);g.fillRect(Math.round(x)*PX,Math.round(y)*PX,PX,PX);};
    for(let i=0;i<count;i++){
-    const x=x0+i*spacing,dy=Math.round(Math.sin(t*1.3+i)*1.5);
-    g.fillStyle(0x6b776d,1);g.fillRect(x*PX,y0*PX,12*PX,PX);
-    g.fillStyle([0xb36665,0xc9bc9e,0x668f9c,0x7b8e69,0xc49d62][i],1);g.fillRect((x+2+dy)*PX,(y0+1)*PX,7*PX,(6+i%3)*PX);
+    const x=x0+i*spacing,lean=Math.round(Math.sin(t*1.1+i)*.8);
+    g.fillStyle(0x5c6760,1);g.fillRect((x-2)*PX,(y0+12)*PX,24*PX,PX);
+    strokeParkedBike(put,x,y0,colors[i],accents[i],lean);
    }
   }else if(id==='kalemegdan'){
    for(let x=0;x<17;x++)for(let y=0;y<10;y++)dot(221+x,85+y+Math.sin(t*3-x*.25),y<3?0xab5550:y<6?0x64778d:0xe3dcc7);

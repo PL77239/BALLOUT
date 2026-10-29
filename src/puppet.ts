@@ -183,6 +183,8 @@ export class Puppet {
   private chain = trail();
   private tail = trail();
   private cloth = trail();
+  private hemF = trail();
+  private hemB = trail();
   private lastV = { f: 0, h: 0 };
   private lastHead = { x: 0, y: 0, px: 0, py: 0 };
   private t = Math.random() * 10;
@@ -256,14 +258,22 @@ export class Puppet {
     step(this.hair, 170, 11, 0.9, 0, 0);
     step(this.tail, 120, 7, 1.2, 0, 0);
     step(this.chain, 230, 9, 0.7, 0, 0);
-    // Soft cloth follows the torso and gait; it never delays the gameplay rig.
+    // Soft cloth trails the gait. Hem corners follow each thigh with extra lag so
+    // oversized tops sway instead of sliding as a stiff billboard.
     const running=clamp(Math.abs(m.f)/350,0,1);
     const airborne = m.h > 4;
-    // Airborne: shirt billows upward and flaps more; running: cloth trails behind.
-    const airLift = airborne ? -1.8 : 0;
-    const airFlap = airborne ? Math.sin(this.t*20)*1.4 : 0;
-    step(this.cloth, 150, 16, 1.1, clamp(-this.vel.lean*.5,-1.5,1.5)-running*.8+Math.sin(this.t*13)*running*1.2+airFlap,
-      clamp(-this.vel.hipY*.012,-1.2,1.2)+Math.sin(this.t*26)*running*.5+airLift);
+    const airLift = airborne ? -2.1 : 0;
+    const airFlap = airborne ? Math.sin(this.t*18)*1.7 : 0;
+    const stride=clamp((this.cur.fFx-this.cur.bFx)/55,-1,1);
+    step(this.cloth, 72, 8.5, 1.45,
+      clamp(-this.vel.lean*.85,-2.4,2.4)-running*1.7+Math.sin(this.t*11)*running*1.55+airFlap,
+      clamp(-this.vel.hipY*.02,-2,2)+Math.sin(this.t*21)*running*.9+airLift+Math.abs(stride)*running*.45);
+    step(this.hemF, 48, 7.2, 1.7,
+      clamp(this.cur.fFx*.05,-3.6,3.6)-running*1.05+Math.sin(this.t*9)*running*.4,
+      clamp(this.cur.fFy*.08,-3,2.4)+Math.sin(this.t*14)*running*.55);
+    step(this.hemB, 48, 7.2, 1.7,
+      clamp(this.cur.bFx*.05,-3.6,3.6)-running*1.05+Math.sin(this.t*9+Math.PI)*running*.4,
+      clamp(this.cur.bFy*.08,-3,2.4)+Math.sin(this.t*14+Math.PI)*running*.55);
     this.t += dt;
     this.blinkAt -= dt;
     if (this.blinkAt <= 0) { this.blink = 0.12; this.blinkAt = 2 + Math.random() * 3.5; }
@@ -358,7 +368,9 @@ export class Puppet {
 
     if (l.top === 'hoodie') {
       b.part = 9;
-      b.begin().frame(nx - sx * 1.2 * u, ny + 0.5 * u, r.lean * mir, mir, u, 7, (x, y) => ((x + 3.5) ** 2) / 16 + ((y + 0.5) ** 2) / 11 <= 1).commit(shade(l.topColor, 0.82));
+      // Hood sits on the back of the head in profile, not as a front-facing halo.
+      const hoodBack = 2.4 + 2.2 * clamp(Math.abs(r.turn), 0, 1);
+      b.begin().frame(nx - sx * 1.6 * u, ny + 0.4 * u, r.lean * mir, mir, u, 8, (x, y) => ((x + hoodBack) ** 2) / 15 + ((y + 0.2) ** 2) / 12 <= 1).commit(shade(l.topColor, 0.82));
     }
 
     /* ---- head (face + hair on skull; hats drawn later) ---- */
@@ -673,57 +685,81 @@ export class Puppet {
     // Otherwise a left-facing lean rotates the shirt away from its shoulders.
     const angle = Math.atan2(nx - hx, hy - ny) * mir;
     const shoulderY = -height;
-    const flex=tp==='puffer'?.38:tp==='bigTee'?1.2:tp==='hoodie'?1.05:tp==='tee'?.95:.75;
+    const flex=tp==='puffer'?.42:tp==='bigTee'?1.35:tp==='hoodie'?1.25:tp==='tee'?1.12:.92;
     const lift=clamp(((this.cur.fHy+this.cur.bHy)*.5-this.cur.hipY-SHOULDER)/65,0,1);
     const stride=clamp((this.cur.fFx-this.cur.bFx-30)/55,-1,1);
     const crouch=clamp((83-this.cur.hipY)/48,0,1);
-    const hemY = -cut.hem + 1.5 + this.cloth.y*.35*flex-lift*2.6-crouch*1.4*flex;
-    // Follow the actual trouser thighs, in the same local frame as the torso.
-    // This is geometric drape, not a time-based wobble: it also works in a static crouch.
-    let pantFollow=0;
+    const hemY = -cut.hem + 1.5 + this.cloth.y*.55*flex-lift*2.6-crouch*1.4*flex;
+    const profile=clamp(Math.abs(this.cur.turn),0,1);
+    const toLocal=(px:number,py:number):[number,number]=>{
+      const dx=(px-hx)*mir/u, dy=(py-hy)/u;
+      return [dx*Math.cos(angle)+dy*Math.sin(angle), -dx*Math.sin(angle)+dy*Math.cos(angle)];
+    };
+    // Each hem corner tracks its own thigh so a stride pulls the front down and
+    // the back up, instead of dragging a square panel around the hips.
+    let frontKnee:[number,number]=[cut.waist*.4,18], backKnee:[number,number]=[-cut.waist*.4,18];
     if(knees){
-      const dx=(knees[0][0]*.65+knees[1][0]*.35-hx)*mir/u;
-      const dy=(knees[0][1]*.65+knees[1][1]*.35-hy)/u;
-      const kx=dx*Math.cos(angle)+dy*Math.sin(angle),ky=-dx*Math.sin(angle)+dy*Math.cos(angle);
-      pantFollow=clamp(kx*Math.min(.65,(Math.max(0,hemY)+4)/Math.max(5,ky)),-4.2,4.2);
+      frontKnee=toLocal(knees[0][0],knees[0][1]);
+      backKnee=toLocal(knees[1][0],knees[1][1]);
     }
-    // Keep the hem over the waistband: follow the thighs without sliding
-    // the whole shirt forward and exposing the rear of the trousers.
-    const bend=clamp(pantFollow*flex*0.5+this.cloth.x*.2*flex,-1.2,1.2);
+    const pantFollow=clamp(frontKnee[0]*0.38+backKnee[0]*0.18,-3.4,3.4);
+    const bend=clamp(pantFollow*flex*.55+this.cloth.x*.45*flex,-2.2,2.2);
     const kneeLift=clamp((this.cur.fFy-this.cur.bFy)/36,-1,1);
-    const hemTilt=clamp(kneeLift*.95+stride*.65,-1.35,1.35)*flex;
-    // Wider front/back and narrower profile, without collapsing at a turn.
-    const breadth = 0.78 + 0.12 * (1 - Math.abs(this.cur.turn));
+    const hemTilt=clamp(kneeLift*1.15+stride*.85,-1.7,1.7)*flex;
+    const hemFront=hemY+this.hemF.y*.7*flex+clamp((frontKnee[1]-20)*.1,-2.6,1.6)*flex;
+    const hemBack=hemY+this.hemB.y*.7*flex+clamp((backKnee[1]-20)*.1,-2.6,1.6)*flex;
+    // Profile: shoulders go edge-on; the hanging hem stays wide along the stride.
+    const shoulderScale=lerp(1,0.58,profile);
+    const chestScale=lerp(1,0.74,profile);
+    const hemScale=lerp(1.02,0.94,profile);
+    const breadth = 0.8 + 0.16 * (1 - profile);
     const widthAt = (y: number) => {
       const t = clamp((hemY - y) / Math.max(1, hemY - shoulderY), 0, 1);
-      let w = t < 0.72 ? lerp(cut.waist, cut.chest, smooth(t / 0.72)) : lerp(cut.chest, cut.shoulder, smooth((t - 0.72) / 0.28));
-      // Keep the waist from pinching: the shirt must stay wide enough at the bottom
-      // to sit cleanly over the trousers instead of looking tucked in or too narrow.
-      const minWaist = cut.waist * (tp === 'bigTee' ? 1.15 : tp === 'hoodie' ? 1.10 : tp === 'puffer' ? 1.10 : 1.05);
+      let w = t < 0.52
+        ? lerp(cut.waist * hemScale, cut.chest * chestScale, smooth(t / 0.52))
+        : lerp(cut.chest * chestScale, cut.shoulder * shoulderScale, smooth((t - 0.52) / 0.48));
+      const minWaist = cut.waist * (tp === 'bigTee' ? 1.1 : tp === 'hoodie' ? 1.05 : tp === 'puffer' ? 1.05 : 1.0) * hemScale;
       w = Math.max(w, minWaist);
-      return w * breadth + Math.sin(t * Math.PI) * Math.abs(this.cloth.x) * flex * 0.15;
+      w += Math.sin(t * Math.PI) * Math.abs(this.cloth.x) * flex * 0.28;
+      // Round the last pixels of the hem so corners are not a stiff square.
+      w -= smooth(clamp((y - (hemY - 2.4)) / 2.4, 0, 1)) * (1.35 + 0.35 * flex);
+      return w * breadth;
     };
     const hemAt=(x:number)=>{
-      const rear=1-smooth(clamp((x+cut.waist*.3)/(cut.waist*.65),0,1));
-      // Both front and back hem curve naturally toward trousers; rear isn't stiff/perpendicular.
-      const curved=hemY-.05*flex*x*x/Math.max(1,cut.waist);
-      const overlap = rear > 0.5 ? 3.5 : 4.0;
-      return Math.max(curved, overlap); // shirt always overlaps the trouser waistband
+      const span=Math.max(1,cut.waist);
+      const along=smooth(clamp((x+span)/(span*2),0,1));
+      const side=lerp(hemBack,hemFront,along);
+      const sag=(0.45+0.7*flex)*(tp==='bigTee'?1.25:tp==='hoodie'?1.05:1)*Math.sin(along*Math.PI);
+      const wave=Math.sin(x*.62+this.t*7.5)*.28*flex;
+      const curved=side+sag+wave-.06*flex*x*x/span;
+      // Always cover the waistband, but allow a raised knee to lift its corner.
+      return Math.max(curved, 1.7 + (1-along)*0.6);
     };
-    const cloth = (x: number, y: number) => y >= shoulderY && y <= hemAt(x) && Math.abs(x) <= widthAt(y)-Math.max(0,2-(y-shoulderY))*.7
-      && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck && (tp === 'tank' || tp === 'jersey'));
-    // Collar/shoulders stay fixed. The lower half curves toward the trousers;
-    // the lifted knee pulls its corner up, while the other corner hangs down.
+    const backBulk=(tp==='hoodie'||tp==='puffer'?1.35:0.35)*profile;
+    const frontTrim=lerp(1,0.82,profile);
+    const cloth = (x: number, y: number) => {
+      const v=clamp((y-shoulderY)/Math.max(1,hemY-shoulderY),0,1);
+      const lower=smooth(clamp((v-.4)/.6,0,1));
+      const left=widthAt(y)+backBulk*lower-Math.max(0,2-(y-shoulderY))*.7;
+      const right=widthAt(y)*frontTrim-Math.max(0,2-(y-shoulderY))*.7;
+      return y >= shoulderY && y <= hemAt(x) && x >= -left && x <= right
+        && !(y < shoulderY + 1.2 && Math.abs(x) < cut.neck);
+    };
+    // Collar/shoulders stay pinned. From mid-chest down the cloth shears toward
+    // each thigh, so a run cycle ripples the hem instead of the whole panel.
     const unDrape=(x:number,y:number):[number,number]=>{
       const v=clamp((y-shoulderY)/Math.max(1,hemY-shoulderY),0,1);
-      const lower=smooth(clamp((v-.38)/.62,0,1));
-      const front=smooth(clamp((x+cut.waist)/(cut.waist*2),0,1));
-      const center=bend*lower*(.15+.85*front)*0.5+Math.sin(v*Math.PI)*clamp(this.cur.lean,-.7,.7)*.4;
-      x-=center;
-      const tilt=hemTilt*x/Math.max(1,cut.waist)*lower*0.5;
-      y-=x<0?Math.max(0,tilt):tilt;
-      // Soft compression above the waistband rounds the lower corners.
-      y+=crouch*flex*Math.sin(Math.max(0,x)*.24)*.4*lower;
+      const lower=smooth(clamp((v-.28)/.72,0,1));
+      const along=smooth(clamp((x+cut.waist)/(cut.waist*2),0,1));
+      const follow=lerp(this.hemB.x,this.hemF.x,along)*flex*.7
+        +bend*lower*(.2+.8*along)
+        +this.cloth.x*flex*.4;
+      x-=follow*lower;
+      const tilt=(hemFront-hemBack)*(along-.5)*.55*lower
+        +hemTilt*x/Math.max(1,cut.waist)*lower*.9
+        +Math.sin(v*Math.PI)*clamp(this.cur.lean,-.8,.8)*.95;
+      y-=tilt;
+      y+=crouch*flex*Math.sin(Math.max(0,x)*.24)*.55*lower;
       return [x,y];
     };
     const frame = (pred: (x: number, y: number) => boolean) => b.begin().frame(hx, hy, angle, mir, u, 38, (x, y) => {
@@ -758,8 +794,9 @@ export class Puppet {
       b.begin().frame(hx,hy,angle,mir,u,38,(x,y)=>Math.abs(x)<5 && y>shoulderY-2 && y<shoulderY+1).commit(l.topColor);
     }
     if (tp === 'hoodie') {
-      frame((x,y) => y>hemY-7 && y<hemY-2 && Math.abs(x)<5.4 && Math.abs(x)<7-(hemY-y)*.35).commit(shade(l.topColor,.70),{line:null});
-      frame((x,y) => (Math.abs(x-2)<.5 || Math.abs(x+2)<.5) && y<shoulderY+8).commit(l.topTrim,{flat:true,line:null});
+      const pocket = 2.4 * profile;
+      frame((x,y) => y>hemY-7 && y<hemY-2 && Math.abs(x-pocket)<(profile?3.2:5.4) && Math.abs(x-pocket)<7-(hemY-y)*.35).commit(shade(l.topColor,.70),{line:null});
+      frame((x,y) => (Math.abs(x-(pocket+1.1))<.45 || Math.abs(x-(pocket-1.1))<.45) && y<shoulderY+8 && y>shoulderY+1).commit(l.topTrim,{flat:true,line:null});
     }
     if (tp === 'longsleeve') frame((x,y) => y>shoulderY+4 && y<shoulderY+6).commit(l.topTrim,{flat:true,line:null});
     // Each printable texture is anchored in garment coordinates: 1 = trim,

@@ -3,12 +3,14 @@ import { GH, GW, PX, Pix, pixTexture } from './pixel';
 import { setViewport } from './viewport';
 import { CourtId, CourtScene, buildCourt } from './courts';
 import { Puppet, Rig, restRig } from './puppet';
+import { gait } from './anim';
 import { BASE_LOADOUT, FITS, Loadout, buildLoadout, itemById, rivalFor, STARTER_EQUIP, REGION_IDS } from './loadout';
 
 /** Dev-only sprite lab: `/?lab=1` shows a row of puppets in a few poses. */
 export class LabScene extends Phaser.Scene {
   pups: Puppet[] = [];
   court?: CourtScene;
+  private poseName = 'idle';
   constructor() { super('lab'); }
 
   create() {
@@ -37,6 +39,7 @@ export class LabScene extends Phaser.Scene {
     }
     void BASE_LOADOUT; void rivalFor; void REGION_IDS;
     const pose = q.get('pose') ?? 'idle';
+    this.poseName = pose;
     looks.forEach((l, i) => {
       if (cid && i > 1) return;
       const p = new Puppet(this, l);
@@ -48,7 +51,17 @@ export class LabScene extends Phaser.Scene {
     });
   }
 
-  update(t: number, dt: number) { this.court?.update(t / 1000, dt / 1000); }
+  update(t: number, dt: number) {
+    this.court?.update(t / 1000, dt / 1000);
+    if (this.poseName !== 'run') return;
+    const sec = t / 1000, step = dt / 1000;
+    this.pups.forEach((p, i) => {
+      const r = this.poseFor('run', i);
+      gait(r, sec * 9 + i * 1.2, 360, 13);
+      r.lean = 0.22; r.hipY = 80;
+      p.update(r, step, {}, { f: 360, h: 0 });
+    });
+  }
 
   poseFor(name: string, i: number): Rig {
     const r = restRig();

@@ -13,7 +13,7 @@ import type { GameScene } from './game';
 import { MAKE_ODDS, gradeDunk, gradeRelease } from './timing';
 
 export type Act = 'free' | 'shoot' | 'release' | 'juke' | 'dunk' | 'swipe' | 'block' | 'shove' | 'stagger' | 'fall' | 'recover';
-export type MoveKind = 'cross' | 'spin' | 'btb' | 'hesi' | 'stepback';
+export type MoveKind = 'cross' | 'spin' | 'btb' | 'hesi' | 'stepback' | 'inout' | 'btl' | 'euro' | 'sizeup';
 
 const MOVE_DUR = T.moves.dur;
 type Buffered = 'shootDown' | 'a' | 'b' | 'c' | 'shove';
@@ -26,6 +26,11 @@ const COMBO_NAMES: Record<string, string> = {
   'hesi>cross':'STOP & GO','cross>hesi':'HANG CROSS','hesi>spin':'HESI SPIN',
   'stepback>cross':'RETREAT & ATTACK','cross>stepback':'SNATCH BACK',
   'btb>stepback':'BEHIND & BACK','stepback>spin':'RETREAT SPIN','hesi>btb':'HANG & HIDE',
+  'inout>cross':'IN AND SHAKE','cross>inout':'SHAKE AND GO','inout>stepback':'FAKE AND SNATCH',
+  'btl>cross':'THROUGH AND SHAKE','cross>btl':'KILLER SETUP','btl>spin':'THROUGH THE SPIN',
+  'btl>btb':'THROUGH AND BACK','euro>spin':'EURO SPIN','euro>euro':'EURO COMBO',
+  'sizeup>cross':'JAB CROSS','hesi>inout':'STOP AND BURST','sizeup>btl':'JAB THROUGH',
+  'inout>spin':'SHAKE SPIN','stepback>inout':'SNATCH AND GO','euro>btl':'EURO THROUGH',
 };
 
 export class Hooper {
@@ -195,25 +200,47 @@ export class Hooper {
     this.protectT = T.moves.protect + (kind === 'spin' ? 0.1 : 0);
     this.ankleChecked = false;
     this.dribbleMoves=nextMoves;
-    const sp = (kind === 'btb' ? 1.15 : kind === 'spin' ? 0.95 : 1) * (this.comboN > 1 && kind === prev ? 0.8 : 1) * T.moves.dash;
+    const sp = (kind === 'btb' ? 1.15 : kind === 'spin' ? 0.95 : kind==='euro'?1.08:kind==='sizeup'?0.55:1) * (this.comboN > 1 && kind === prev ? 0.8 : 1) * T.moves.dash;
     this.dash = kind === 'btb'
       ? { x: (dirX || this.facing) * 330 * sp, z: dirZ * 90 }
       : kind === 'spin'
         ? { x: (dirX || this.facing) * 250 * sp, z: dirZ * 250 * sp }
         : kind==='stepback'?{x:-this.facing*280*T.moves.dash,z:I.mz*90}
-        : kind==='hesi'?{x:0,z:0}
+        : kind==='hesi'||kind==='sizeup'?{x:this.facing*(kind==='sizeup'?50:0),z:kind==='sizeup'?dirZ*70:0}
+        : kind==='inout'?{x:this.facing*300*sp,z:I.mz*40}
+        : kind==='btl'?{x:this.facing*90+I.mx*80,z:dirZ*300*sp}
+        : kind==='euro'?{x:this.facing*160*sp,z:dirZ*250*sp}
         : Math.abs(I.mz)>.3?{x:I.mx*150*T.moves.dash+this.facing*70,z:Math.sign(I.mz)*330*sp}
         : Math.abs(I.mx)>.3?{x:I.mx*285*sp,z:0}
         : {x:this.facing*70,z:dirZ*330*sp};
-    this.handSide = kind === 'cross' || kind === 'btb' ? -this.handSide : this.handSide;
-    let label = kind === 'cross' ? 'CROSSOVER' : kind === 'spin' ? 'SPIN' : kind==='hesi'?'HESITATION':kind==='stepback'?'STEPBACK':'BEHIND THE BACK';
+    this.handSide = kind === 'cross' || kind === 'btb' || kind==='btl' || kind==='inout' ? -this.handSide : this.handSide;
+    const names:Record<MoveKind,string>={cross:'CROSSOVER',spin:'SPIN',btb:'BEHIND THE BACK',hesi:'HESITATION',stepback:'STEPBACK',inout:'IN AND OUT',btl:'BETWEEN THE LEGS',euro:'EURO STEP',sizeup:'SIZE UP'};
+    let label = names[kind];
     if (chained && prev) label = COMBO_NAMES[`${prev}>${kind}`] ?? 'COMBO';
-    const triples:Record<string,string>={'cross>btb>spin':'AROUND THE WORLD','spin>cross>btb':'GHOST STEP','btb>cross>spin':'FULL CIRCLE','cross>spin>cross':'DOUBLE TAKE','hesi>cross>spin':'HANG TIME','cross>stepback>cross':'SNAKE BITE','btb>hesi>cross':'GHOST BURST'};
+    const triples:Record<string,string>={'cross>btb>spin':'AROUND THE WORLD','spin>cross>btb':'GHOST STEP','btb>cross>spin':'FULL CIRCLE','cross>spin>cross':'DOUBLE TAKE','hesi>cross>spin':'HANG TIME','cross>stepback>cross':'SNAKE BITE','btb>hesi>cross':'GHOST BURST','cross>btl>cross':'KILLER CROSS','hesi>btl>cross':'HESITATION KILLER','inout>cross>spin':'SHAKE WORLD','euro>btl>cross':'EURO KILLER','sizeup>cross>spin':'JAB WORLD'};
     if(this.moveHistory.length===3) label=triples[this.moveHistory.join('>')] ?? label;
     g.popupAt(this, this.comboN > 1 ? `${label} x${this.comboN}` : label, this.comboN > 2 ? '#ff7a1a' : '#ffe45e', this.comboN > 1 ? 30 : 24);
     if(this.comboN===2)g.recordCombo?.(this);
     if (this.comboN > 1) this.gainHeat(4 * this.comboN);
     g.fx.dust(this.x, this.sy, 5, -Math.sign(this.dash.x));
+    const d=g.opp(this);
+    const inFace=Math.abs(d.x-this.x)<100 && Math.abs(d.z-this.z)<40 && (d.x-this.x)*this.facing>6;
+    if(inFace){
+      g.fx.whoosh(this.x+this.facing*18,this.sy-72,this.facing);
+      g.fx.sparks(d.x,d.sy-82,5,0xffe45e,150);
+      g.hitstop(this.comboN>=2?0.04:0.02);
+      if(this.comboN>=2)g.fx.ring(d.x,d.sy-48,0xffe45e,8,200,0.2);
+    }
+  }
+
+  private skillFromStick(g: GameScene): MoveKind {
+    const I=this.I, along=I.mx*this.facing, lat=Math.abs(I.mz);
+    const near=g.distToHoop(this.x,this.z)<280 && Math.abs(this.vx)>80;
+    if(along<-.5) return 'stepback';
+    if(along>.5) return near ? 'euro' : 'inout';
+    if(lat>.55) return 'btl';
+    if(Math.max(Math.abs(I.mx),lat)>.3) return 'cross';
+    return 'cross';
   }
 
   startShoot(g: GameScene) {
@@ -350,7 +377,7 @@ export class Hooper {
         else if ((this.buf.c>0 || I.cHeld) && this.canDunk(g)) {this.buf.c=0;this.startDunk(g);}
         else if (this.buf.a > 0) {
           this.buf.a=0;
-          if(Math.max(Math.abs(I.mx),Math.abs(I.mz))>.3 || !I.aHeld)this.startMove(I.mx*this.facing<-.5?'stepback':'cross',g);
+          if(Math.max(Math.abs(I.mx),Math.abs(I.mz))>.3 || !I.aHeld)this.startMove(this.skillFromStick(g),g);
           else {this.neutralPending=true;this.skillGather=0;}
         }
         else if (this.buf.b > 0) { this.buf.b = 0; this.startMove('spin', g); }
@@ -364,7 +391,7 @@ export class Hooper {
           this.startMove('btb',g);
         }
         else if(this.neutralPending && (!I.aHeld || this.skillGather>=T.moves.neutralHold || Math.max(Math.abs(I.mx),Math.abs(I.mz))>.3)){
-          const kind=I.mx*this.facing<-.5?'stepback':Math.max(Math.abs(I.mx),Math.abs(I.mz))>.3?'cross':I.aHeld?'hesi':'cross';
+          const kind=I.mx*this.facing<-.5?'stepback':Math.max(Math.abs(I.mx),Math.abs(I.mz))>.3?this.skillFromStick(g):I.aHeld?'hesi':'sizeup';
           this.neutralPending=false;this.skillGather=0;this.startMove(kind,g);
         }
       } else if (this.act === 'free') {
@@ -501,6 +528,14 @@ export class Hooper {
       const burst=smooth(clamp((p-.42)/.32,0,1));
       this.vx=I.mx*T.move.walk*1.18*burst;this.vz=I.mz*T.move.walk*T.move.zFactor*1.18*burst;
       this.dash={x:this.vx,z:this.vz};
+    }else if(this.moveKind==='euro'){
+      const second=p>.4;
+      this.vx=this.facing*(second?360:130)*T.moves.dash*k+tx*(1-k);
+      this.vz=this.lastDirZ*(second?-200:260)*T.moves.dash*k+tz*(1-k);
+    }else if(this.moveKind==='inout'){
+      const go=smooth(clamp((p-.28)/.4,0,1));
+      this.vx=this.facing*lerp(-40,320,go)*T.moves.dash+tx*(1-k);
+      this.vz=this.dash.z*k+tz*(1-k);
     }else {this.vx = this.dash.x * k + tx * (1 - k); this.vz = this.dash.z * k + tz * (1 - k);}
     this.x += this.vx * dt; this.z += this.vz * dt;
     const checkAt=this.moveKind==='hesi'?.22:T.moves.ankleCheckAt;
@@ -559,10 +594,19 @@ export class Hooper {
       const p = clamp(this.actT / this.actDur, 0, 1);
       ox = lerp(32, -14, Math.sin(p * Math.PI)) ; h = lerp(h, 54, Math.sin(p * Math.PI));
     }
-    if(this.act==='juke' && (this.moveKind==='hesi'||this.moveKind==='stepback')){
+    if(this.act==='juke' && (this.moveKind==='hesi'||this.moveKind==='stepback'||this.moveKind==='sizeup')){
       const p=clamp(this.actT/this.actDur,0,1),gather=Math.sin(p*Math.PI);
-      ox-=gather*(this.moveKind==='hesi'?7:12);
-      h=lerp(h,this.moveKind==='hesi'?62:43,gather*.8);
+      ox-=gather*(this.moveKind==='hesi'?7:this.moveKind==='sizeup'?4:12);
+      h=lerp(h,this.moveKind==='hesi'?62:this.moveKind==='sizeup'?50:43,gather*.8);
+    }
+    if(this.act==='juke' && this.moveKind==='btl'){
+      const p=clamp(this.actT/this.actDur,0,1);
+      ox=lerp(this.ballOx,4,Math.sin(p*Math.PI));
+      h=lerp(h,16,Math.sin(p*Math.PI));
+    }
+    if(this.act==='juke' && this.moveKind==='inout'){
+      const p=clamp(this.actT/this.actDur,0,1);
+      ox+=Math.sin(p*Math.PI*2)*10;
     }
     this.carried = { x: this.x + f * ox, z: this.z, h: this.h + h, depthBias: this.ballOx < 14 || (this.moveKind === 'btb' && this.act === 'juke') ? -0.4 : 0.4 };
   }
