@@ -80,6 +80,19 @@ export class FX {
     }
   }
 
+  /** Tight whoosh in the defender's face when a skill move lands close. */
+  whoosh(x: number, y: number, dir: number) {
+    this.speedLines(x, y, dir);
+    this.ring(x + dir * 8, y, 0xffe45e, 6, 160, 0.18);
+    for (let i = 0; i < 4; i++) {
+      this.add({
+        x: x + dir * (6 + Math.random() * 10), y: y - 8 + (Math.random() - 0.5) * 28,
+        vx: dir * (220 + Math.random() * 90), vy: (Math.random() - 0.5) * 70,
+        life: 0.16 + Math.random() * 0.08, max: 0.22, size: 2, color: 0xfff4c4, add: true, kind: 1,
+      });
+    }
+  }
+
   /** Floating pixel-font text. `size` picks the 1x or 2x font. */
   popup(x: number, y: number, text: string, color = '#ffe45e', size = 34, rise = 46) {
     if(this.pendingNotices.length>=12)this.pendingNotices.shift();

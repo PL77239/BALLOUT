@@ -83,7 +83,10 @@ export class Brain {
       this.jukeCD = 0.35 + g.rand() * 0.5;
       const r = g.rand();
       if (r < 0.4) I.a = true; else if (r < 0.7) I.b = true; else I.c = true;
-      I.mz = dz > 0 ? -1 : 1;
+      const aim=g.rand();
+      if(aim<.22){I.mx=1;I.mz=0;}
+      else if(aim<.4){I.mx=-1;I.mz=0;}
+      else {I.mz = dz > 0 ? -1 : 1;I.mx=aim>.7?1:0;}
       return;
     }
     if (me.act === 'juke' && me.comboN >= 1 && open && me.actT > me.actDur * 0.55 && dist < T.arcR + 80 && g.rand() < 0.5) {

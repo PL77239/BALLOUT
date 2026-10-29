@@ -21,7 +21,7 @@ export const T = {
   heat: { max: 100, decay: 2.4, fireTime: 14 },
   jump: { g: 2600, vBlock: 830 },
   shot: {
-    meterTime: 0.92,
+    meterTime: 0.76,
     sweet: 0.8,
     greenHalf: 0.036,
     pumpTap: 0.16,
@@ -33,7 +33,7 @@ export const T = {
     fireBonus: 1.6,
     missK: 340,
   },
-  moves: { comboWindow: 0.68, neutralHold:0.16,ankleCheckAt: 0.12, ankleRange: 140, ankleZ: 56, protect: 0.3, dash: 1.3, dur: { cross: 0.28, spin: 0.38, btb: 0.31,hesi:.34,stepback:.32 } },
+  moves: { comboWindow: 0.72, neutralHold:0.16,ankleCheckAt: 0.12, ankleRange: 140, ankleZ: 56, protect: 0.3, dash: 1.3, dur: { cross: 0.28, spin: 0.38, btb: 0.31,hesi:.34,stepback:.32,inout:.30,btl:.30,euro:.42,sizeup:.24 } },
   steal: { range: 112, zRange: 34, base: 0.28, sprintBonus: 0.42, jukeBonus: 0.36, lowStaminaBonus: 0.2, whiffRecover: 0.5, swipe: 0.25 },
   shove: { cooldown: 1.15, cost: 13, knock: 560, fumble: 0.4, range: 66 },
   dunk: { range: 235, lane: 80, cost: 8, clearLead: 8, defenderLane: 18, airtime: 0.8, hitAt: 0.44, height: 150, greenHalf: 0.075, windowSec: 0.12 },

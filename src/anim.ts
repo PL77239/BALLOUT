@@ -12,7 +12,7 @@ const out = (t: number) => 1 - (1 - clamp(t, 0, 1)) ** 3;
 const seg = (t: number, a: number, b: number) => clamp((t - a) / (b - a), 0, 1);
 
 /** Walk / run cycle: constant stride length, so cadence rises with speed and planted feet do not slide. */
-function gait(r: Rig, ph: number, speed: number, wide: number, liftAdd = 0) {
+export function gait(r: Rig, ph: number, speed: number, wide: number, liftAdd = 0) {
   const A = 30 * smooth(speed / 70);
   const S = clamp(speed / T.move.sprint, 0, 1);
   const L = (6 + 22 * S + liftAdd) * smooth(speed / 40);
@@ -304,6 +304,28 @@ function juke(h: Hooper, r: Rig, p: number, hands: Hands) {
     r.hipY=75-9*wind+8*rise;r.lean=-.30*Math.sin(p*Math.PI)+.03;r.head=.13*wind;
     r.fFx=lerp(20,9,burst);r.bFx=lerp(-14,-32,burst);r.fFy=6*Math.sin(p*Math.PI);r.bFy=2;
     r.fAnk=-.18*wind;r.bAnk=.12*wind;
+  } else if(h.moveKind==='inout'){
+    const fake=1-ease(seg(p,.0,.38));
+    r.hipY=78-8*fake+10*burst;r.lean=.08- .22*fake+.26*burst*(1-rise);
+    r.bodyX=-8*fake*dir+12*burst*(1-rise)*dir;
+    r.fFx=lerp(12,22,burst);r.bFx=lerp(-12,-20,wind);
+    r.head=.14*fake;
+  } else if(h.moveKind==='btl'){
+    r.hipY=74-6*wind+10*rise;r.lean=.16+.12*burst*(1-rise);
+    r.fFx=lerp(14,26,burst);r.bFx=lerp(-14,-8,burst);r.fFy=8*Math.sin(p*Math.PI);r.bFy=2;
+    hands(lerp(12,6,burst),lerp(-20,-38,burst),8,-8);
+    r.head=-.08;
+  } else if(h.moveKind==='euro'){
+    const second=ease(seg(p,.38,1));
+    r.hipY=80-10*wind+8*second;r.lean=.14+.16*second;
+    r.fFx=lerp(10,28,second);r.bFx=lerp(-10,-24,wind);r.fFy=12*Math.sin(p*Math.PI);r.bFy=4;
+    r.bodyX=dir*(8-18*second);
+    hands(lerp(16,28,second),lerp(-24,8,second),10,-20);
+    r.head=-.1*second;
+  } else if(h.moveKind==='sizeup'){
+    r.hipY=76-5*wind+6*rise;r.lean=.06+.14*burst*(1-rise);r.head=.08*wind;
+    r.fFx=lerp(14,22,wind);r.bFx=lerp(-12,-8,burst);
+    r.bodyX=4*wind*dir*(1-burst);
   } else {
     r.hipY = 78 - 8 * wind + 10 * rise; r.lean = 0.16 + 0.18 * burst * (1 - rise) - 0.08 * wind * (1 - burst);
     r.fFx = lerp(12, 22, burst); r.bFx = lerp(-12, -18, burst);
